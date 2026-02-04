@@ -1,0 +1,144 @@
+using System;
+using UnityEngine;
+
+namespace SixteenBit.Gameplay
+{
+    /// <summary>
+    /// Player health system. 5-heart max, 60-frame i-frames,
+    /// knockback on damage, death triggers respawn.
+    /// </summary>
+    public class HealthSystem : MonoBehaviour
+    {
+        public int MaxHealth { get; private set; } = 5;
+        public int CurrentHealth { get; private set; }
+        public bool IsInvulnerable { get; private set; }
+        public bool IsDead => CurrentHealth <= 0;
+
+        public event Action<int, int> OnHealthChanged; // (current, max)
+        public event Action OnDeath;
+        public event Action OnDamage;
+
+        private float _invulnerabilityTimer;
+        private const float INVULNERABILITY_DURATION = 1f; // 60 frames at 60fps
+        private const float KNOCKBACK_FORCE = 8f;
+
+        private PlayerController _player;
+        private SpriteRenderer _spriteRenderer;
+
+        private void Awake()
+        {
+            CurrentHealth = MaxHealth;
+            _player = GetComponent<PlayerController>();
+            _spriteRenderer = GetComponent<SpriteRenderer>();
+        }
+
+        private void Start()
+        {
+            OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
+        }
+
+        private void Update()
+        {
+            if (IsInvulnerable)
+            {
+                _invulnerabilityTimer -= Time.deltaTime;
+                if (_invulnerabilityTimer <= 0f)
+                {
+                    IsInvulnerable = false;
+                    if (_spriteRenderer != null)
+                        _spriteRenderer.color = Color.white;
+                }
+                else
+                {
+                    // Flash effect during i-frames
+                    if (_spriteRenderer != null)
+                    {
+                        float flash = Mathf.PingPong(Time.time * 10f, 1f);
+                        _spriteRenderer.color = new Color(1f, 1f, 1f, flash > 0.5f ? 1f : 0.3f);
+                    }
+                }
+            }
+        }
+
+        public void TakeDamage(int amount, Vector2 damageSource)
+        {
+            if (IsInvulnerable || IsDead) return;
+
+            CurrentHealth = Mathf.Max(0, CurrentHealth - amount);
+            OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
+            OnDamage?.Invoke();
+
+            // Knockback away from damage source
+            if (_player != null)
+            {
+                Vector2 knockbackDir = ((Vector2)transform.position - damageSource).normalized;
+                if (knockbackDir.sqrMagnitude < 0.01f)
+                    knockbackDir = Vector2.up;
+                _player.ApplyKnockback(knockbackDir, KNOCKBACK_FORCE);
+            }
+
+            // Start i-frames
+            IsInvulnerable = true;
+            _invulnerabilityTimer = INVULNERABILITY_DURATION;
+
+            if (CurrentHealth <= 0)
+            {
+                Die();
+            }
+        }
+
+        public void Heal(int amount)
+        {
+            if (IsDead) return;
+            CurrentHealth = Mathf.Min(MaxHealth, CurrentHealth + amount);
+            OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
+        }
+
+        public void ResetHealth()
+        {
+            CurrentHealth = MaxHealth;
+            IsInvulnerable = false;
+            if (_spriteRenderer != null)
+                _spriteRenderer.color = Color.white;
+            OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
+        }
+
+        private void Die()
+        {
+            OnDeath?.Invoke();
+
+            if (_player != null)
+                _player.IsAlive = false;
+
+            // Respawn after short delay
+            Invoke(nameof(Respawn), 1.5f);
+        }
+
+        private void Respawn()
+        {
+            var checkpoint = CheckpointManager.Instance;
+            if (checkpoint != null && _player != null)
+            {
+                _player.TeleportTo(checkpoint.CurrentRespawnPoint);
+                _player.IsAlive = true;
+                ResetHealth();
+            }
+        }
+
+        private void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (collision.gameObject.CompareTag("Enemy"))
+            {
+                TakeDamage(1, collision.transform.position);
+            }
+        }
+
+        private void OnCollisionStay2D(Collision2D collision)
+        {
+            if (collision.gameObject.CompareTag("Enemy") && !IsInvulnerable)
+            {
+                TakeDamage(1, collision.transform.position);
+            }
+        }
+    }
+}

@@ -1,12 +1,21 @@
-# 16-Bit Mobile Game
+# 16-Bit Mobile Game -- Epoch Breaker
 
-A 16-bit inspired side-scrolling mobile game for iOS with procedurally generated levels and deterministic reconstruction via shareable level IDs.
+A 16-bit inspired side-scrolling mobile shooter for iOS where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments that evolve across 10 eras of human civilization.
 
 ---
 
 ## Core Concept
 
-Players navigate side-scrolling levels with authentic 16-bit aesthetics. The game's differentiator is a **generative level system**: an algorithm that creates unique, playable levels from a deterministic seed. Each level has a unique ID that can be shared -- entering the same ID on any device regenerates the identical level.
+Players control a small character who picks up weapon attachments throughout each level. These weapons continuously auto-fire from the character's body, targeting enemies and destructible terrain. The player blasts through walls, rocks, and obstacles to carve pathways, reveal bridges, uncover stairs, and progress through levels. Strategic destruction is key -- leaving certain material intact creates platforms, cover, and structural supports that aid traversal.
+
+```
+Pick up weapons -> Weapons auto-fire -> Blast environment -> Reveal paths -> Progress
+                                      -> Destroy enemies  -> Earn drops   -> More weapons
+```
+
+The game's world evolves through 10 eras of human civilization, from Stone Age caves to transcendent future landscapes. The character, weapons, enemies, and destructible materials all transform to match each era.
+
+**Differentiator:** Procedurally generated levels via deterministic seeds. Each level has a unique ID that can be shared -- entering the same ID on any device regenerates the identical level.
 
 ```
 Player generates level -> Gets ID: LVLID_1_3_1_A1B2C3D4E5F6G7H8
@@ -14,7 +23,43 @@ Player shares ID with friend -> Friend enters ID -> Identical level regenerated
 Both play the same level -> Compare scores
 ```
 
-This provides infinite replayability without a server, and enables community-driven content sharing.
+---
+
+## Gameplay Pillars
+
+### 1. Weapon Attachment System
+- Character picks up weapon attachments scattered through levels
+- Weapons mount visually onto the character's body and auto-fire continuously
+- Auto-aim targets nearest enemy; player can cycle targets with a button
+- More attachments = more simultaneous firepower
+- Weapons evolve thematically per era (rocks -> arrows -> bullets -> lasers -> nanobots)
+
+### 2. Destructible Environment
+- Walls, rocks, rubble, and terrain can be blasted apart
+- Destruction reveals pathways, bridges, stairs, and hidden areas
+- Strategic element: preserving material creates platforms, cover, and traversal aids
+- Puzzle-like level design rewards thinking about what to destroy vs. preserve
+
+### 3. Era Progression (10 Eras)
+Character and world evolve through all of human civilization:
+
+| Era | Theme | Setting | Weapon Style |
+|-----|-------|---------|-------------|
+| 1 | Stone Age | Caves, wilderness | Rocks, clubs, slings |
+| 2 | Bronze Age | Early settlements, mud brick | Bronze spears, fire |
+| 3 | Iron Age | Fortifications, forges | Iron weapons, siege tools |
+| 4 | Medieval | Castles, villages | Crossbows, catapults |
+| 5 | Renaissance | Ornate cities, workshops | Gunpowder, early firearms |
+| 6 | Industrial | Factories, railways | Steam weapons, explosives |
+| 7 | Modern | Urban, military | Ballistics, rockets |
+| 8 | Digital | Data centers, networks | Lasers, drones, EMP |
+| 9 | Space Age | Orbital, alien worlds | Energy weapons, plasma |
+| 10 | Transcendent | Reality-bending, exotic | Nanobots, antimatter, singularity |
+
+### 4. Controls (Two-Thumb Mobile Layout)
+- **Left thumb:** Virtual D-pad for movement (left/right)
+- **Right thumb:** Jump button + Target cycle button
+- **Hold jump when powered up:** Unleashes special attack
 
 ---
 
@@ -22,7 +67,7 @@ This provides infinite replayability without a server, and enables community-dri
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Engine | Unity 2022 LTS | Best balance of 2D support, dev velocity, community resources ([decision](docs/Engine-Selection-Rubric.md)) |
+| Engine | Unity 2022 LTS | Best balance of 2D support, dev velocity, community resources |
 | Language | C# | Unity native |
 | PRNG | xorshift64* | Fast, deterministic, no platform-specific behavior |
 | Generation | Hybrid (PRNG terrain + grammar pacing + constraint validation) | Natural layouts with guaranteed playability |
@@ -34,8 +79,6 @@ This provides infinite replayability without a server, and enables community-dri
 
 ## Performance Targets
 
-Canonical targets defined in [Level-Generation-Technical-Spec.md](docs/Level-Generation-Technical-Spec.md):
-
 | Metric | Target | Device |
 |--------|--------|--------|
 | Frame rate | 60 fps sustained | iPhone 11+ |
@@ -45,6 +88,8 @@ Canonical targets defined in [Level-Generation-Technical-Spec.md](docs/Level-Gen
 | Memory (peak) | < 100 MB | All devices |
 | Memory (per level) | < 2 MB | Resident |
 | App launch to gameplay | < 3 seconds | All devices |
+| Destructible tiles per level | Up to 500 | All devices |
+| Simultaneous projectiles | Up to 30 | All devices |
 
 ---
 
@@ -56,48 +101,38 @@ DOCUMENTATION-INDEX.md              <- Full document navigation
 PROJECT-LAUNCH-CHECKLIST.md         <- Phase-by-phase checklist
 docs/
   Training-Plan.md                  <- 10-module expert training curriculum
-  Development-Roadmap.md            <- 16-week timeline, milestones
+  Development-Roadmap.md            <- Timeline, milestones
   Engine-Selection-Rubric.md        <- Engine evaluation (Unity selected)
   PROJECT-STRUCTURE.md              <- Directory layout, conventions
   Level-Generation-Technical-Spec.md <- Generation architecture (CRITICAL)
-  Level-Generation-Research-Guide.md <- Algorithm research & code examples (CRITICAL)
-  Validation-QA-Suite.md            <- 22+ test cases for gen system (CRITICAL)
-  Module-1-Assessment-Criteria.md   <- 16-Bit Design Fundamentals
-  Module-2-Assessment-Criteria.md   <- Mobile Game Development (iOS)
-  Module-3-Assessment-Criteria.md   <- Game Design & Gamification
-  Module-4-Assessment-Criteria.md   <- Side-Scrolling Mechanics
-  Module-5-Assessment-Criteria.md   <- Mobile UX & Accessibility
-  Module-6-Assessment-Criteria.md   <- 16-Bit Audio & Aesthetics
-```
-
----
-
-## Training Plan
-
-The team completes a 10-module expert training program before development begins. Each module has hands-on assessments with rubrics and pass thresholds. See [Training-Plan.md](docs/Training-Plan.md) for the full curriculum.
-
-| Module | Topic | Assessments |
-|--------|-------|-------------|
-| 1 | 16-Bit Design Fundamentals | 5 + capstone |
-| 2 | Mobile Game Development (iOS) | 5 + capstone |
-| 3 | Game Design & Gamification | 5 + capstone |
-| 4 | Side-Scrolling Mechanics | 5 + capstone |
-| 5 | Mobile UX & Accessibility | 5 + capstone |
-| 6 | 16-Bit Audio & Aesthetics | 5 + capstone |
-| 7-10 | iOS Pipeline, Performance, Market, Live Ops | Outlined in Training Plan |
-
----
-
-## Development Timeline
-
-See [Development-Roadmap.md](docs/Development-Roadmap.md) for full details.
-
-```
-Weeks 1-4:   Training & architecture planning
-Weeks 5-8:   Core prototype (generation system, gameplay, controls)
-Weeks 9-12:  Polish & integration (audio, visual, iOS features)
-Weeks 13-15: QA & App Store preparation
-Week 16+:    Launch & post-launch support
+  Level-Generation-Research-Guide.md <- Algorithm research & code examples
+  Validation-QA-Suite.md            <- Test cases for gen system
+training/
+  module3/                          <- Game Design & Gamification
+    progression_system_design.md    <- 10-era progression system
+    monetization_strategy.md
+    retention_features_spec.md
+    difficulty_curve_spec.md
+    reward_system_spec.md
+  module4/                          <- Core Mechanics
+    combat_system_spec.md           <- Weapon attachment & auto-fire system
+    enemy_archetypes.md             <- Era-based enemy designs
+    boss_patterns.md                <- Era-based boss encounters
+    hazard_catalog.md               <- Destructible environment system
+    physics_spec.md
+    camera_system_spec.md
+  module5/                          <- Mobile UX
+    control_layout_spec.md          <- Two-thumb D-pad + buttons layout
+    ui_layout_spec.md
+    onboarding_flow.md
+    accessibility_spec.md
+    interruption_handling_spec.md
+  module6/                          <- Art & Audio
+    tileset_spec.md                 <- Era-based visual themes
+    animation_spec.md
+    music_spec.md                   <- Era-evolving soundtrack
+    sfx_spec.md                     <- Weapon & destruction SFX
+    parallax_spec.md
 ```
 
 ---
@@ -118,23 +153,24 @@ Week 16+:    Launch & post-launch support
 
 ## Generative Level System
 
-The core technical innovation. Full specification: [Level-Generation-Technical-Spec.md](docs/Level-Generation-Technical-Spec.md)
+Full specification: [Level-Generation-Technical-Spec.md](docs/Level-Generation-Technical-Spec.md)
 
-**Level ID format:** `LVLID_[VERSION]_[DIFFICULTY]_[BIOME]_[SEED64]`
+**Level ID format:** `LVLID_[VERSION]_[DIFFICULTY]_[ERA]_[SEED64]`
 
 **Pipeline:**
 1. Seed derived from Level ID
 2. xorshift64* PRNG initialized with seed (all randomness flows from here)
-3. Macro layout: zones placed by grammar rules (intro, combat, challenge, boss)
-4. Micro layout: terrain, enemies, rewards placed by PRNG within zone constraints
-5. Validation: reachability verified, difficulty checked, safety constraints enforced
-6. Level is playable -- same seed always produces the same level
+3. Macro layout: zones placed by grammar rules (intro, traversal, combat, puzzle, boss)
+4. Destructible terrain: walls, rocks, and breakable material placed with embedded pathways
+5. Weapons and enemies placed by PRNG within zone constraints
+6. Validation: reachability verified with minimum weapon loadout, difficulty checked
+7. Level is playable -- same seed always produces the same level
 
-**Critical constraint:** No Unity math functions (e.g., `Mathf.PerlinNoise`) are used in the generation pipeline. All randomness comes from the xorshift64* PRNG to guarantee cross-platform determinism.
+**Critical constraint:** No Unity math functions (e.g., `Mathf.PerlinNoise`) in the generation pipeline. All randomness comes from xorshift64* PRNG for cross-platform determinism.
 
 ---
 
 ## Status
 
-**Current phase:** Planning (pre-development)
+**Current phase:** Design (replacing core design documents)
 **Last updated:** 2026-02-04
