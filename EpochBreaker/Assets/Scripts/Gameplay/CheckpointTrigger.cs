@@ -26,7 +26,7 @@ namespace SixteenBit.Gameplay
 
             // Visual feedback: change color to green
             if (_sr != null)
-                _sr.color = Color.green;
+                _sr.color = new Color(0.7f, 1.0f, 0.7f);
         }
     }
 }

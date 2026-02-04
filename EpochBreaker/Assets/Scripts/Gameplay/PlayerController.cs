@@ -62,7 +62,7 @@ namespace SixteenBit.Gameplay
         {
             if (!IsAlive || GameManager.Instance.CurrentState != GameState.Playing)
             {
-                _rb.velocity = Vector2.zero;
+                _rb.linearVelocity = Vector2.zero;
                 return;
             }
 
@@ -181,7 +181,7 @@ namespace SixteenBit.Gameplay
 
         private void ApplyVelocity()
         {
-            _rb.velocity = _velocity;
+            _rb.linearVelocity = _velocity;
         }
 
         /// <summary>
@@ -200,7 +200,7 @@ namespace SixteenBit.Gameplay
         {
             transform.position = position;
             _velocity = Vector2.zero;
-            _rb.velocity = Vector2.zero;
+            _rb.linearVelocity = Vector2.zero;
         }
     }
 }

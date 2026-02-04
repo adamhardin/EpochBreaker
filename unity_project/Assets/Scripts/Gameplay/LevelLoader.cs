@@ -145,16 +145,13 @@ namespace SixteenBit.Gameplay
                 var enemyData = data.Enemies[i];
                 Vector3 pos = _tilemapRenderer.LevelToWorld(enemyData.TileX, enemyData.TileY);
 
-                bool isCharger = enemyData.Behavior == EnemyBehavior.Patrol ||
-                                 enemyData.Behavior == EnemyBehavior.Chase;
-
                 var go = new GameObject($"Enemy_{i}_{enemyData.Type}");
                 go.transform.SetParent(enemyParent.transform);
                 go.transform.position = pos;
                 go.tag = "Enemy";
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = PlaceholderAssets.GetEnemySprite(isCharger);
+                sr.sprite = PlaceholderAssets.GetEnemySprite(enemyData.Type, enemyData.Behavior);
                 sr.sortingOrder = 9;
 
                 var rb = go.AddComponent<Rigidbody2D>();
@@ -251,7 +248,7 @@ namespace SixteenBit.Gameplay
                 go.transform.position = pos;
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = PlaceholderAssets.GetCheckpointSprite();
+                sr.sprite = PlaceholderAssets.GetCheckpointSprite(cp.Type);
                 sr.sortingOrder = 6;
 
                 var col = go.AddComponent<BoxCollider2D>();
