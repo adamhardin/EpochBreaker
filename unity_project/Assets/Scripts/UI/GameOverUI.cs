@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace EpochBreaker.UI
@@ -68,12 +69,14 @@ namespace EpochBreaker.UI
         private void Update()
         {
             // Keyboard shortcuts
-            if (Input.GetKeyDown(KeyCode.R) || Input.GetKeyDown(KeyCode.Return))
+            if (Keyboard.current == null) return;
+
+            if (Keyboard.current.rKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame)
             {
                 Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                 Gameplay.GameManager.Instance?.RestartLevel();
             }
-            else if (Input.GetKeyDown(KeyCode.Escape))
+            else if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                 Gameplay.GameManager.Instance?.ReturnToTitle();

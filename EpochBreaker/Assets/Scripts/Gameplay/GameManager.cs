@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using EpochBreaker.Generative;
 
 namespace EpochBreaker.Gameplay
@@ -128,10 +129,10 @@ namespace EpochBreaker.Gameplay
             {
                 case GameState.TitleScreen:
                     // Start game with Enter, Space, or Jump action
-                    if (UnityEngine.InputSystem.Keyboard.current != null &&
-                        (UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame ||
-                         UnityEngine.InputSystem.Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
-                         UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame))
+                    if (Keyboard.current != null &&
+                        (Keyboard.current.enterKey.wasPressedThisFrame ||
+                         Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
+                         Keyboard.current.spaceKey.wasPressedThisFrame))
                         StartGame();
                     break;
                 case GameState.Playing:
@@ -145,13 +146,17 @@ namespace EpochBreaker.Gameplay
                         ResumeGame();
                     break;
                 case GameState.LevelComplete:
-                    if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)
-                        || Input.GetKeyDown(KeyCode.Space))
-                        NextLevel();
-                    else if (Input.GetKeyDown(KeyCode.R))
-                        RestartLevel();
-                    else if (Input.GetKeyDown(KeyCode.Escape))
-                        ReturnToTitle();
+                    if (Keyboard.current != null)
+                    {
+                        if (Keyboard.current.enterKey.wasPressedThisFrame ||
+                            Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
+                            Keyboard.current.spaceKey.wasPressedThisFrame)
+                            NextLevel();
+                        else if (Keyboard.current.rKey.wasPressedThisFrame)
+                            RestartLevel();
+                        else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+                            ReturnToTitle();
+                    }
                     break;
             }
         }

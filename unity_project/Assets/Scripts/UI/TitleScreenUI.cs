@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using EpochBreaker.Generative;
 using EpochBreaker.Gameplay;
@@ -29,7 +30,7 @@ namespace EpochBreaker.UI
         private void Update()
         {
             // Close overlays with Escape
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 if (_levelSelectorPanel != null && _levelSelectorPanel.activeSelf)
                     _levelSelectorPanel.SetActive(false);
