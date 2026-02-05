@@ -118,16 +118,55 @@ namespace EpochBreaker.Gameplay
         {
             OnDeath?.Invoke();
 
+            // Play death sound
+            AudioManager.PlaySFX(PlaceholderAudio.GetPlayerDeathSFX());
+
             if (_player != null)
                 _player.IsAlive = false;
+
+            // Start death animation
+            StartCoroutine(DeathAnimation());
 
             // Check if player has lives remaining
             bool canRespawn = GameManager.Instance?.LoseLife() ?? true;
             if (canRespawn)
             {
-                // Respawn after short delay
+                // Respawn after short delay (longer to show death animation)
                 Invoke(nameof(Respawn), 1.5f);
             }
+        }
+
+        private System.Collections.IEnumerator DeathAnimation()
+        {
+            if (_spriteRenderer == null) yield break;
+
+            float duration = 0.8f;
+            float elapsed = 0f;
+            Vector3 originalScale = transform.localScale;
+            Color originalColor = _spriteRenderer.color;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+
+                // Fade out and shrink
+                float alpha = Mathf.Lerp(1f, 0f, t);
+                float scale = Mathf.Lerp(1f, 0.3f, t);
+
+                _spriteRenderer.color = new Color(1f, 0.3f, 0.3f, alpha); // Red tint
+                transform.localScale = originalScale * scale;
+
+                // Spin effect
+                transform.Rotate(0f, 0f, 720f * Time.deltaTime);
+
+                yield return null;
+            }
+
+            // Reset for respawn
+            _spriteRenderer.color = originalColor;
+            transform.localScale = originalScale;
+            transform.rotation = Quaternion.identity;
         }
 
         private void Respawn()

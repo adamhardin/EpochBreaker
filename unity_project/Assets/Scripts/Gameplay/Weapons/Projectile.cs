@@ -50,6 +50,10 @@ namespace EpochBreaker.Gameplay
             }
             else
             {
+                // Player projectile — ignore the player's own collider
+                if (other.CompareTag("Player"))
+                    return;
+
                 // Player projectile hits enemy or boss
                 if (other.CompareTag("Enemy"))
                 {

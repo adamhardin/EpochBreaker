@@ -261,6 +261,24 @@ namespace EpochBreaker.Gameplay
             return clip;
         }
 
+        /// <summary>Dramatic death sound — player died.</summary>
+        public static AudioClip GetPlayerDeathSFX()
+        {
+            if (_cache.TryGetValue("sfx_death", out var c)) return c;
+            var buf = MakeBuffer(0.8f);
+            // Dramatic descending sweep
+            AddTone(buf, 0f, 0.4f, 800f, 100f, Wave.Square, 0.25f, 0.01f, 0.1f);
+            // Heavy impact
+            AddTone(buf, 0f, 0.15f, 150f, 40f, Wave.Triangle, 0.3f, 0.001f, 0.05f);
+            // Noise burst for impact
+            AddTone(buf, 0f, 0.2f, 500f, 200f, Wave.Noise, 0.2f, 0.001f, 0.08f);
+            // Sad trailing tone
+            AddTone(buf, 0.3f, 0.5f, 200f, 80f, Wave.Triangle, 0.15f, 0.05f, 0.2f);
+            var clip = MakeClip("SFX_Death", buf);
+            _cache["sfx_death"] = clip;
+            return clip;
+        }
+
         // ═══════════════════════════════════════════════════════════════
         //  MUSIC
         // ═══════════════════════════════════════════════════════════════
