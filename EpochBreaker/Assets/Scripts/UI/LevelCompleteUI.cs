@@ -51,16 +51,20 @@ namespace SixteenBit.UI
             int stars = Gameplay.GameManager.GetStarRating(elapsed);
             int enemies = gm?.EnemiesKilled ?? 0;
             int bestMultiplier = gm?.GetBestMultiplier() ?? 0;
-            string eraName = gm != null ? gm.CurrentLevelID.EraName : "";
-            string diffName = gm != null ? gm.CurrentLevelID.DifficultyName : "";
+            string epochName = gm != null ? gm.CurrentLevelID.EpochName : "";
+            string levelCode = gm != null ? gm.CurrentLevelID.ToCode() : "";
 
             // Level header
             CreateText(canvasGO.transform, $"LEVEL {levelNum} COMPLETE", 48,
                 new Color(1f, 0.85f, 0.1f), new Vector2(0, 420));
 
-            // Era/Difficulty subtitle
-            CreateText(canvasGO.transform, $"{eraName} - {diffName}", 22,
-                new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 370));
+            // Epoch name subtitle
+            CreateText(canvasGO.transform, epochName, 24,
+                new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 375));
+
+            // Level code (shareable)
+            CreateText(canvasGO.transform, $"Level Code: {levelCode}", 18,
+                new Color(0.5f, 0.8f, 1f), new Vector2(0, 345));
 
             // Stars
             string starDisplay = new string('*', stars) + new string('-', 3 - stars);

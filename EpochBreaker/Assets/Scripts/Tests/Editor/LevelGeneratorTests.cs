@@ -8,13 +8,13 @@ namespace SixteenBit.Tests
 {
     /// <summary>
     /// Test suite for the level generation pipeline.
-    /// Updated for the 10-era system with destructible environments and weapon drops.
+    /// Updated for the epoch-based system (0-9) with seed-derived intensity.
     ///
-    /// Validates determinism, reachability, difficulty, performance, and new features
-    /// including weapon progression, era-specific enemies, and destructible tiles.
+    /// Validates determinism, reachability, difficulty, performance, and features
+    /// including weapon progression, epoch-specific enemies, and destructible tiles.
     ///
     /// Mapped to test cases from Validation-QA-Suite.md:
-    ///   TC-001: Deterministic reconstruction (100 seeds, difficulty 0-3, era 0-9)
+    ///   TC-001: Deterministic reconstruction (100 seeds across all epochs)
     ///   TC-002: Cross-run determinism (different seeds produce different levels)
     ///   TC-003: Reachability (target 95%+)
     ///   TC-004: Difficulty within tolerance
@@ -25,7 +25,7 @@ namespace SixteenBit.Tests
     ///   TC-009: Metadata consistency (including WeaponDrops and DestructibleTiles)
     ///   TC-010: Full validation pass rate (75%+)
     ///   TC-011: Weapon drops exist in generated levels
-    ///   TC-012: Era-specific enemy types
+    ///   TC-012: Epoch-specific enemy types
     ///   TC-013: Destructible tiles present in generated levels
     /// </summary>
     public static class LevelGeneratorTests
@@ -58,7 +58,7 @@ namespace SixteenBit.Tests
             // ------------------------------------------------------------------
             // TC-001: Deterministic reconstruction
             // Same LevelID must produce byte-identical levels every time.
-            // Tests across all 4 difficulty levels (0-3) and all 10 eras (0-9).
+            // Tests across all 10 epochs (0-9).
             // ------------------------------------------------------------------
             {
                 int deterministicCount = 0;
@@ -67,9 +67,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 7919UL; // distinct seeds
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1); // 0-3
-                    int era = i % (LevelID.MAX_ERA + 1);              // 0-9
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1); // 0-9
+                    var id = LevelID.Create(epoch, seed);
 
                     var level1 = Generator.Generate(id);
                     var level2 = Generator.Generate(id);
@@ -89,8 +88,8 @@ namespace SixteenBit.Tests
             // TC-002: Different seeds produce different levels
             // ------------------------------------------------------------------
             {
-                var id1 = LevelID.Create(2, 3, 12345UL);
-                var id2 = LevelID.Create(2, 3, 12346UL);
+                var id1 = LevelID.Create(3, 12345UL);
+                var id2 = LevelID.Create(3, 12346UL);
                 var level1 = Generator.Generate(id1);
                 var level2 = Generator.Generate(id2);
 
@@ -111,16 +110,15 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 31337UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
                     var result = Validator.Validate(level);
 
                     if (result.Reachable)
                         reachableCount++;
                     else
-                        messages.Add($"    WARN: Unreachable level seed={seed}, diff={difficulty}, era={era}");
+                        messages.Add($"    WARN: Unreachable level seed={seed}, epoch={epoch}");
                 }
 
                 float reachableRatio = (float)reachableCount / testCount;
@@ -138,9 +136,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 65537UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
                     var result = Validator.Validate(level);
 
@@ -165,9 +162,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 104729UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
 
                     var sw = Stopwatch.StartNew();
                     Generator.Generate(id);
@@ -198,9 +194,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 48271UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
                     var result = Validator.Validate(level);
 
@@ -222,9 +217,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 16127UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
                     var result = Validator.Validate(level);
 
@@ -247,9 +241,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 99991UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
                     var result = Validator.Validate(level);
 
@@ -266,7 +259,7 @@ namespace SixteenBit.Tests
             // Includes WeaponDrops count and DestructibleTiles count.
             // ------------------------------------------------------------------
             {
-                var id = LevelID.Create(2, 4, 55555UL);
+                var id = LevelID.Create(4, 55555UL);
                 var level = Generator.Generate(id);
 
                 Assert(level.Metadata.TotalEnemies == level.Enemies.Count,
@@ -310,9 +303,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 257UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
                     var result = Validator.Validate(level);
 
@@ -338,9 +330,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 54321UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
 
                     if (level.WeaponDrops != null && level.WeaponDrops.Count > 0)
@@ -355,24 +346,23 @@ namespace SixteenBit.Tests
             }
 
             // ------------------------------------------------------------------
-            // TC-012: Era-specific enemy types
-            // Each era has 3 enemy types encoded as era*3 to era*3+2.
-            // Enemies in a level for a given era should fall within that range.
+            // TC-012: Epoch-specific enemy types
+            // Each epoch has 3 enemy types encoded as epoch*3 to epoch*3+2.
+            // Enemies in a level for a given epoch should fall within that range.
             // ------------------------------------------------------------------
             {
-                int eraCorrectCount = 0;
+                int epochCorrectCount = 0;
                 int testCount = 30;
 
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 77777UL;
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
 
-                    int expectedMin = era * 3;
-                    int expectedMax = era * 3 + 2;
+                    int expectedMin = epoch * 3;
+                    int expectedMax = epoch * 3 + 2;
                     bool allCorrect = true;
 
                     for (int e = 0; e < level.Enemies.Count; e++)
@@ -381,18 +371,18 @@ namespace SixteenBit.Tests
                         if (enemyTypeValue < expectedMin || enemyTypeValue > expectedMax)
                         {
                             allCorrect = false;
-                            messages.Add($"    WARN: Era {era} enemy type {enemyTypeValue} outside range [{expectedMin}, {expectedMax}]");
+                            messages.Add($"    WARN: Epoch {epoch} enemy type {enemyTypeValue} outside range [{expectedMin}, {expectedMax}]");
                             break;
                         }
                     }
 
                     if (allCorrect)
-                        eraCorrectCount++;
+                        epochCorrectCount++;
                 }
 
-                float ratio = (float)eraCorrectCount / testCount;
+                float ratio = (float)epochCorrectCount / testCount;
                 Assert(ratio >= 0.90f,
-                    $"TC-012: Era-specific enemies - {eraCorrectCount}/{testCount} levels have correct enemy types ({ratio:P0})");
+                    $"TC-012: Epoch-specific enemies - {epochCorrectCount}/{testCount} levels have correct enemy types ({ratio:P0})");
             }
 
             // ------------------------------------------------------------------
@@ -407,9 +397,8 @@ namespace SixteenBit.Tests
                 for (int i = 0; i < testCount; i++)
                 {
                     ulong seed = (ulong)(i + 1) * 13579UL;
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    var id = LevelID.Create(difficulty, era, seed);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.Create(epoch, seed);
                     var level = Generator.Generate(id);
 
                     bool hasDestructibles = false;

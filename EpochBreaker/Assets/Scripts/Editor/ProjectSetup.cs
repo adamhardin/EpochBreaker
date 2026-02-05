@@ -79,8 +79,6 @@ namespace SixteenBit.Editor
             var gm = Gameplay.GameManager.Instance;
             if (gm != null)
             {
-                gm.CurrentDifficulty = 0;
-                gm.CurrentEra = 0;
                 gm.StartGame();
             }
         }

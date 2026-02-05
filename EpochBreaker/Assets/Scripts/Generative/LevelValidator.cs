@@ -87,8 +87,9 @@ namespace SixteenBit.Generative
             result.DestructionPathsValid = CheckDestructionPaths(level);
 
             // Check 6: Difficulty within tolerance
+            // DerivedIntensity is 0.0-1.0, scale to match old difficulty range (5.5-14.5)
             result.CalculatedDifficulty = CalculateDifficulty(level);
-            result.TargetDifficulty = 5.5f + level.ID.Difficulty * 3.0f;
+            result.TargetDifficulty = 5.5f + level.ID.DerivedIntensity * 9.0f;
             result.DifficultyWithinTolerance =
                 Math.Abs(result.CalculatedDifficulty - result.TargetDifficulty) <= DIFFICULTY_TOLERANCE;
 

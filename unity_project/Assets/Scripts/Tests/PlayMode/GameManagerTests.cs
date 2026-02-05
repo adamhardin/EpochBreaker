@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using SixteenBit.Gameplay;
+using SixteenBit.Generative;
 
 namespace SixteenBit.Tests.PlayMode
 {
@@ -121,39 +122,80 @@ namespace SixteenBit.Tests.PlayMode
         }
 
         [Test]
-        public void NextLevel_AdvancesDifficulty()
+        public void CurrentLevelID_IsValidAfterStartGame()
         {
-            GameManager.Instance.CurrentDifficulty = 0;
-            GameManager.Instance.CurrentEra = 0;
+            // StartGame generates a random LevelID
+            GameManager.Instance.StartGame();
+            var id = GameManager.Instance.CurrentLevelID;
 
-            // NextLevel calls TransitionTo(Loading) which triggers StartLevel.
-            // We test the difficulty/era math by checking properties after call.
-            int prevDiff = GameManager.Instance.CurrentDifficulty;
-            GameManager.Instance.NextLevel();
-            Assert.AreEqual(prevDiff + 1, GameManager.Instance.CurrentDifficulty);
+            Assert.IsTrue(id.Epoch >= 0 && id.Epoch <= LevelID.MAX_EPOCH,
+                "Epoch should be in valid range");
+            Assert.IsTrue(id.Seed > 0, "Seed should be non-zero");
         }
 
         [Test]
-        public void NextLevel_CyclesDifficultyAndAdvancesEra()
+        public void NextLevel_AdvancesEpochAndChangesSeed()
         {
-            GameManager.Instance.CurrentDifficulty = 3;
-            GameManager.Instance.CurrentEra = 0;
+            // Start with a known level
+            GameManager.Instance.StartGame();
+            var originalID = GameManager.Instance.CurrentLevelID;
+            int originalEpoch = originalID.Epoch;
 
+            // Call NextLevel
             GameManager.Instance.NextLevel();
-            // Difficulty wraps to 0, era advances to 1
-            Assert.AreEqual(0, GameManager.Instance.CurrentDifficulty);
-            Assert.AreEqual(1, GameManager.Instance.CurrentEra);
+            var newID = GameManager.Instance.CurrentLevelID;
+
+            // Epoch should advance (with wrap)
+            int expectedEpoch = (originalEpoch + 1) % (LevelID.MAX_EPOCH + 1);
+            Assert.AreEqual(expectedEpoch, newID.Epoch, "Epoch should advance by 1");
+            Assert.AreNotEqual(originalID.Seed, newID.Seed, "Seed should change");
         }
 
         [Test]
-        public void NextLevel_EraClampedAtMax()
+        public void NextLevel_WrapsEpochAtMax()
         {
-            GameManager.Instance.CurrentDifficulty = 3;
-            GameManager.Instance.CurrentEra = 9;
+            // Create a level at epoch 9 and verify wrap
+            var epoch9ID = LevelID.Create(9, 12345UL);
+            GameManager.Instance.StartLevelFromCode(epoch9ID.ToCode());
+
+            Assert.AreEqual(9, GameManager.Instance.CurrentLevelID.Epoch);
 
             GameManager.Instance.NextLevel();
-            Assert.AreEqual(0, GameManager.Instance.CurrentDifficulty);
-            Assert.AreEqual(9, GameManager.Instance.CurrentEra); // Clamped at 9
+
+            Assert.AreEqual(0, GameManager.Instance.CurrentLevelID.Epoch,
+                "Epoch should wrap from 9 to 0");
+        }
+
+        [Test]
+        public void StartLevelFromCode_SetsCorrectLevelID()
+        {
+            var testID = LevelID.Create(5, 0xABCDE12345UL);
+            string code = testID.ToCode();
+
+            GameManager.Instance.StartLevelFromCode(code);
+
+            var currentID = GameManager.Instance.CurrentLevelID;
+            Assert.AreEqual(testID.Epoch, currentID.Epoch);
+            Assert.AreEqual(testID.Seed, currentID.Seed);
+        }
+
+        [Test]
+        public void LevelHistory_CanBeSavedAndLoaded()
+        {
+            // Clear any existing history
+            GameManager.ClearLevelHistory();
+
+            // Load should return empty
+            var history = GameManager.LoadLevelHistory();
+            Assert.AreEqual(0, history.Entries.Count, "History should be empty after clear");
+        }
+
+        [Test]
+        public void CopyToClipboard_SetsSystemBuffer()
+        {
+            string testText = "3-TESTCODE";
+            GameManager.CopyToClipboard(testText);
+            Assert.AreEqual(testText, GUIUtility.systemCopyBuffer);
         }
     }
 }

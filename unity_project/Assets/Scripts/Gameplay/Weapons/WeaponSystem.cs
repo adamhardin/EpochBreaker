@@ -104,8 +104,18 @@ namespace SixteenBit.Gameplay
             projGO.transform.position = spawnPos;
 
             var sr = projGO.AddComponent<SpriteRenderer>();
-            sr.sprite = PlaceholderAssets.GetProjectileSprite(CurrentTier);
+            int epoch = GameManager.Instance?.CurrentEpoch ?? 0;
+            sr.sprite = PlaceholderAssets.GetProjectileSprite(CurrentTier, epoch);
             sr.sortingOrder = 11;
+
+            // Scale projectile based on tier for visual feedback
+            float projScale = CurrentTier switch
+            {
+                WeaponTier.Heavy => 1.5f,
+                WeaponTier.Medium => 1.25f,
+                _ => 1.0f
+            };
+            projGO.transform.localScale = new Vector3(projScale, projScale, 1f);
 
             var rb = projGO.AddComponent<Rigidbody2D>();
             rb.bodyType = RigidbodyType2D.Kinematic;

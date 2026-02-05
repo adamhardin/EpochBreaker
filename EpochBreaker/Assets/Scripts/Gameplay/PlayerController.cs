@@ -290,6 +290,14 @@ namespace SixteenBit.Gameplay
         {
             var destructible = levelRenderer.GetDestructibleAt(tileX, tileY);
 
+            // Handle indestructible tiles - they can be worn down with repeated hits
+            // Head bops and stomps deal 5 damage (10 hits to break at HP=50)
+            if (destructible.MaterialClass == (byte)MaterialClass.Indestructible)
+            {
+                levelRenderer.DamageIndestructibleTile(tileX, tileY, damage: 5);
+                return;
+            }
+
             if (destructible.MaterialClass > 0 &&
                 destructible.MaterialClass < (byte)MaterialClass.Indestructible)
             {

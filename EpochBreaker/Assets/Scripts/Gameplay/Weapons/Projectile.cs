@@ -50,12 +50,26 @@ namespace SixteenBit.Gameplay
             }
             else
             {
-                // Player projectile hits enemy
+                // Player projectile hits enemy or boss
                 if (other.CompareTag("Enemy"))
                 {
                     var enemy = other.GetComponent<EnemyBase>();
                     if (enemy != null)
+                    {
                         enemy.TakeDamage(_damage);
+                        Destroy(gameObject);
+                        return;
+                    }
+
+                    // Check for boss component
+                    var boss = other.GetComponent<Boss>();
+                    if (boss != null)
+                    {
+                        boss.TakeDamage(_damage);
+                        Destroy(gameObject);
+                        return;
+                    }
+
                     Destroy(gameObject);
                     return;
                 }
@@ -76,6 +90,13 @@ namespace SixteenBit.Gameplay
 
             Vector2Int levelPos = tilemapRenderer.WorldToLevel(transform.position);
             var destructible = tilemapRenderer.GetDestructibleAt(levelPos.x, levelPos.y);
+
+            // Handle indestructible tiles - they can be worn down with repeated hits
+            if (destructible.MaterialClass == (byte)MaterialClass.Indestructible)
+            {
+                tilemapRenderer.DamageIndestructibleTile(levelPos.x, levelPos.y);
+                return;
+            }
 
             if (destructible.MaterialClass > 0 &&
                 destructible.MaterialClass < (byte)MaterialClass.Indestructible)

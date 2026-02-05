@@ -20,8 +20,8 @@ namespace SixteenBit.Gameplay
 
         // Vertical offset: camera center sits above the player so the player
         // appears near the bottom of the screen. With ortho size 7 (14 units
-        // visible), offset 5 puts the player at (7-5)/14 ≈ 14% from bottom.
-        private float _verticalOffset = 5.0f;
+        // visible), offset 2.8 puts the player at (7-2.8)/14 = 30% from bottom.
+        private float _verticalOffset = 2.8f;
 
         public void Initialize(Transform target, LevelRenderer tilemapRenderer)
         {

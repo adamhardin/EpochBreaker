@@ -76,6 +76,9 @@ namespace SixteenBit.Gameplay
             OnDamage?.Invoke();
             AudioManager.PlaySFX(PlaceholderAudio.GetPlayerHurtSFX());
 
+            // Notify achievement system that player took damage
+            GameManager.Instance?.RecordPlayerDamage();
+
             // Knockback away from damage source
             if (_player != null)
             {
@@ -118,8 +121,13 @@ namespace SixteenBit.Gameplay
             if (_player != null)
                 _player.IsAlive = false;
 
-            // Respawn after short delay
-            Invoke(nameof(Respawn), 1.5f);
+            // Check if player has lives remaining
+            bool canRespawn = GameManager.Instance?.LoseLife() ?? true;
+            if (canRespawn)
+            {
+                // Respawn after short delay
+                Invoke(nameof(Respawn), 1.5f);
+            }
         }
 
         private void Respawn()

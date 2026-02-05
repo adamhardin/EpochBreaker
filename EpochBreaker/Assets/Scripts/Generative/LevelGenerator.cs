@@ -27,8 +27,11 @@ namespace SixteenBit.Generative
         private const int BASE_WIDTH = 256;
         private const int LEVEL_HEIGHT = 16;
         private const int ANCHOR_INTERVAL = 8;
-        private const int MIN_GROUND_HEIGHT = 2;
-        private const int MAX_GROUND_HEIGHT = 12;
+        // Ground height in level-data coords (y=0 top, y=15 bottom).
+        // Higher values = lower in Unity. We want ground near the bottom
+        // so player has sky above them, not underground below.
+        private const int MIN_GROUND_HEIGHT = 10;  // Ground can't be higher than Unity y=5
+        private const int MAX_GROUND_HEIGHT = 14;  // Ground can't be lower than Unity y=1
 
         // --- Zone proportions (spec: intro=10%, traversal=15%, destruction=25%,
         //     combat=20%, boss=20%, buffer=10%) ---
@@ -135,8 +138,8 @@ namespace SixteenBit.Generative
         {
             var rng = new XORShift64(id.Seed);
 
-            // Level width scales with difficulty: base 256
-            int width = BASE_WIDTH + id.Difficulty * 16;
+            // Level width scales with seed-derived length modifier (0.8 to 1.2)
+            int width = (int)(BASE_WIDTH * id.DerivedLengthMod);
             int height = LEVEL_HEIGHT;
             int totalTiles = width * height;
 
@@ -158,10 +161,16 @@ namespace SixteenBit.Generative
             };
 
             // ---- Stage 1: Macro Layout ----
-            data.Layout.Zones = GenerateZones(width, id.Difficulty, rng);
+            // Intensity derived from seed (0.0-1.0) controls difficulty-like parameters
+            float intensity = id.DerivedIntensity;
+            data.Layout.Zones = GenerateZones(width, intensity, rng);
 
             // ---- Stage 2: Destructible Terrain Placement ----
-            GenerateTerrain(data, id.Era, id.Difficulty, rng);
+            GenerateTerrain(data, id.Epoch, rng);
+
+            // ---- Stage 2b: Ensure Walkable Path ----
+            // Critical: guarantee a passable corridor from start to goal
+            EnsureWalkablePath(data);
 
             // Set start position (Intro zone - unaffected by boss arena)
             data.Layout.StartX = 2;
@@ -172,16 +181,16 @@ namespace SixteenBit.Generative
             ClearSpawnArea(data, width, height);
 
             // ---- Stage 3: Weapon Drop Placement ----
-            PlaceWeaponDrops(data, id.Era, rng);
+            PlaceWeaponDrops(data, id.Epoch, rng);
 
             // ---- Stage 4: Enemy Placement ----
-            PlaceEnemies(data, id.Difficulty, id.Era, rng);
+            PlaceEnemies(data, id.Epoch, intensity, rng);
 
             // ---- Stage 5: Reward & Pickup Placement ----
-            PlaceRewards(data, id.Difficulty, rng);
+            PlaceRewards(data, intensity, rng);
 
             // ---- Stage 6: Boss Arena ----
-            GenerateBossArena(data, id.Era, id.Difficulty, rng);
+            GenerateBossArena(data, id.Epoch, intensity, rng);
 
             // Set goal position AFTER boss arena generation, since the arena
             // flattens terrain at the end of the level and changes ground level
@@ -193,7 +202,7 @@ namespace SixteenBit.Generative
             PlaceCheckpoints(data);
 
             // Compute metadata
-            data.Metadata = ComputeMetadata(data, id.Difficulty);
+            data.Metadata = ComputeMetadata(data, intensity);
 
             return data;
         }
@@ -202,7 +211,7 @@ namespace SixteenBit.Generative
         // Stage 1: Macro Layout (Zone Placement)
         // =====================================================================
 
-        private ZoneData[] GenerateZones(int levelWidth, int difficulty, XORShift64 rng)
+        private ZoneData[] GenerateZones(int levelWidth, float intensity, XORShift64 rng)
         {
             // Zone order: Intro, Buffer, Traversal, Destruction, Buffer, Combat, BossArena
             // Simplified: we place all 6 zone types in the canonical order from the spec,
@@ -252,8 +261,8 @@ namespace SixteenBit.Generative
             var zones = new ZoneData[sequence.Length];
             int currentX = 0;
 
-            // Difficulty progression across zones
-            float baseDifficulty = difficulty * 1.5f;
+            // Difficulty progression across zones (intensity 0-1 scaled to 0-15)
+            float baseDifficulty = intensity * 15f;
 
             for (int i = 0; i < zones.Length; i++)
             {
@@ -312,7 +321,7 @@ namespace SixteenBit.Generative
         // Stage 2: Destructible Terrain Placement
         // =====================================================================
 
-        private void GenerateTerrain(LevelData data, int era, int difficulty, XORShift64 rng)
+        private void GenerateTerrain(LevelData data, int epoch, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
             int height = data.Layout.HeightTiles;
@@ -323,8 +332,8 @@ namespace SixteenBit.Generative
             // Step 2: Fill base ground layer (indestructible floor)
             FillBaseGround(data, groundHeights);
 
-            // Step 3: Fill zones with destructible material based on era distribution
-            FillDestructibleTerrain(data, era, rng);
+            // Step 3: Fill zones with destructible material based on epoch distribution
+            FillDestructibleTerrain(data, epoch, rng);
 
             // Step 4: Carve primary paths through destructible mass
             CarvePrimaryPaths(data, groundHeights, rng);
@@ -359,9 +368,10 @@ namespace SixteenBit.Generative
                 anchors[i] = rng.RangeFloat(MIN_GROUND_HEIGHT + 1, MAX_GROUND_HEIGHT - 1);
             }
 
-            // Ensure start and end are at comfortable heights
-            anchors[0] = rng.RangeFloat(8, 11);
-            anchors[anchors.Length - 1] = rng.RangeFloat(8, 11);
+            // Ensure start and end are at comfortable heights (in new range 10-14)
+            // These values put ground near bottom of level so player has sky above
+            anchors[0] = rng.RangeFloat(11, 13);
+            anchors[anchors.Length - 1] = rng.RangeFloat(11, 13);
 
             // Linear interpolation between anchors
             for (int x = 0; x < width; x++)
@@ -431,11 +441,11 @@ namespace SixteenBit.Generative
         /// and zone-specific solid fill density. Material is placed in the airspace
         /// above the ground within each zone.
         /// </summary>
-        private void FillDestructibleTerrain(LevelData data, int era, XORShift64 rng)
+        private void FillDestructibleTerrain(LevelData data, int epoch, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
             int height = data.Layout.HeightTiles;
-            float[] materialWeights = ERA_MATERIAL_DISTRIBUTIONS[era];
+            float[] materialWeights = ERA_MATERIAL_DISTRIBUTIONS[epoch];
 
             foreach (var zone in data.Layout.Zones)
             {
@@ -600,6 +610,183 @@ namespace SixteenBit.Generative
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Ensure a walkable path exists from start to goal at ground level.
+        /// This is a critical post-processing step that guarantees level completability.
+        /// It clears obstacles and softens hard materials in a 3-tile high corridor.
+        ///
+        /// Coordinate system: y=0 is TOP of level, higher y = lower visually.
+        /// Ground at y=10 means player walks at y=9 (one tile above ground).
+        /// If ground goes from y=10 to y=8, that's a RISE (wall).
+        /// If ground goes from y=10 to y=12, that's a DROP (player falls).
+        /// </summary>
+        private void EnsureWalkablePath(LevelData data)
+        {
+            int width = data.Layout.WidthTiles;
+            int height = data.Layout.HeightTiles;
+
+            // Constants for walkability
+            const int CORRIDOR_HEIGHT = 4;  // Player needs 4 tiles vertical clearance (extra for jumping)
+            const int MAX_STEP_UP = 2;      // Maximum step-up without needing stairs
+
+            // PASS 1: Clear from left to right
+            int prevGroundY = FindGroundLevel(data, 0);
+
+            for (int x = 1; x < width - 1; x++)
+            {
+                int currentGroundY = FindGroundLevel(data, x);
+
+                // heightDiff: positive = ground dropped, negative = ground rose (wall)
+                int heightDiff = currentGroundY - prevGroundY;
+
+                if (heightDiff < -MAX_STEP_UP)
+                {
+                    // Ground ROSE significantly (lower Y = higher visually) - creates a wall!
+                    // Clear a corridor through the wall at the previous walking level
+
+                    // Target: make ground at this column match prev + small step up
+                    int targetGroundY = prevGroundY - MAX_STEP_UP;
+                    if (targetGroundY < 2) targetGroundY = 2;
+
+                    // Clear from current ground level up to where we need clearance
+                    // The "wall" tiles are between currentGroundY and targetGroundY
+                    for (int y = currentGroundY; y >= targetGroundY && y >= 0; y--)
+                    {
+                        int idx = y * width + x;
+                        if (idx >= 0 && idx < data.Layout.Tiles.Length)
+                            ClearTileForPath(data, idx);
+                    }
+
+                    // Also clear corridor above the new target ground
+                    currentGroundY = FindGroundLevel(data, x); // Re-find after clearing
+                }
+
+                // Ensure corridor above ground is passable (clear or soft material)
+                ClearCorridorColumn(data, x, currentGroundY, CORRIDOR_HEIGHT);
+
+                // Update prevGroundY, but don't allow huge jumps - track the actual walkable level
+                prevGroundY = currentGroundY;
+            }
+
+            // PASS 2: Clear from right to left (catches issues missed in forward pass)
+            prevGroundY = FindGroundLevel(data, width - 1);
+
+            for (int x = width - 2; x >= 1; x--)
+            {
+                int currentGroundY = FindGroundLevel(data, x);
+                int heightDiff = currentGroundY - prevGroundY;
+
+                if (heightDiff < -MAX_STEP_UP)
+                {
+                    int targetGroundY = prevGroundY - MAX_STEP_UP;
+                    if (targetGroundY < 2) targetGroundY = 2;
+
+                    for (int y = currentGroundY; y >= targetGroundY && y >= 0; y--)
+                    {
+                        int idx = y * width + x;
+                        if (idx >= 0 && idx < data.Layout.Tiles.Length)
+                            ClearTileForPath(data, idx);
+                    }
+
+                    currentGroundY = FindGroundLevel(data, x);
+                }
+
+                ClearCorridorColumn(data, x, currentGroundY, CORRIDOR_HEIGHT);
+                prevGroundY = currentGroundY;
+            }
+
+            // PASS 3: Ensure start and goal areas are fully clear
+            // Clear extra wide corridor at spawn point
+            int startX = data.Layout.StartX;
+            int startGroundY = FindGroundLevel(data, startX);
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                int x = startX + dx;
+                if (x >= 0 && x < width)
+                {
+                    int groundY = FindGroundLevel(data, x);
+                    ClearCorridorColumn(data, x, groundY, CORRIDOR_HEIGHT + 1);
+                }
+            }
+
+            // Clear extra wide corridor at goal
+            int goalX = data.Layout.GoalX;
+            int goalGroundY = FindGroundLevel(data, goalX);
+            for (int dx = -2; dx <= 2; dx++)
+            {
+                int x = goalX + dx;
+                if (x >= 0 && x < width)
+                {
+                    int groundY = FindGroundLevel(data, x);
+                    ClearCorridorColumn(data, x, groundY, CORRIDOR_HEIGHT + 1);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clear a corridor of CORRIDOR_HEIGHT tiles above groundY at column x.
+        /// All blocking tiles are converted to empty or soft destructible.
+        /// Indestructible tiles in the walking corridor are completely cleared.
+        /// </summary>
+        private void ClearCorridorColumn(LevelData data, int x, int groundY, int corridorHeight)
+        {
+            int width = data.Layout.WidthTiles;
+            int height = data.Layout.HeightTiles;
+
+            for (int dy = 1; dy <= corridorHeight; dy++)
+            {
+                int y = groundY - dy;
+                if (y < 0 || y >= height) continue;
+
+                int idx = y * width + x;
+                byte tile = data.Layout.Tiles[idx];
+
+                // Skip empty tiles and platforms (can jump through)
+                if (tile == (byte)TileType.Empty || tile == (byte)TileType.Platform) continue;
+
+                // If it's solid ground that shouldn't be here, clear it
+                if (tile == (byte)TileType.Ground || tile == (byte)TileType.GroundTop)
+                {
+                    ClearTileForPath(data, idx);
+                    continue;
+                }
+
+                // If it's indestructible in the walking corridor, clear it completely
+                // (this ensures the level is always completable)
+                if (tile == (byte)TileType.Indestructible)
+                {
+                    ClearTileForPath(data, idx);
+                    continue;
+                }
+
+                // If it's a destructible tile, convert ALL to soft (breakable with starting weapon)
+                if (IsDestructibleTile(tile))
+                {
+                    // Convert any destructible to soft in the corridor
+                    data.Layout.Tiles[idx] = (byte)TileType.DestructibleSoft;
+                    data.Layout.Destructibles[idx].MaterialClass = (byte)MaterialClass.Soft;
+                    data.Layout.Destructibles[idx].HitPoints = 1;
+                    data.Layout.Destructibles[idx].MaxHitPoints = 1;
+                }
+
+                // Clear any other unexpected solid tiles
+                if (data.Layout.Collision[idx] == (byte)CollisionType.Solid)
+                {
+                    ClearTileForPath(data, idx);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Clear a tile to make it passable (empty).
+        /// </summary>
+        private void ClearTileForPath(LevelData data, int idx)
+        {
+            data.Layout.Tiles[idx] = (byte)TileType.Empty;
+            data.Layout.Collision[idx] = (byte)CollisionType.None;
+            data.Layout.Destructibles[idx] = default;
         }
 
         /// <summary>
@@ -851,7 +1038,7 @@ namespace SixteenBit.Generative
         ///   - At least 1 heavy weapon before first reinforced material on required path
         ///   - Weapon drops placed BEFORE zones that require them
         /// </summary>
-        private void PlaceWeaponDrops(LevelData data, int era, XORShift64 rng)
+        private void PlaceWeaponDrops(LevelData data, int epoch, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
             int height = data.Layout.HeightTiles;
@@ -1038,18 +1225,18 @@ namespace SixteenBit.Generative
         // =====================================================================
 
         /// <summary>
-        /// Place enemies throughout the level. Enemy count = 3 + (difficulty * 4).
-        /// Era-specific types selected by weighted RNG. No enemies in intro zone.
+        /// Place enemies throughout the level. Enemy count = 8 + (intensity * 60).
+        /// Epoch-specific types selected by weighted RNG. No enemies in intro zone.
         /// Minimum 2 tile separation between enemies.
         /// </summary>
-        private void PlaceEnemies(LevelData data, int difficulty, int era, XORShift64 rng)
+        private void PlaceEnemies(LevelData data, int epoch, float intensity, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
             int height = data.Layout.HeightTiles;
-            int totalEnemyCount = 3 + (difficulty * 4);
+            int totalEnemyCount = 8 + (int)(intensity * 60);
 
-            // Enemy base index for this era
-            int eraBase = era * 3;
+            // Enemy base index for this epoch
+            int epochBase = epoch * 3;
 
             XORShift64 enemyRng = rng.Fork();
 
@@ -1120,20 +1307,21 @@ namespace SixteenBit.Generative
                 int groundY = FindGroundLevel(data, ex);
                 if (groundY <= 1 || groundY >= height) continue;
 
-                // Select enemy type using era base + weighted tier choice
+                // Select enemy type using epoch base + weighted tier choice
                 int tierChoice = enemyRng.WeightedChoice(ENEMY_TIER_WEIGHTS);
-                int enemyTypeIndex = eraBase + tierChoice;
+                int enemyTypeIndex = epochBase + tierChoice;
                 if (enemyTypeIndex > 29) enemyTypeIndex = 29;
                 EnemyType enemyType = (EnemyType)enemyTypeIndex;
 
                 // Determine behavior
+                // Distribution: Flying 10%, Stationary (shooters) 30%, Patrol 30%, Chase 30%
                 EnemyBehavior behavior;
                 float behaviorRoll = enemyRng.RangeFloat(0f, 1f);
                 if (behaviorRoll < 0.1f)
                     behavior = EnemyBehavior.Flying;
-                else if (behaviorRoll < 0.25f)
+                else if (behaviorRoll < 0.4f)
                     behavior = EnemyBehavior.Stationary;
-                else if (behaviorRoll < 0.6f)
+                else if (behaviorRoll < 0.7f)
                     behavior = EnemyBehavior.Patrol;
                 else
                     behavior = EnemyBehavior.Chase;
@@ -1213,7 +1401,7 @@ namespace SixteenBit.Generative
         ///   - Hidden rewards behind destructible walls (10% chance)
         ///   - Post-combat rewards after enemy clusters
         /// </summary>
-        private void PlaceRewards(LevelData data, int difficulty, XORShift64 rng)
+        private void PlaceRewards(LevelData data, float intensity, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
             int height = data.Layout.HeightTiles;
@@ -1414,11 +1602,11 @@ namespace SixteenBit.Generative
 
         /// <summary>
         /// Generate the boss arena within the BossArena zone.
-        /// Arena width = 80 tiles, platforms = 3 + difficulty,
-        /// destructible pillars = 2 + difficulty.
-        /// Boss type = BossType matching the era.
+        /// Arena width = 80 tiles, platforms = 3 + (intensity * 10),
+        /// destructible pillars = 2 + (intensity * 8).
+        /// Boss type = BossType matching the epoch.
         /// </summary>
-        private void GenerateBossArena(LevelData data, int era, int difficulty, XORShift64 rng)
+        private void GenerateBossArena(LevelData data, int epoch, float intensity, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
             int height = data.Layout.HeightTiles;
@@ -1485,8 +1673,8 @@ namespace SixteenBit.Generative
                 }
             }
 
-            // Place platforms: 3 + difficulty
-            int platformCount = 3 + difficulty;
+            // Place platforms: 3 + (intensity * 10)
+            int platformCount = 3 + (int)(intensity * 10);
             for (int p = 0; p < platformCount; p++)
             {
                 int platSpacing = arenaWidth / (platformCount + 1);
@@ -1512,9 +1700,9 @@ namespace SixteenBit.Generative
                 }
             }
 
-            // Place destructible pillars: 2 + difficulty
-            int pillarCount = 2 + difficulty;
-            float[] eraMaterials = ERA_MATERIAL_DISTRIBUTIONS[era];
+            // Place destructible pillars: 2 + (intensity * 8)
+            int pillarCount = 2 + (int)(intensity * 8);
+            float[] epochMaterials = ERA_MATERIAL_DISTRIBUTIONS[epoch];
 
             for (int p = 0; p < pillarCount; p++)
             {
@@ -1526,11 +1714,11 @@ namespace SixteenBit.Generative
                 int pillarBottom = arenaGroundY - 1;
                 int pillarTop = Math.Max(2, pillarBottom - pillarHeight);
 
-                // Select pillar material (use era distribution but bias toward harder materials)
+                // Select pillar material (use epoch distribution but bias toward harder materials)
                 float[] pillarWeights = new float[5];
                 for (int m = 0; m < 5; m++)
                 {
-                    pillarWeights[m] = eraMaterials[m];
+                    pillarWeights[m] = epochMaterials[m];
                 }
                 // Bias toward harder materials for pillars
                 pillarWeights[2] += 0.15f; // hard
@@ -1634,7 +1822,7 @@ namespace SixteenBit.Generative
         // Metadata
         // =====================================================================
 
-        private LevelMetadata ComputeMetadata(LevelData data, int difficulty)
+        private LevelMetadata ComputeMetadata(LevelData data, float intensity)
         {
             float calculatedDifficulty = 0f;
 

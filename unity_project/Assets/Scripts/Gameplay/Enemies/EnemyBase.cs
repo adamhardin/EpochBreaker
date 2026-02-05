@@ -125,6 +125,9 @@ namespace SixteenBit.Gameplay
 
                 if (_sr != null)
                     _sr.flipX = dir < 0;
+
+                // Shoot while chasing (longer cooldown than stationary)
+                TryShoot(distToPlayer, 2.5f);
             }
             else
             {
@@ -144,16 +147,11 @@ namespace SixteenBit.Gameplay
                 _sr.flipX = _playerTransform.position.x < transform.position.x;
             }
 
-            // Shoot at player
-            _shootTimer -= Time.fixedDeltaTime;
-            if (_shootTimer <= 0f && _playerTransform != null)
+            // Shoot at player (fastest fire rate)
+            if (_playerTransform != null)
             {
                 float dist = Vector2.Distance(transform.position, _playerTransform.position);
-                if (dist < _shootRange)
-                {
-                    ShootAtPlayer();
-                    _shootTimer = _shootCooldown;
-                }
+                TryShoot(dist, _shootCooldown);
             }
         }
 
@@ -176,6 +174,26 @@ namespace SixteenBit.Gameplay
 
             if (_sr != null)
                 _sr.flipX = _direction < 0;
+
+            // Flying enemies also shoot (longer range, longer cooldown)
+            if (_playerTransform != null)
+            {
+                float dist = Vector2.Distance(transform.position, _playerTransform.position);
+                TryShoot(dist, 2.0f);
+            }
+        }
+
+        /// <summary>
+        /// Attempt to shoot at the player if within range and cooldown elapsed.
+        /// </summary>
+        private void TryShoot(float distToPlayer, float cooldown)
+        {
+            _shootTimer -= Time.fixedDeltaTime;
+            if (_shootTimer <= 0f && distToPlayer < _shootRange)
+            {
+                ShootAtPlayer();
+                _shootTimer = cooldown;
+            }
         }
 
         private void ShootAtPlayer()
@@ -190,8 +208,9 @@ namespace SixteenBit.Gameplay
             projGO.layer = LayerMask.NameToLayer("Default");
 
             var sr = projGO.AddComponent<SpriteRenderer>();
-            sr.sprite = PlaceholderAssets.GetProjectileSprite();
-            sr.color = Color.red;
+            int era = (int)Type / 3;
+            sr.sprite = PlaceholderAssets.GetProjectileSprite(WeaponTier.Starting, era);
+            sr.color = new Color(1f, 0.5f, 0.5f); // Tinted red to distinguish from player projectiles
             sr.sortingOrder = 11;
 
             var rb = projGO.AddComponent<Rigidbody2D>();

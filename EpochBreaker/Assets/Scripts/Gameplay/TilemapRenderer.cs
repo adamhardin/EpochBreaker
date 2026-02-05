@@ -86,6 +86,9 @@ namespace SixteenBit.Gameplay
             var composite = DestructibleTilemap.GetComponent<CompositeCollider2D>();
             if (composite != null)
                 composite.GenerateGeometry();
+
+            // Notify achievement system
+            GameManager.Instance?.RecordBlockDestroyed();
         }
 
         /// <summary>
@@ -116,6 +119,54 @@ namespace SixteenBit.Gameplay
         }
 
         /// <summary>
+        /// Damage an indestructible tile. After enough accumulated damage, it breaks.
+        /// - Projectiles deal 2 damage (25 hits = ~10 seconds of sustained fire)
+        /// - Head bops/stomps deal 5 damage (10 hits to break)
+        /// Returns true if the tile was destroyed.
+        /// </summary>
+        public bool DamageIndestructibleTile(int tileX, int tileY, int damage = 2)
+        {
+            if (_levelData == null) return false;
+            int width = _levelData.Layout.WidthTiles;
+            int idx = tileY * width + tileX;
+
+            if (idx < 0 || idx >= _levelData.Layout.Tiles.Length) return false;
+
+            // Only affect indestructible tiles
+            byte tileType = _levelData.Layout.Tiles[idx];
+            if (tileType != (byte)TileType.Indestructible) return false;
+
+            // Total HP of 50 means:
+            // - 25 projectile hits (damage=2) to break
+            // - 10 head bop/stomp hits (damage=5) to break
+            const byte INDESTRUCTIBLE_HP = 50;
+
+            ref var destructible = ref _levelData.Layout.Destructibles[idx];
+
+            // Initialize HP if not set
+            if (destructible.MaxHitPoints == 0)
+            {
+                destructible.MaxHitPoints = INDESTRUCTIBLE_HP;
+                destructible.HitPoints = INDESTRUCTIBLE_HP;
+            }
+
+            // Apply damage
+            if (destructible.HitPoints > damage)
+                destructible.HitPoints -= (byte)damage;
+            else
+                destructible.HitPoints = 0;
+
+            // If HP depleted, destroy the tile
+            if (destructible.HitPoints <= 0)
+            {
+                DestroyTile(tileX, tileY);
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Convert world position to level-data tile coordinates.
         /// </summary>
         public Vector2Int WorldToLevel(Vector3 worldPos)
@@ -127,13 +178,14 @@ namespace SixteenBit.Gameplay
 
         private void BuildTileAssets()
         {
-            // Create one Unity Tile asset per TileType
+            // Create one Unity Tile asset per TileType, using epoch-specific visuals
+            int epoch = _levelData.ID.Epoch;
             _tileAssets = new Tile[13]; // TileType enum has values 0-12
             for (int i = 0; i <= 12; i++)
             {
                 if (i == (int)TileType.Empty) continue;
                 var tile = ScriptableObject.CreateInstance<Tile>();
-                tile.sprite = PlaceholderAssets.GetTileSprite((byte)i);
+                tile.sprite = PlaceholderAssets.GetTileSprite((byte)i, epoch);
                 tile.color = Color.white;
                 tile.colliderType = Tile.ColliderType.Grid; // Full cell collider, merged into composite
                 _tileAssets[i] = tile;

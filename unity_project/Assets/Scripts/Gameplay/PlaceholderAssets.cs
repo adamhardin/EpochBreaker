@@ -63,13 +63,96 @@ namespace SixteenBit.Gameplay
             };
         }
 
+        /// <summary>
+        /// Get epoch-specific terrain colors for ground, surface, blocks, and accent.
+        /// Each epoch has a distinct visual theme.
+        /// </summary>
+        private static (Color ground, Color surface, Color block, Color accent) GetEpochTerrainColors(int epoch)
+        {
+            return epoch switch
+            {
+                // Era 0: Stone Age - earthy browns, grass green
+                0 => (new Color(0.40f, 0.26f, 0.13f),   // dirt brown
+                      new Color(0.30f, 0.60f, 0.20f),   // grass green
+                      new Color(0.85f, 0.75f, 0.55f),   // sandstone
+                      new Color(0.55f, 0.40f, 0.25f)),  // wood brown
+
+                // Era 1: Bronze Age - sandy, clay, warm tones
+                1 => (new Color(0.65f, 0.50f, 0.30f),   // sandy clay
+                      new Color(0.75f, 0.60f, 0.35f),   // desert sand
+                      new Color(0.72f, 0.52f, 0.15f),   // bronze/copper
+                      new Color(0.85f, 0.65f, 0.25f)),  // gold accent
+
+                // Era 2: Classical - white marble, terracotta
+                2 => (new Color(0.75f, 0.70f, 0.65f),   // limestone
+                      new Color(0.90f, 0.87f, 0.82f),   // white marble
+                      new Color(0.70f, 0.45f, 0.35f),   // terracotta
+                      new Color(0.60f, 0.15f, 0.15f)),  // roman red
+
+                // Era 3: Medieval - gray stone, cobblestone
+                3 => (new Color(0.35f, 0.35f, 0.38f),   // dark stone
+                      new Color(0.50f, 0.50f, 0.52f),   // cobblestone
+                      new Color(0.45f, 0.42f, 0.40f),   // castle stone
+                      new Color(0.55f, 0.55f, 0.60f)),  // iron gray
+
+                // Era 4: Renaissance - ornate brick, burgundy
+                4 => (new Color(0.55f, 0.35f, 0.30f),   // dark brick
+                      new Color(0.70f, 0.45f, 0.35f),   // terracotta brick
+                      new Color(0.50f, 0.30f, 0.45f),   // purple stone
+                      new Color(0.80f, 0.65f, 0.20f)),  // gold trim
+
+                // Era 5: Industrial - rusted steel, riveted metal
+                5 => (new Color(0.35f, 0.30f, 0.28f),   // industrial gray
+                      new Color(0.45f, 0.38f, 0.32f),   // rusted metal
+                      new Color(0.50f, 0.45f, 0.35f),   // brass
+                      new Color(0.70f, 0.40f, 0.15f)),  // rust orange
+
+                // Era 6: Modern - concrete, asphalt
+                6 => (new Color(0.45f, 0.45f, 0.48f),   // concrete
+                      new Color(0.25f, 0.25f, 0.28f),   // asphalt
+                      new Color(0.55f, 0.55f, 0.58f),   // cement block
+                      new Color(0.90f, 0.70f, 0.10f)),  // warning yellow
+
+                // Era 7: Digital - circuit board, neon grid
+                7 => (new Color(0.08f, 0.15f, 0.12f),   // dark PCB green
+                      new Color(0.12f, 0.25f, 0.18f),   // circuit green
+                      new Color(0.15f, 0.35f, 0.65f),   // data blue
+                      new Color(0.00f, 1.00f, 0.80f)),  // neon cyan
+
+                // Era 8: Spacefaring - space station, alien metal
+                8 => (new Color(0.18f, 0.18f, 0.25f),   // space gray
+                      new Color(0.28f, 0.28f, 0.38f),   // hull metal
+                      new Color(0.35f, 0.20f, 0.50f),   // alien purple
+                      new Color(0.60f, 0.00f, 1.00f)),  // plasma purple
+
+                // Era 9: Transcendent - crystalline, ethereal
+                9 => (new Color(0.70f, 0.70f, 0.80f),   // crystal gray
+                      new Color(0.85f, 0.85f, 0.95f),   // pure white
+                      new Color(0.75f, 0.75f, 0.90f),   // light crystal
+                      new Color(1.00f, 1.00f, 1.00f)),  // pure light
+
+                _ => (Color.gray, Color.white, Color.gray, Color.yellow),
+            };
+        }
+
         #endregion
 
         #region Tiles
 
+        /// <summary>
+        /// Get tile sprite for default epoch (0 - Stone Age).
+        /// </summary>
         public static Sprite GetTileSprite(byte tileType)
         {
-            string key = $"tile_{tileType}";
+            return GetTileSprite(tileType, 0);
+        }
+
+        /// <summary>
+        /// Get tile sprite with epoch-specific visual theme.
+        /// </summary>
+        public static Sprite GetTileSprite(byte tileType, int epoch)
+        {
+            string key = $"tile_{tileType}_e{epoch}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int s = TILE_PX;
@@ -77,7 +160,7 @@ namespace SixteenBit.Gameplay
             tex.filterMode = FilterMode.Point;
             var px = new Color[s * s];
 
-            PaintTile(px, s, tileType);
+            PaintTile(px, s, tileType, epoch);
 
             tex.SetPixels(px);
             tex.Apply();
@@ -87,13 +170,15 @@ namespace SixteenBit.Gameplay
             return sprite;
         }
 
-        private static void PaintTile(Color[] px, int s, byte tileType)
+        private static void PaintTile(Color[] px, int s, byte tileType, int epoch = 0)
         {
+            var (ground, surface, block, accent) = GetEpochTerrainColors(epoch);
+
             switch (tileType)
             {
                 case (byte)TileType.Ground:
                 {
-                    Color dirt = new Color(0.40f, 0.26f, 0.13f);
+                    Color dirt = ground;
                     Color d1 = Darken(dirt, 0.60f);
                     Color d2 = Darken(dirt, 0.70f);
                     Color d3 = Darken(dirt, 0.80f);
@@ -110,72 +195,45 @@ namespace SixteenBit.Gameplay
                     SetRect(px, s, 0, 40, 64, 8, l1);
                     SetRect(px, s, 0, 48, 64, 8, l2);
                     SetRect(px, s, 0, 56, 64, 8, l3);
-                    // Scattered pebbles (3x2 or 2x2 clusters)
-                    SetRect(px, s, 10, 18, 3, 2, d1); SetRect(px, s, 13, 19, 2, 2, d2);
-                    SetRect(px, s, 40, 30, 3, 2, d1); SetRect(px, s, 43, 31, 2, 2, d2);
-                    SetRect(px, s, 26, 12, 3, 2, d1); SetRect(px, s, 29, 13, 2, 1, d2);
-                    SetRect(px, s, 52, 42, 3, 2, d1); SetRect(px, s, 55, 43, 2, 2, d2);
-                    SetRect(px, s, 8, 50, 3, 2, d3);  SetRect(px, s, 11, 50, 2, 1, d2);
-                    SetRect(px, s, 34, 8, 2, 2, d1);
-                    SetRect(px, s, 56, 22, 3, 2, d1);
-                    SetRect(px, s, 18, 44, 2, 2, d2);
-                    // Worm holes
-                    Px(px, s, 22, 28, d1); Px(px, s, 23, 28, d1); Px(px, s, 24, 29, d1); Px(px, s, 23, 29, d1);
-                    Px(px, s, 48, 14, d1); Px(px, s, 49, 14, d1); Px(px, s, 49, 15, d1);
-                    // Tiny roots
-                    Px(px, s, 6, 38, l1); Px(px, s, 7, 39, l1); Px(px, s, 8, 40, l1);
-                    Px(px, s, 36, 52, l2); Px(px, s, 37, 53, l2);
+                    // Epoch-specific texture
+                    PaintGroundTexture(px, s, epoch, d1, d2, d3, l1, l2);
                     break;
                 }
                 case (byte)TileType.GroundTop:
                 {
-                    Color dirt = new Color(0.40f, 0.26f, 0.13f);
+                    Color dirt = ground;
                     Color dirtDk = Darken(dirt, 0.70f);
                     Color dirtMd = Darken(dirt, 0.85f);
                     Color dirtLt = Lighten(dirt, 0.10f);
-                    Color grass = new Color(0.30f, 0.60f, 0.20f);
-                    Color grassLight = Lighten(grass, 0.35f);
-                    Color grassDark = Darken(grass, 0.65f);
-                    Color grassMid = Darken(grass, 0.85f);
-                    Color root = Darken(grass, 0.50f);
-                    // Dirt body with gradient
+                    Color surf = surface;
+                    Color surfLight = Lighten(surf, 0.35f);
+                    Color surfDark = Darken(surf, 0.65f);
+                    Color surfMid = Darken(surf, 0.85f);
+                    Color detail = Darken(surf, 0.50f);
+                    // Ground body with gradient
                     SetRect(px, s, 0, 0, 64, 8, dirtDk);
                     SetRect(px, s, 0, 8, 64, 8, dirtMd);
                     SetRect(px, s, 0, 16, 64, 16, dirt);
                     SetRect(px, s, 0, 32, 64, 12, dirtLt);
-                    // Pebbles in dirt
+                    // Texture in ground
                     SetRect(px, s, 18, 14, 3, 2, dirtDk); SetRect(px, s, 42, 8, 2, 2, dirtDk);
                     Px(px, s, 10, 22, dirtDk); Px(px, s, 30, 18, dirtDk); Px(px, s, 54, 12, dirtDk);
                     SetRect(px, s, 50, 26, 3, 2, dirtDk);
-                    // Root tendrils reaching down from grass
-                    Px(px, s, 12, 42, root); Px(px, s, 13, 40, root); Px(px, s, 14, 38, root);
-                    Px(px, s, 38, 42, root); Px(px, s, 39, 40, root);
-                    Px(px, s, 56, 41, root); Px(px, s, 57, 39, root);
-                    // Grass layer (top 20 rows)
-                    SetRect(px, s, 0, 44, 64, 20, grass);
-                    SetRect(px, s, 0, 44, 64, 4, grassDark); // roots zone
-                    SetRect(px, s, 0, 48, 64, 4, grassMid);
-                    // Individual grass blade tips at various heights
-                    int[] bladeX = {2,3,7,8,12,13,17,21,22,26,27,31,32,36,37,41,42,46,47,51,52,56,57,61,62};
-                    foreach (int bx in bladeX)
-                    {
-                        Px(px, s, bx, 63, grassLight);
-                        if (bx % 5 < 2) { Px(px, s, bx, 62, grassLight); Px(px, s, bx, 61, grassLight); }
-                        else if (bx % 3 == 0) Px(px, s, bx, 62, grassLight);
-                    }
-                    // Taller blade clusters
-                    Px(px, s, 5, 63, grassLight); Px(px, s, 5, 62, grassLight); Px(px, s, 5, 61, grassLight); Px(px, s, 5, 60, grassLight);
-                    Px(px, s, 20, 63, grassLight); Px(px, s, 20, 62, grassLight); Px(px, s, 20, 61, grassLight);
-                    Px(px, s, 35, 63, grassLight); Px(px, s, 35, 62, grassLight); Px(px, s, 35, 61, grassLight); Px(px, s, 35, 60, grassLight);
-                    Px(px, s, 50, 63, grassLight); Px(px, s, 50, 62, grassLight); Px(px, s, 50, 61, grassLight);
-                    // Dark grass variation
-                    Px(px, s, 10, 56, grassDark); Px(px, s, 25, 55, grassDark);
-                    Px(px, s, 44, 57, grassDark); Px(px, s, 58, 54, grassDark);
+                    // Detail tendrils reaching down from surface
+                    Px(px, s, 12, 42, detail); Px(px, s, 13, 40, detail); Px(px, s, 14, 38, detail);
+                    Px(px, s, 38, 42, detail); Px(px, s, 39, 40, detail);
+                    Px(px, s, 56, 41, detail); Px(px, s, 57, 39, detail);
+                    // Surface layer (top 20 rows)
+                    SetRect(px, s, 0, 44, 64, 20, surf);
+                    SetRect(px, s, 0, 44, 64, 4, surfDark); // roots/base zone
+                    SetRect(px, s, 0, 48, 64, 4, surfMid);
+                    // Epoch-specific surface texture
+                    PaintSurfaceTexture(px, s, epoch, surf, surfLight, surfDark);
                     break;
                 }
                 case (byte)TileType.GroundLeft:
                 {
-                    Color dirt = new Color(0.35f, 0.22f, 0.10f);
+                    Color dirt = Darken(ground, 0.90f);
                     Color edgeDk = Darken(dirt, 0.55f);
                     Color edgeMd = Darken(dirt, 0.70f);
                     Color edgeLt = Darken(dirt, 0.85f);
@@ -189,20 +247,20 @@ namespace SixteenBit.Gameplay
                     // Right side lighter
                     SetRect(px, s, 52, 0, 12, 64, inner);
                     SetRect(px, s, 58, 0, 6, 64, innerLt);
-                    // Rock texture clusters
+                    // Texture clusters
                     SetRect(px, s, 22, 14, 4, 3, edgeDk); SetRect(px, s, 26, 15, 3, 2, edgeMd);
                     SetRect(px, s, 36, 38, 3, 3, edgeDk); SetRect(px, s, 39, 39, 2, 2, edgeMd);
                     SetRect(px, s, 28, 50, 3, 2, edgeDk);
                     Px(px, s, 44, 10, inner); Px(px, s, 45, 10, inner); Px(px, s, 46, 11, inner);
                     Px(px, s, 32, 28, inner); Px(px, s, 33, 28, inner);
                     Px(px, s, 48, 44, innerLt);
-                    // Crack line
+                    // Crack/seam line
                     for (int i = 0; i < 6; i++) Px(px, s, 20 + i, 32 + i, edgeDk);
                     break;
                 }
                 case (byte)TileType.GroundRight:
                 {
-                    Color dirt = new Color(0.35f, 0.22f, 0.10f);
+                    Color dirt = Darken(ground, 0.90f);
                     Color edgeDk = Darken(dirt, 0.55f);
                     Color edgeMd = Darken(dirt, 0.70f);
                     Color edgeLt = Darken(dirt, 0.85f);
@@ -216,13 +274,13 @@ namespace SixteenBit.Gameplay
                     // Left side lighter
                     SetRect(px, s, 0, 0, 12, 64, inner);
                     SetRect(px, s, 0, 0, 6, 64, innerLt);
-                    // Rock texture
+                    // Texture
                     SetRect(px, s, 34, 20, 4, 3, edgeDk); SetRect(px, s, 38, 21, 3, 2, edgeMd);
                     SetRect(px, s, 22, 44, 3, 3, edgeDk); SetRect(px, s, 25, 45, 2, 2, edgeMd);
                     SetRect(px, s, 30, 10, 3, 2, edgeDk);
                     Px(px, s, 16, 32, inner); Px(px, s, 17, 32, inner); Px(px, s, 18, 33, inner);
                     Px(px, s, 28, 54, inner);
-                    // Crack line
+                    // Crack/seam line
                     for (int i = 0; i < 6; i++) Px(px, s, 38 - i, 26 + i, edgeDk);
                     break;
                 }
@@ -331,7 +389,8 @@ namespace SixteenBit.Gameplay
                 }
                 case (byte)TileType.DestructibleSoft:
                 {
-                    Color c = new Color(0.85f, 0.75f, 0.55f);
+                    // Soft destructible uses lighter version of block color
+                    Color c = Lighten(block, 0.15f);
                     Color crack = Darken(c, 0.45f);
                     Color crackLt = Darken(c, 0.60f);
                     Color crackFine = Darken(c, 0.75f);
@@ -357,7 +416,8 @@ namespace SixteenBit.Gameplay
                 }
                 case (byte)TileType.DestructibleMedium:
                 {
-                    Color c = new Color(0.70f, 0.55f, 0.35f);
+                    // Medium destructible uses block color directly
+                    Color c = block;
                     Color crack = Darken(c, 0.45f);
                     Color crackLt = Darken(c, 0.60f);
                     Color crackFine = Darken(c, 0.75f);
@@ -373,7 +433,8 @@ namespace SixteenBit.Gameplay
                 }
                 case (byte)TileType.DestructibleHard:
                 {
-                    Color c = new Color(0.50f, 0.50f, 0.50f);
+                    // Hard destructible uses darker block color
+                    Color c = Darken(block, 0.85f);
                     Color crack = Darken(c, 0.45f);
                     Color crackLt = Darken(c, 0.65f);
                     SetRect(px, s, 0, 0, 64, 64, c);
@@ -384,10 +445,11 @@ namespace SixteenBit.Gameplay
                 }
                 case (byte)TileType.DestructibleReinforced:
                 {
-                    Color c = new Color(0.35f, 0.35f, 0.40f);
+                    // Reinforced uses very dark block color with metallic accents
+                    Color c = Darken(block, 0.65f);
                     Color crack = Darken(c, 0.45f);
-                    Color rivet = Lighten(c, 0.35f);
-                    Color rivetHi = Lighten(c, 0.50f);
+                    Color rivet = Lighten(accent, 0.20f);
+                    Color rivetHi = Lighten(accent, 0.40f);
                     Color plate = Darken(c, 0.90f);
                     SetRect(px, s, 0, 0, 64, 64, c);
                     // Small crack
@@ -410,12 +472,13 @@ namespace SixteenBit.Gameplay
                 }
                 case (byte)TileType.Indestructible:
                 {
-                    Color c = new Color(0.20f, 0.20f, 0.25f);
+                    // Indestructible uses darkest possible with metallic sheen
+                    Color c = Darken(block, 0.40f);
                     Color hi = Lighten(c, 0.25f);
                     Color hiB = Lighten(c, 0.35f);
                     Color dark = Darken(c, 0.65f);
                     Color darkB = Darken(c, 0.50f);
-                    Color rivet = Lighten(c, 0.45f);
+                    Color rivet = Lighten(accent, 0.30f);
                     SetRect(px, s, 0, 0, 64, 64, c);
                     // Metallic gradient: highlight bottom-left corner, shadow top-right
                     SetRect(px, s, 0, 0, 20, 20, hi);
@@ -436,6 +499,134 @@ namespace SixteenBit.Gameplay
                     SetRect(px, s, 46, 46, 3, 3, rivet); Px(px, s, 47, 48, hiB);
                     break;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Paint epoch-specific ground texture (pebbles, cracks, patterns).
+        /// </summary>
+        private static void PaintGroundTexture(Color[] px, int s, int epoch, Color d1, Color d2, Color d3, Color l1, Color l2)
+        {
+            switch (epoch)
+            {
+                case 0: // Stone Age - pebbles and worm holes
+                    SetRect(px, s, 10, 18, 3, 2, d1); SetRect(px, s, 13, 19, 2, 2, d2);
+                    SetRect(px, s, 40, 30, 3, 2, d1); SetRect(px, s, 43, 31, 2, 2, d2);
+                    SetRect(px, s, 26, 12, 3, 2, d1); SetRect(px, s, 52, 42, 3, 2, d1);
+                    Px(px, s, 22, 28, d1); Px(px, s, 23, 28, d1); Px(px, s, 48, 14, d1);
+                    Px(px, s, 6, 38, l1); Px(px, s, 7, 39, l1); Px(px, s, 36, 52, l2);
+                    break;
+                case 1: // Bronze Age - sandy, wind-blown texture
+                    for (int i = 0; i < 8; i++) SetRect(px, s, 4 + i * 8, 10 + (i % 3) * 4, 4, 2, d2);
+                    for (int i = 0; i < 6; i++) Px(px, s, 8 + i * 10, 40 + (i % 2) * 6, d1);
+                    SetRect(px, s, 20, 52, 6, 3, d3); SetRect(px, s, 44, 24, 5, 2, d3);
+                    break;
+                case 2: // Classical - marble veins
+                    for (int i = 0; i < 10; i++) { Px(px, s, 8 + i * 2, 20 + i, l1); Px(px, s, 9 + i * 2, 21 + i, l2); }
+                    for (int i = 0; i < 8; i++) { Px(px, s, 40 + i, 44 - i, l1); Px(px, s, 41 + i, 45 - i, l2); }
+                    SetRect(px, s, 28, 8, 2, 8, l1); SetRect(px, s, 52, 36, 2, 10, l1);
+                    break;
+                case 3: // Medieval - cobblestone joints
+                    SetRect(px, s, 0, 15, 64, 2, d1); SetRect(px, s, 0, 31, 64, 2, d1); SetRect(px, s, 0, 47, 64, 2, d1);
+                    SetRect(px, s, 16, 0, 2, 64, d1); SetRect(px, s, 32, 0, 2, 64, d1); SetRect(px, s, 48, 0, 2, 64, d1);
+                    break;
+                case 4: // Renaissance - ornate brick pattern
+                    SetRect(px, s, 0, 15, 64, 1, d1); SetRect(px, s, 0, 31, 64, 1, d1); SetRect(px, s, 0, 47, 64, 1, d1);
+                    SetRect(px, s, 20, 0, 1, 15, d1); SetRect(px, s, 44, 0, 1, 15, d1);
+                    SetRect(px, s, 8, 16, 1, 15, d1); SetRect(px, s, 32, 16, 1, 15, d1); SetRect(px, s, 56, 16, 1, 15, d1);
+                    break;
+                case 5: // Industrial - riveted steel plates
+                    SetRect(px, s, 0, 31, 64, 2, d1); SetRect(px, s, 31, 0, 2, 64, d1);
+                    SetRect(px, s, 6, 6, 4, 4, l1); SetRect(px, s, 54, 6, 4, 4, l1);
+                    SetRect(px, s, 6, 54, 4, 4, l1); SetRect(px, s, 54, 54, 4, 4, l1);
+                    SetRect(px, s, 28, 28, 8, 8, l2); // Center bolt
+                    break;
+                case 6: // Modern - concrete texture
+                    for (int i = 0; i < 12; i++) { Px(px, s, 5 + i * 5, 12 + (i % 4) * 3, d2); Px(px, s, 8 + i * 5, 44 + (i % 3) * 2, d2); }
+                    SetRect(px, s, 0, 30, 64, 4, d1); // Expansion joint
+                    break;
+                case 7: // Digital - circuit traces
+                    SetRect(px, s, 8, 8, 2, 48, l2); SetRect(px, s, 24, 8, 2, 48, l2);
+                    SetRect(px, s, 40, 8, 2, 48, l2); SetRect(px, s, 56, 8, 2, 48, l2);
+                    SetRect(px, s, 8, 24, 50, 2, l2); SetRect(px, s, 8, 40, 50, 2, l2);
+                    Px(px, s, 8, 24, l1); Px(px, s, 24, 24, l1); Px(px, s, 40, 24, l1); Px(px, s, 56, 24, l1);
+                    Px(px, s, 8, 40, l1); Px(px, s, 24, 40, l1); Px(px, s, 40, 40, l1); Px(px, s, 56, 40, l1);
+                    break;
+                case 8: // Spacefaring - hull plating
+                    SetRect(px, s, 0, 20, 64, 3, d1); SetRect(px, s, 0, 43, 64, 3, d1);
+                    SetRect(px, s, 20, 0, 3, 64, d1); SetRect(px, s, 43, 0, 3, 64, d1);
+                    SetRect(px, s, 4, 4, 3, 3, l1); SetRect(px, s, 57, 4, 3, 3, l1);
+                    SetRect(px, s, 4, 57, 3, 3, l1); SetRect(px, s, 57, 57, 3, 3, l1);
+                    break;
+                case 9: // Transcendent - crystalline fractures
+                    for (int i = 0; i < 6; i++) { Px(px, s, 10 + i * 3, 10 + i * 5, l2); Px(px, s, 11 + i * 3, 11 + i * 5, l1); }
+                    for (int i = 0; i < 6; i++) { Px(px, s, 50 - i * 3, 20 + i * 4, l2); Px(px, s, 51 - i * 3, 21 + i * 4, l1); }
+                    SetRect(px, s, 28, 28, 8, 8, l1); // Core glow
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Paint epoch-specific surface texture (grass, sand, marble, etc.).
+        /// </summary>
+        private static void PaintSurfaceTexture(Color[] px, int s, int epoch, Color surf, Color surfLight, Color surfDark)
+        {
+            switch (epoch)
+            {
+                case 0: // Stone Age - grass blades
+                    int[] bladeX = {2,3,7,8,12,13,17,21,22,26,27,31,32,36,37,41,42,46,47,51,52,56,57,61,62};
+                    foreach (int bx in bladeX)
+                    {
+                        Px(px, s, bx, 63, surfLight);
+                        if (bx % 5 < 2) { Px(px, s, bx, 62, surfLight); Px(px, s, bx, 61, surfLight); }
+                        else if (bx % 3 == 0) Px(px, s, bx, 62, surfLight);
+                    }
+                    Px(px, s, 5, 63, surfLight); Px(px, s, 5, 62, surfLight); Px(px, s, 5, 61, surfLight); Px(px, s, 5, 60, surfLight);
+                    Px(px, s, 35, 63, surfLight); Px(px, s, 35, 62, surfLight); Px(px, s, 35, 61, surfLight); Px(px, s, 35, 60, surfLight);
+                    break;
+                case 1: // Bronze Age - sandy ripples
+                    for (int i = 0; i < 8; i++) SetRect(px, s, i * 8, 56 + (i % 2) * 2, 6, 4, surfLight);
+                    for (int i = 0; i < 6; i++) Px(px, s, 10 + i * 10, 62, surfDark);
+                    break;
+                case 2: // Classical - marble polish
+                    SetRect(px, s, 0, 58, 64, 6, surfLight);
+                    for (int i = 0; i < 4; i++) SetRect(px, s, 8 + i * 16, 60, 8, 2, Lighten(surfLight, 0.2f));
+                    break;
+                case 3: // Medieval - cobblestone tops
+                    SetRect(px, s, 2, 54, 12, 8, surfLight); SetRect(px, s, 18, 54, 12, 8, surfLight);
+                    SetRect(px, s, 34, 54, 12, 8, surfLight); SetRect(px, s, 50, 54, 12, 8, surfLight);
+                    SetRect(px, s, 0, 52, 64, 2, surfDark);
+                    break;
+                case 4: // Renaissance - ornate tiles
+                    SetRect(px, s, 0, 58, 64, 6, surfLight);
+                    SetRect(px, s, 8, 56, 48, 2, Darken(surfLight, 0.9f));
+                    for (int i = 0; i < 8; i++) Px(px, s, 4 + i * 8, 62, surfDark);
+                    break;
+                case 5: // Industrial - grating
+                    for (int i = 0; i < 16; i++) { SetRect(px, s, i * 4, 48, 2, 16, surfDark); }
+                    SetRect(px, s, 0, 62, 64, 2, surfLight);
+                    break;
+                case 6: // Modern - road markings
+                    SetRect(px, s, 0, 58, 64, 6, surfLight);
+                    SetRect(px, s, 16, 56, 8, 4, new Color(0.9f, 0.7f, 0.1f)); // Yellow line
+                    SetRect(px, s, 40, 56, 8, 4, new Color(0.9f, 0.7f, 0.1f));
+                    break;
+                case 7: // Digital - neon grid lines
+                    var neon = new Color(0f, 1f, 0.8f);
+                    for (int i = 0; i < 8; i++) { Px(px, s, i * 8 + 4, 63, neon); Px(px, s, i * 8 + 4, 62, neon); }
+                    SetRect(px, s, 0, 60, 64, 1, Darken(neon, 0.7f));
+                    break;
+                case 8: // Spacefaring - glowing edge
+                    var plasma = new Color(0.6f, 0f, 1f);
+                    SetRect(px, s, 0, 60, 64, 4, surfLight);
+                    SetRect(px, s, 0, 62, 64, 2, plasma);
+                    for (int i = 0; i < 8; i++) Px(px, s, 4 + i * 8, 63, Lighten(plasma, 0.3f));
+                    break;
+                case 9: // Transcendent - ethereal glow
+                    SetRect(px, s, 0, 54, 64, 10, surfLight);
+                    SetRect(px, s, 0, 60, 64, 4, Lighten(surfLight, 0.3f));
+                    for (int i = 0; i < 16; i++) Px(px, s, 2 + i * 4, 63, new Color(1f, 1f, 1f, 0.8f));
+                    break;
             }
         }
 
@@ -631,10 +822,10 @@ namespace SixteenBit.Gameplay
 
             switch (behavior)
             {
-                case EnemyBehavior.Patrol:     PaintPatrolEnemy(px, size, body, secondary, eyes); break;
-                case EnemyBehavior.Chase:      PaintChaseEnemy(px, size, body, secondary, eyes); break;
-                case EnemyBehavior.Stationary: PaintStationaryEnemy(px, size, body, secondary, eyes); break;
-                case EnemyBehavior.Flying:     PaintFlyingEnemy(px, size, body, secondary, eyes); break;
+                case EnemyBehavior.Patrol:     PaintPatrolEnemy(px, size, body, secondary, eyes, era); break;
+                case EnemyBehavior.Chase:      PaintChaseEnemy(px, size, body, secondary, eyes, era); break;
+                case EnemyBehavior.Stationary: PaintStationaryEnemy(px, size, body, secondary, eyes, era); break;
+                case EnemyBehavior.Flying:     PaintFlyingEnemy(px, size, body, secondary, eyes, era); break;
             }
 
             tex.SetPixels(px);
@@ -645,7 +836,7 @@ namespace SixteenBit.Gameplay
             return sprite;
         }
 
-        private static void PaintPatrolEnemy(Color[] px, int s, Color body, Color sec, Color eyes)
+        private static void PaintPatrolEnemy(Color[] px, int s, Color body, Color sec, Color eyes, int era)
         {
             Color dark = Darken(body, 0.60f);
             Color light = Lighten(sec, 0.20f);
@@ -717,9 +908,129 @@ namespace SixteenBit.Gameplay
             Px(px, s, 95, 191, eyes); Px(px, s, 96, 191, eyes);
             // Nose guard
             SetRect(px, s, 92, 156, 8, 10, dark);
+
+            // === Epoch-specific details ===
+            AddPatrolEpochDetails(px, s, body, sec, eyes, dark, light, era);
         }
 
-        private static void PaintChaseEnemy(Color[] px, int s, Color body, Color sec, Color eyes)
+        private static void AddPatrolEpochDetails(Color[] px, int s, Color body, Color sec, Color eyes, Color dark, Color light, int era)
+        {
+            switch (era)
+            {
+                case 0: // Stone Age - fur trim, bone necklace
+                    Color fur = new Color(0.60f, 0.50f, 0.35f);
+                    SetRect(px, s, 52, 140, 88, 6, fur); // fur collar
+                    for (int i = 0; i < 5; i++) Px(px, s, 60 + i * 14, 144, Darken(fur, 0.70f));
+                    // Bone necklace
+                    Color bone = new Color(0.95f, 0.92f, 0.85f);
+                    for (int i = 0; i < 4; i++) { SetRect(px, s, 72 + i * 12, 148, 4, 2, bone); }
+                    break;
+
+                case 1: // Bronze Age - sun disk emblem, bronze bands
+                    Color bronze = new Color(0.80f, 0.55f, 0.20f);
+                    SetRect(px, s, 88, 115, 16, 16, bronze); // sun disk
+                    SetRect(px, s, 92, 119, 8, 8, new Color(1f, 0.85f, 0.30f)); // sun center
+                    // Bronze arm bands
+                    SetRect(px, s, 30, 130, 22, 3, bronze);
+                    SetRect(px, s, 140, 130, 22, 3, bronze);
+                    break;
+
+                case 2: // Classical - laurel wreath, toga drape
+                    Color laurel = new Color(0.40f, 0.65f, 0.30f);
+                    // Laurel wreath on helmet
+                    for (int i = 0; i < 6; i++) { Px(px, s, 72 + i * 8, 186, laurel); Px(px, s, 73 + i * 8, 187, laurel); }
+                    // Red cape edge
+                    Color capeRed = new Color(0.75f, 0.15f, 0.15f);
+                    SetRect(px, s, 48, 140, 4, 10, capeRed);
+                    SetRect(px, s, 140, 140, 4, 10, capeRed);
+                    break;
+
+                case 3: // Medieval - cross emblem, chainmail glimpse
+                    Color silver = new Color(0.75f, 0.75f, 0.80f);
+                    // Cross on chest
+                    SetRect(px, s, 92, 108, 8, 20, silver);
+                    SetRect(px, s, 84, 114, 24, 6, silver);
+                    // Chainmail at neck
+                    for (int i = 0; i < 8; i++)
+                        for (int j = 0; j < 2; j++)
+                            Px(px, s, 72 + i * 6, 147 + j * 3, Darken(silver, 0.80f));
+                    break;
+
+                case 4: // Renaissance - feathered plume, ornate trim
+                    Color feather = new Color(0.90f, 0.20f, 0.40f);
+                    Color gold = new Color(0.95f, 0.80f, 0.20f);
+                    // Feather plume
+                    for (int i = 0; i < 8; i++) SetRect(px, s, 98 + i, 188 + i/2, 2, 4 - i/3, feather);
+                    // Gold trim on armor
+                    SetRect(px, s, 52, 86, 88, 2, gold);
+                    SetRect(px, s, 52, 148, 88, 2, gold);
+                    break;
+
+                case 5: // Industrial - goggles, brass fittings
+                    Color brass = new Color(0.75f, 0.60f, 0.25f);
+                    Color lens = new Color(0.40f, 0.30f, 0.20f);
+                    // Goggles on forehead
+                    SetRect(px, s, 74, 180, 18, 6, brass);
+                    SetRect(px, s, 100, 180, 18, 6, brass);
+                    SetRect(px, s, 78, 182, 10, 2, lens);
+                    SetRect(px, s, 104, 182, 10, 2, lens);
+                    // Gear on belt
+                    SetRect(px, s, 90, 76, 12, 10, brass);
+                    break;
+
+                case 6: // Modern - tactical vest, camo pattern
+                    Color camo1 = new Color(0.35f, 0.40f, 0.25f);
+                    Color camo2 = new Color(0.25f, 0.30f, 0.20f);
+                    // Camo patches
+                    for (int i = 0; i < 6; i++)
+                    {
+                        SetRect(px, s, 56 + i * 12 + (i%2)*4, 90 + (i%3)*15, 8, 6, camo1);
+                        SetRect(px, s, 60 + i * 11, 100 + (i%2)*20, 6, 5, camo2);
+                    }
+                    // Tactical belt pouches
+                    SetRect(px, s, 56, 76, 10, 10, camo2);
+                    SetRect(px, s, 126, 76, 10, 10, camo2);
+                    break;
+
+                case 7: // Digital - circuit lines, LED eyes
+                    Color circuit = new Color(0.00f, 0.90f, 0.70f);
+                    // Circuit trace lines
+                    SetRect(px, s, 70, 100, 2, 40, circuit);
+                    SetRect(px, s, 70, 140, 20, 2, circuit);
+                    SetRect(px, s, 120, 100, 2, 40, circuit);
+                    SetRect(px, s, 102, 140, 20, 2, circuit);
+                    // Glowing LED accents
+                    Px(px, s, 70, 100, Lighten(circuit, 0.50f));
+                    Px(px, s, 120, 100, Lighten(circuit, 0.50f));
+                    break;
+
+                case 8: // Spacefaring - visor, alien glow
+                    Color visor = new Color(0.20f, 0.10f, 0.40f);
+                    Color glow = new Color(0.60f, 0.00f, 1.00f);
+                    // Full visor
+                    SetRect(px, s, 72, 160, 48, 20, visor);
+                    SetRect(px, s, 76, 164, 40, 12, Lighten(visor, 0.30f));
+                    // Glow strips
+                    SetRect(px, s, 52, 106, 2, 40, glow);
+                    SetRect(px, s, 138, 106, 2, 40, glow);
+                    break;
+
+                case 9: // Transcendent - ethereal aura, crystal armor
+                    Color aura = new Color(1f, 1f, 1f, 0.80f);
+                    Color crystal = new Color(0.90f, 0.90f, 1.00f);
+                    // Crystal shoulder pads
+                    SetRect(px, s, 44, 136, 8, 8, crystal);
+                    SetRect(px, s, 140, 136, 8, 8, crystal);
+                    Px(px, s, 48, 142, aura); Px(px, s, 144, 142, aura);
+                    // Glowing crown
+                    for (int i = 0; i < 5; i++) Px(px, s, 84 + i * 6, 190, aura);
+                    // Ethereal chest glow
+                    SetRect(px, s, 90, 116, 12, 12, Lighten(crystal, 0.30f));
+                    break;
+            }
+        }
+
+        private static void PaintChaseEnemy(Color[] px, int s, Color body, Color sec, Color eyes, int era)
         {
             Color dark = Darken(body, 0.55f);
             Color spike = Lighten(body, 0.30f);
@@ -783,9 +1094,111 @@ namespace SixteenBit.Gameplay
             SetRect(px, s, 10, 72, 12, 10, dark);
             SetRect(px, s, 6, 66, 8, 8, Darken(dark, 0.80f));
             Px(px, s, 4, 64, dark); Px(px, s, 5, 64, dark);
+
+            // === Epoch-specific details ===
+            AddChaseEpochDetails(px, s, body, sec, eyes, dark, spike, era);
         }
 
-        private static void PaintStationaryEnemy(Color[] px, int s, Color body, Color sec, Color eyes)
+        private static void AddChaseEpochDetails(Color[] px, int s, Color body, Color sec, Color eyes, Color dark, Color spike, int era)
+        {
+            switch (era)
+            {
+                case 0: // Stone Age - shaggy fur, bone collar
+                    Color fur = new Color(0.55f, 0.45f, 0.30f);
+                    // Shaggy fur mane
+                    for (int i = 0; i < 12; i++)
+                    {
+                        int fx = 30 + i * 12;
+                        SetRect(px, s, fx, 114 + (i % 3) * 2, 6, 8 - (i % 2) * 2, fur);
+                    }
+                    // Bone collar
+                    Color bone = new Color(0.95f, 0.90f, 0.80f);
+                    SetRect(px, s, 130, 144, 50, 4, bone);
+                    break;
+
+                case 1: // Bronze Age - bronze plating on head
+                    Color bronze = new Color(0.80f, 0.55f, 0.20f);
+                    SetRect(px, s, 130, 140, 50, 6, bronze);
+                    SetRect(px, s, 148, 146, 24, 4, Darken(bronze, 0.70f));
+                    break;
+
+                case 2: // Classical - war paint stripes
+                    Color redPaint = new Color(0.80f, 0.15f, 0.10f);
+                    for (int i = 0; i < 4; i++)
+                        SetRect(px, s, 40 + i * 30, 70, 3, 40, redPaint);
+                    break;
+
+                case 3: // Medieval - spiked collar, chain
+                    Color iron = new Color(0.50f, 0.50f, 0.55f);
+                    SetRect(px, s, 126, 140, 60, 5, iron);
+                    for (int i = 0; i < 5; i++)
+                        SetRect(px, s, 130 + i * 11, 145, 4, 6, Lighten(iron, 0.30f));
+                    break;
+
+                case 4: // Renaissance - decorative saddle marks
+                    Color gold = new Color(0.90f, 0.75f, 0.20f);
+                    SetRect(px, s, 60, 100, 60, 3, gold);
+                    SetRect(px, s, 60, 110, 60, 3, gold);
+                    // Ornate tail tip
+                    SetRect(px, s, 4, 62, 6, 4, gold);
+                    break;
+
+                case 5: // Industrial - mechanical leg braces
+                    Color brass = new Color(0.70f, 0.55f, 0.25f);
+                    int[] blegX = {32, 72, 112, 152};
+                    foreach (int lx in blegX)
+                        SetRect(px, s, lx, 30, 14, 4, brass);
+                    // Steam vents on back
+                    SetRect(px, s, 80, 118, 4, 10, Darken(brass, 0.60f));
+                    break;
+
+                case 6: // Modern - tactical harness
+                    Color tactical = new Color(0.30f, 0.32f, 0.25f);
+                    SetRect(px, s, 50, 90, 80, 4, tactical);
+                    SetRect(px, s, 86, 56, 4, 38, tactical);
+                    // Red laser sight dot
+                    SetRect(px, s, 178, 134, 4, 4, new Color(1f, 0f, 0f));
+                    break;
+
+                case 7: // Digital - circuit patterns, data lines
+                    Color circuit = new Color(0.00f, 0.95f, 0.75f);
+                    SetRect(px, s, 40, 80, 2, 30, circuit);
+                    SetRect(px, s, 40, 110, 30, 2, circuit);
+                    SetRect(px, s, 140, 80, 2, 30, circuit);
+                    SetRect(px, s, 112, 110, 30, 2, circuit);
+                    // Glowing eye upgrade
+                    SetRect(px, s, 148, 128, 16, 16, Lighten(circuit, 0.30f));
+                    break;
+
+                case 8: // Spacefaring - alien markings, bioluminescent
+                    Color alienGlow = new Color(0.50f, 0.00f, 0.90f);
+                    // Bioluminescent spots
+                    for (int i = 0; i < 6; i++)
+                    {
+                        Px(px, s, 45 + i * 20, 95, alienGlow);
+                        Px(px, s, 50 + i * 18, 85, Lighten(alienGlow, 0.40f));
+                    }
+                    // Glowing underbelly
+                    SetRect(px, s, 40, 44, 100, 4, alienGlow);
+                    break;
+
+                case 9: // Transcendent - ethereal wisps, crystal spikes
+                    Color crystal = new Color(0.95f, 0.95f, 1.00f);
+                    Color aura = new Color(1f, 1f, 1f, 0.70f);
+                    // Crystal back spikes (replace normal spikes)
+                    for (int i = 0; i < 5; i++)
+                    {
+                        int sx = 36 + i * 24;
+                        SetRect(px, s, sx, 136, 6, 12, crystal);
+                        Px(px, s, sx + 2, 148, aura);
+                    }
+                    // Ethereal glow outline
+                    for (int i = 0; i < 8; i++) Px(px, s, 20 + i * 20, 118, aura);
+                    break;
+            }
+        }
+
+        private static void PaintStationaryEnemy(Color[] px, int s, Color body, Color sec, Color eyes, int era)
         {
             Color dark = Darken(body, 0.65f);
             Color warning = new Color(0.90f, 0.80f, 0.00f);
@@ -841,9 +1254,129 @@ namespace SixteenBit.Gameplay
             SetRect(px, s, 182, 106, 10, 14, eyes);
             SetRect(px, s, 184, 108, 8, 10, Lighten(eyes, 0.30f));
             SetRect(px, s, 186, 110, 4, 6, Lighten(eyes, 0.50f));
+
+            // === Epoch-specific details ===
+            AddStationaryEpochDetails(px, s, body, sec, eyes, dark, era);
         }
 
-        private static void PaintFlyingEnemy(Color[] px, int s, Color body, Color sec, Color eyes)
+        private static void AddStationaryEpochDetails(Color[] px, int s, Color body, Color sec, Color eyes, Color dark, int era)
+        {
+            switch (era)
+            {
+                case 0: // Stone Age - wooden base, stone thrower
+                    Color wood = new Color(0.55f, 0.40f, 0.25f);
+                    Color stone = new Color(0.65f, 0.60f, 0.55f);
+                    // Replace base with wood planks
+                    for (int i = 0; i < 6; i++)
+                        SetRect(px, s, 40 + i * 18, 2, 16, 50, Darken(wood, 0.90f + (i % 2) * 0.15f));
+                    // Stone ammo pile
+                    SetRect(px, s, 50, 46, 12, 8, stone);
+                    SetRect(px, s, 130, 46, 12, 8, stone);
+                    break;
+
+                case 1: // Bronze Age - bronze finish, sun emblem
+                    Color bronze = new Color(0.80f, 0.55f, 0.20f);
+                    SetRect(px, s, 76, 130, 20, 14, bronze); // sun emblem
+                    SetRect(px, s, 82, 134, 8, 6, new Color(1f, 0.85f, 0.30f));
+                    // Bronze trim
+                    SetRect(px, s, 46, 142, 100, 3, bronze);
+                    break;
+
+                case 2: // Classical - column styled pedestal
+                    Color marble = new Color(0.92f, 0.90f, 0.85f);
+                    // Fluted column lines
+                    for (int i = 0; i < 5; i++)
+                        SetRect(px, s, 66 + i * 12, 56, 3, 26, marble);
+                    // Decorative band
+                    SetRect(px, s, 46, 80, 100, 4, new Color(0.70f, 0.20f, 0.20f));
+                    break;
+
+                case 3: // Medieval - castle turret style
+                    Color castleStone = new Color(0.55f, 0.55f, 0.58f);
+                    // Crenellations
+                    for (int i = 0; i < 5; i++)
+                        SetRect(px, s, 52 + i * 20, 142, 10, 8, castleStone);
+                    // Arrow slit
+                    SetRect(px, s, 90, 90, 12, 24, Darken(castleStone, 0.50f));
+                    SetRect(px, s, 94, 88, 4, 28, Darken(castleStone, 0.30f));
+                    break;
+
+                case 4: // Renaissance - ornate gilded details
+                    Color gold = new Color(0.95f, 0.80f, 0.20f);
+                    // Gilded dome ridges
+                    SetRect(px, s, 46, 82, 100, 3, gold);
+                    SetRect(px, s, 46, 144, 100, 2, gold);
+                    // Decorative scrollwork
+                    for (int i = 0; i < 4; i++)
+                    {
+                        Px(px, s, 56 + i * 24, 94, gold);
+                        Px(px, s, 58 + i * 24, 96, gold);
+                    }
+                    break;
+
+                case 5: // Industrial - rivets, steam pipes
+                    Color brass = new Color(0.70f, 0.55f, 0.25f);
+                    Color pipe = new Color(0.45f, 0.42f, 0.38f);
+                    // Extra rivets
+                    for (int i = 0; i < 8; i++)
+                    {
+                        SetRect(px, s, 50 + i * 12, 90, 3, 3, brass);
+                        SetRect(px, s, 50 + i * 12, 136, 3, 3, brass);
+                    }
+                    // Steam pipe
+                    SetRect(px, s, 30, 90, 16, 8, pipe);
+                    SetRect(px, s, 26, 86, 8, 16, pipe);
+                    break;
+
+                case 6: // Modern - digital display, radar dish
+                    Color screen = new Color(0.10f, 0.30f, 0.10f);
+                    Color scanline = new Color(0.20f, 0.80f, 0.20f);
+                    // Digital display
+                    SetRect(px, s, 78, 118, 16, 10, screen);
+                    for (int i = 0; i < 3; i++)
+                        SetRect(px, s, 80, 120 + i * 3, 12, 1, scanline);
+                    // Antenna
+                    SetRect(px, s, 94, 146, 4, 12, dark);
+                    break;
+
+                case 7: // Digital - holographic projector
+                    Color holo = new Color(0.00f, 0.95f, 0.85f);
+                    Color holoFade = new Color(0.00f, 0.70f, 0.60f, 0.60f);
+                    // Holographic ring
+                    SetRect(px, s, 56, 90, 80, 2, holo);
+                    SetRect(px, s, 56, 136, 80, 2, holo);
+                    // Data streams
+                    for (int i = 0; i < 4; i++)
+                        SetRect(px, s, 64 + i * 18, 92, 2, 44, holoFade);
+                    break;
+
+                case 8: // Spacefaring - plasma coils
+                    Color plasma = new Color(0.60f, 0.00f, 1.00f);
+                    Color plasmaGlow = new Color(0.80f, 0.40f, 1.00f);
+                    // Plasma coils around dome
+                    SetRect(px, s, 42, 100, 4, 30, plasma);
+                    SetRect(px, s, 146, 100, 4, 30, plasma);
+                    Px(px, s, 44, 115, plasmaGlow); Px(px, s, 148, 115, plasmaGlow);
+                    // Alien tech glow
+                    SetRect(px, s, 80, 56, 32, 4, plasma);
+                    break;
+
+                case 9: // Transcendent - crystalline energy
+                    Color crystal = new Color(0.95f, 0.95f, 1.00f);
+                    Color aura = new Color(1f, 1f, 1f, 0.80f);
+                    // Crystal dome
+                    SetRect(px, s, 52, 88, 88, 52, crystal);
+                    SetRect(px, s, 60, 96, 72, 36, Lighten(crystal, 0.20f));
+                    // Ethereal glow points
+                    for (int i = 0; i < 6; i++)
+                        Px(px, s, 60 + i * 14, 140, aura);
+                    // Energy core
+                    SetRect(px, s, 84, 110, 24, 16, aura);
+                    break;
+            }
+        }
+
+        private static void PaintFlyingEnemy(Color[] px, int s, Color body, Color sec, Color eyes, int era)
         {
             Color dark = Darken(body, 0.65f);
             Color wingTip = Lighten(sec, 0.25f);
@@ -915,6 +1448,130 @@ namespace SixteenBit.Gameplay
                 Px(px, s, 158 - i * 8, 132 - i * 6, feather);
                 Px(px, s, 159 - i * 8, 132 - i * 6, feather);
             }
+
+            // === Epoch-specific details ===
+            AddFlyingEpochDetails(px, s, body, sec, eyes, dark, wingTip, era);
+        }
+
+        private static void AddFlyingEpochDetails(Color[] px, int s, Color body, Color sec, Color eyes, Color dark, Color wingTip, int era)
+        {
+            switch (era)
+            {
+                case 0: // Stone Age - pterodactyl crest, leathery wings
+                    Color leather = new Color(0.50f, 0.40f, 0.30f);
+                    // Head crest
+                    SetRect(px, s, 90, 186, 4, 6, leather);
+                    SetRect(px, s, 88, 184, 6, 4, leather);
+                    // Wing membrane texture
+                    for (int i = 0; i < 4; i++)
+                    {
+                        SetRect(px, s, 30 + i * 8, 120 - i * 5, 2, 20, Darken(leather, 0.80f));
+                        SetRect(px, s, 154 - i * 8, 120 - i * 5, 2, 20, Darken(leather, 0.80f));
+                    }
+                    break;
+
+                case 1: // Bronze Age - golden wing tips
+                    Color gold = new Color(0.90f, 0.75f, 0.20f);
+                    SetRect(px, s, 14, 140, 12, 8, gold);
+                    SetRect(px, s, 168, 140, 12, 8, gold);
+                    // Sun disk necklace
+                    SetRect(px, s, 88, 140, 16, 10, gold);
+                    break;
+
+                case 2: // Classical - laurel, roman eagle style
+                    Color laurel = new Color(0.40f, 0.60f, 0.30f);
+                    Color redBand = new Color(0.75f, 0.15f, 0.15f);
+                    // Laurel crown
+                    for (int i = 0; i < 4; i++) Px(px, s, 82 + i * 8, 188, laurel);
+                    // Red chest band
+                    SetRect(px, s, 72, 100, 48, 4, redBand);
+                    break;
+
+                case 3: // Medieval - armored, dragon-like
+                    Color armor = new Color(0.55f, 0.55f, 0.60f);
+                    // Chest plate
+                    SetRect(px, s, 78, 80, 36, 30, armor);
+                    SetRect(px, s, 82, 84, 28, 22, Lighten(armor, 0.15f));
+                    // Horned head
+                    SetRect(px, s, 72, 186, 4, 8, dark);
+                    SetRect(px, s, 116, 186, 4, 8, dark);
+                    break;
+
+                case 4: // Renaissance - colorful plumage
+                    Color plume1 = new Color(0.90f, 0.25f, 0.45f);
+                    Color plume2 = new Color(0.20f, 0.60f, 0.85f);
+                    // Colorful tail feathers
+                    SetRect(px, s, 82, 6, 6, 8, plume1);
+                    SetRect(px, s, 104, 6, 6, 8, plume2);
+                    // Decorative chest medallion
+                    SetRect(px, s, 86, 110, 20, 14, new Color(0.95f, 0.80f, 0.20f));
+                    break;
+
+                case 5: // Industrial - mechanical wings, goggles
+                    Color brass = new Color(0.70f, 0.55f, 0.25f);
+                    Color steel = new Color(0.50f, 0.50f, 0.55f);
+                    // Goggles
+                    SetRect(px, s, 76, 174, 16, 8, brass);
+                    SetRect(px, s, 102, 174, 16, 8, brass);
+                    SetRect(px, s, 80, 176, 8, 4, new Color(0.30f, 0.25f, 0.20f));
+                    SetRect(px, s, 106, 176, 8, 4, new Color(0.30f, 0.25f, 0.20f));
+                    // Mechanical wing struts
+                    SetRect(px, s, 40, 110, 4, 30, steel);
+                    SetRect(px, s, 150, 110, 4, 30, steel);
+                    break;
+
+                case 6: // Modern - jet pack, tactical
+                    Color jetpack = new Color(0.35f, 0.35f, 0.40f);
+                    Color flame = new Color(1f, 0.50f, 0.10f);
+                    // Jet pack
+                    SetRect(px, s, 84, 46, 24, 20, jetpack);
+                    // Thrust flames
+                    SetRect(px, s, 88, 40, 6, 8, flame);
+                    SetRect(px, s, 98, 40, 6, 8, flame);
+                    Px(px, s, 90, 38, new Color(1f, 0.90f, 0.40f));
+                    Px(px, s, 100, 38, new Color(1f, 0.90f, 0.40f));
+                    break;
+
+                case 7: // Digital - data streams, holographic
+                    Color data = new Color(0.00f, 0.95f, 0.80f);
+                    // Data trail from wings
+                    for (int i = 0; i < 6; i++)
+                    {
+                        Px(px, s, 20 + i * 6, 130 - i * 3, data);
+                        Px(px, s, 170 - i * 6, 130 - i * 3, data);
+                    }
+                    // Circuit pattern on body
+                    SetRect(px, s, 90, 70, 2, 60, data);
+                    SetRect(px, s, 80, 100, 32, 2, data);
+                    break;
+
+                case 8: // Spacefaring - energy wings, alien
+                    Color energy = new Color(0.60f, 0.00f, 1.00f);
+                    Color energyGlow = new Color(0.80f, 0.40f, 1.00f);
+                    // Energy wing glow
+                    for (int i = 0; i < 8; i++)
+                    {
+                        Px(px, s, 18 + i * 5, 138 - i * 2, energyGlow);
+                        Px(px, s, 172 - i * 5, 138 - i * 2, energyGlow);
+                    }
+                    // Alien third eye
+                    SetRect(px, s, 90, 180, 12, 8, energy);
+                    SetRect(px, s, 94, 182, 4, 4, energyGlow);
+                    break;
+
+                case 9: // Transcendent - pure light wings, ethereal
+                    Color light = new Color(1f, 1f, 1f, 0.90f);
+                    Color aura = new Color(0.95f, 0.95f, 1.00f);
+                    // Glowing wing edges
+                    SetRect(px, s, 14, 138, 50, 4, light);
+                    SetRect(px, s, 130, 138, 50, 4, light);
+                    // Halo above head
+                    SetRect(px, s, 78, 190, 36, 2, light);
+                    // Ethereal body glow
+                    SetRect(px, s, 70, 60, 4, 80, aura);
+                    SetRect(px, s, 118, 60, 4, 80, aura);
+                    break;
+            }
         }
 
         #endregion
@@ -923,12 +1580,20 @@ namespace SixteenBit.Gameplay
 
         public static Sprite GetProjectileSprite()
         {
-            return GetProjectileSprite(WeaponTier.Starting);
+            return GetProjectileSprite(WeaponTier.Starting, 0);
         }
 
         public static Sprite GetProjectileSprite(WeaponTier tier)
         {
-            string key = $"projectile_{tier}";
+            return GetProjectileSprite(tier, 0);
+        }
+
+        /// <summary>
+        /// Get projectile sprite with tier and epoch-specific styling.
+        /// </summary>
+        public static Sprite GetProjectileSprite(WeaponTier tier, int epoch)
+        {
+            string key = $"projectile_{tier}_e{epoch}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 32;
@@ -936,70 +1601,38 @@ namespace SixteenBit.Gameplay
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
-            // Tier-specific color palettes
+            // Get epoch-specific colors, blended with tier
+            var (epochBright, epochDim, epochGlow) = GetEpochProjectileColors(epoch);
+
+            // Tier-specific color palettes, tinted by epoch
             Color bright, core, dim, glow, outer;
             switch (tier)
             {
                 case WeaponTier.Heavy:
-                    bright = new Color(1f, 0.30f, 0.15f);
+                    bright = BlendColors(new Color(1f, 0.30f, 0.15f), epochBright, 0.3f);
                     core   = new Color(1f, 0.85f, 0.70f);
-                    dim    = new Color(0.70f, 0.10f, 0.05f);
-                    glow   = new Color(1f, 0.50f, 0.10f);
-                    outer  = new Color(0.50f, 0.05f, 0.02f);
+                    dim    = BlendColors(new Color(0.70f, 0.10f, 0.05f), epochDim, 0.3f);
+                    glow   = BlendColors(new Color(1f, 0.50f, 0.10f), epochGlow, 0.3f);
+                    outer  = Darken(dim, 0.60f);
                     break;
                 case WeaponTier.Medium:
-                    bright = new Color(0.20f, 1f, 0.50f);
+                    bright = BlendColors(new Color(0.20f, 1f, 0.50f), epochBright, 0.3f);
                     core   = new Color(0.80f, 1f, 0.90f);
-                    dim    = new Color(0.05f, 0.70f, 0.20f);
-                    glow   = new Color(0.30f, 1f, 0.60f);
-                    outer  = new Color(0.02f, 0.50f, 0.10f);
+                    dim    = BlendColors(new Color(0.05f, 0.70f, 0.20f), epochDim, 0.3f);
+                    glow   = BlendColors(new Color(0.30f, 1f, 0.60f), epochGlow, 0.3f);
+                    outer  = Darken(dim, 0.60f);
                     break;
                 default: // Starting
-                    bright = new Color(1f, 1f, 0.50f);
+                    bright = BlendColors(new Color(1f, 1f, 0.50f), epochBright, 0.3f);
                     core   = new Color(1f, 1f, 0.90f);
-                    dim    = new Color(0.80f, 0.70f, 0.10f);
-                    glow   = new Color(1f, 0.95f, 0.30f);
-                    outer  = new Color(0.60f, 0.50f, 0.05f);
+                    dim    = BlendColors(new Color(0.80f, 0.70f, 0.10f), epochDim, 0.3f);
+                    glow   = BlendColors(new Color(1f, 0.95f, 0.30f), epochGlow, 0.3f);
+                    outer  = Darken(dim, 0.60f);
                     break;
             }
 
-            // Diamond bolt shape (native 32x32)
-            SetRect(px, size, 13, 2, 6, 4, outer);
-            SetRect(px, size, 10, 6, 12, 4, dim);
-            SetRect(px, size, 7, 10, 18, 4, bright);
-            SetRect(px, size, 5, 14, 22, 4, bright);
-            SetRect(px, size, 7, 18, 18, 4, bright);
-            SetRect(px, size, 10, 22, 12, 4, dim);
-            SetRect(px, size, 13, 26, 6, 4, outer);
-
-            // Center hot core — larger for higher tiers
-            if (tier == WeaponTier.Heavy)
-            {
-                SetRect(px, size, 9, 11, 14, 10, core);
-                SetRect(px, size, 11, 10, 10, 12, core);
-            }
-            else if (tier == WeaponTier.Medium)
-            {
-                SetRect(px, size, 10, 12, 12, 8, core);
-                SetRect(px, size, 12, 11, 8, 10, core);
-            }
-            else
-            {
-                SetRect(px, size, 11, 13, 10, 6, core);
-                SetRect(px, size, 13, 12, 6, 8, core);
-            }
-
-            // Inner glow ring
-            SetRect(px, size, 9, 11, 2, 10, glow);
-            SetRect(px, size, 21, 11, 2, 10, glow);
-            // Outer glow hints
-            Px(px, size, 15, 0, glow); Px(px, size, 16, 0, glow);
-            Px(px, size, 15, 31, glow); Px(px, size, 16, 31, glow);
-            Px(px, size, 0, 15, glow); Px(px, size, 0, 16, glow);
-            Px(px, size, 31, 15, glow); Px(px, size, 31, 16, glow);
-            // Corner sparkle
-            Px(px, size, 3, 12, dim); Px(px, size, 28, 12, dim);
-            Px(px, size, 3, 19, dim); Px(px, size, 28, 19, dim);
+            // Paint epoch-specific projectile shape
+            PaintEpochProjectile(px, size, epoch, tier, bright, core, dim, glow, outer);
 
             tex.SetPixels(px);
             tex.Apply();
@@ -1007,6 +1640,196 @@ namespace SixteenBit.Gameplay
             sprite.name = key;
             _cache[key] = sprite;
             return sprite;
+        }
+
+        private static Color BlendColors(Color a, Color b, float t)
+        {
+            return new Color(
+                a.r + (b.r - a.r) * t,
+                a.g + (b.g - a.g) * t,
+                a.b + (b.b - a.b) * t,
+                a.a);
+        }
+
+        private static (Color bright, Color dim, Color glow) GetEpochProjectileColors(int epoch)
+        {
+            return epoch switch
+            {
+                0 => (new Color(0.85f, 0.70f, 0.45f), new Color(0.55f, 0.40f, 0.25f), new Color(1f, 0.85f, 0.50f)), // Stone - earthy
+                1 => (new Color(0.90f, 0.65f, 0.20f), new Color(0.70f, 0.45f, 0.10f), new Color(1f, 0.80f, 0.30f)), // Bronze - golden
+                2 => (new Color(0.85f, 0.25f, 0.20f), new Color(0.60f, 0.15f, 0.10f), new Color(1f, 0.40f, 0.30f)), // Classical - red
+                3 => (new Color(0.70f, 0.70f, 0.75f), new Color(0.40f, 0.40f, 0.45f), new Color(0.90f, 0.90f, 1f)),  // Medieval - silver
+                4 => (new Color(0.80f, 0.50f, 0.70f), new Color(0.50f, 0.25f, 0.45f), new Color(1f, 0.70f, 0.90f)), // Renaissance - purple
+                5 => (new Color(0.80f, 0.55f, 0.20f), new Color(0.50f, 0.35f, 0.15f), new Color(1f, 0.70f, 0.30f)), // Industrial - brass
+                6 => (new Color(0.40f, 0.80f, 0.40f), new Color(0.20f, 0.50f, 0.20f), new Color(0.50f, 1f, 0.50f)), // Modern - tracer green
+                7 => (new Color(0.00f, 0.90f, 0.80f), new Color(0.00f, 0.50f, 0.45f), new Color(0.30f, 1f, 0.95f)), // Digital - cyan
+                8 => (new Color(0.70f, 0.20f, 1.00f), new Color(0.40f, 0.10f, 0.60f), new Color(0.85f, 0.50f, 1f)), // Spacefaring - purple plasma
+                9 => (new Color(1.00f, 1.00f, 1.00f), new Color(0.80f, 0.80f, 0.90f), new Color(1f, 1f, 1f)),       // Transcendent - pure white
+                _ => (new Color(1f, 1f, 0.50f), new Color(0.80f, 0.70f, 0.10f), new Color(1f, 0.95f, 0.30f)),
+            };
+        }
+
+        private static void PaintEpochProjectile(Color[] px, int size, int epoch, WeaponTier tier,
+            Color bright, Color core, Color dim, Color glow, Color outer)
+        {
+            switch (epoch)
+            {
+                case 0: // Stone Age - rough rock shape
+                    // Irregular stone shape
+                    SetRect(px, size, 12, 4, 8, 4, outer);
+                    SetRect(px, size, 8, 8, 16, 4, dim);
+                    SetRect(px, size, 6, 12, 20, 8, bright);
+                    SetRect(px, size, 8, 20, 16, 4, dim);
+                    SetRect(px, size, 12, 24, 8, 4, outer);
+                    // Rough edges
+                    Px(px, size, 5, 14, dim); Px(px, size, 26, 14, dim);
+                    Px(px, size, 7, 10, outer); Px(px, size, 24, 18, outer);
+                    // Center
+                    SetRect(px, size, 12, 14, 8, 4, core);
+                    break;
+
+                case 1: // Bronze Age - sun disk
+                    // Circular sun shape
+                    SetRect(px, size, 12, 4, 8, 4, glow);
+                    SetRect(px, size, 8, 8, 16, 4, bright);
+                    SetRect(px, size, 6, 12, 20, 8, bright);
+                    SetRect(px, size, 8, 20, 16, 4, bright);
+                    SetRect(px, size, 12, 24, 8, 4, glow);
+                    // Sun rays
+                    Px(px, size, 15, 0, glow); Px(px, size, 16, 0, glow);
+                    Px(px, size, 15, 31, glow); Px(px, size, 16, 31, glow);
+                    Px(px, size, 0, 15, glow); Px(px, size, 31, 15, glow);
+                    // Core
+                    SetRect(px, size, 11, 13, 10, 6, core);
+                    break;
+
+                case 2: // Classical - arrow/spear point
+                    // Sharp spear shape
+                    SetRect(px, size, 14, 2, 4, 6, outer);
+                    SetRect(px, size, 12, 8, 8, 4, dim);
+                    SetRect(px, size, 10, 12, 12, 4, bright);
+                    SetRect(px, size, 8, 16, 16, 4, bright);
+                    SetRect(px, size, 10, 20, 12, 4, dim);
+                    SetRect(px, size, 12, 24, 8, 4, outer);
+                    SetRect(px, size, 14, 28, 4, 2, outer);
+                    // Point highlight
+                    SetRect(px, size, 14, 4, 4, 4, glow);
+                    SetRect(px, size, 12, 14, 8, 4, core);
+                    break;
+
+                case 3: // Medieval - crossbow bolt
+                    // Long thin bolt shape
+                    SetRect(px, size, 14, 0, 4, 8, outer);
+                    SetRect(px, size, 12, 8, 8, 4, dim);
+                    SetRect(px, size, 10, 12, 12, 8, bright);
+                    SetRect(px, size, 8, 20, 16, 4, bright);
+                    SetRect(px, size, 6, 24, 20, 4, dim);
+                    SetRect(px, size, 4, 28, 24, 4, outer);
+                    // Fletching
+                    Px(px, size, 6, 26, glow); Px(px, size, 25, 26, glow);
+                    SetRect(px, size, 13, 14, 6, 4, core);
+                    break;
+
+                case 4: // Renaissance - ornate bullet
+                    // Rounded ornate shape
+                    SetRect(px, size, 13, 4, 6, 4, glow);
+                    SetRect(px, size, 10, 8, 12, 4, bright);
+                    SetRect(px, size, 8, 12, 16, 8, bright);
+                    SetRect(px, size, 10, 20, 12, 4, bright);
+                    SetRect(px, size, 13, 24, 6, 4, glow);
+                    // Decorative swirl
+                    Px(px, size, 9, 14, glow); Px(px, size, 22, 14, glow);
+                    Px(px, size, 10, 18, glow); Px(px, size, 21, 18, glow);
+                    SetRect(px, size, 12, 13, 8, 6, core);
+                    break;
+
+                case 5: // Industrial - cannonball/bullet
+                    // Round cannonball shape
+                    SetRect(px, size, 12, 6, 8, 4, outer);
+                    SetRect(px, size, 8, 10, 16, 4, dim);
+                    SetRect(px, size, 6, 14, 20, 4, bright);
+                    SetRect(px, size, 8, 18, 16, 4, dim);
+                    SetRect(px, size, 12, 22, 8, 4, outer);
+                    // Hot glow
+                    SetRect(px, size, 11, 13, 10, 6, core);
+                    // Spark trail
+                    Px(px, size, 8, 24, glow); Px(px, size, 23, 24, glow);
+                    break;
+
+                case 6: // Modern - tracer round
+                    // Sleek bullet shape
+                    SetRect(px, size, 14, 2, 4, 6, glow);
+                    SetRect(px, size, 12, 8, 8, 4, bright);
+                    SetRect(px, size, 10, 12, 12, 8, bright);
+                    SetRect(px, size, 12, 20, 8, 8, dim);
+                    SetRect(px, size, 14, 28, 4, 4, outer);
+                    // Tracer glow trail
+                    SetRect(px, size, 13, 22, 6, 8, glow);
+                    SetRect(px, size, 14, 14, 4, 4, core);
+                    break;
+
+                case 7: // Digital - data packet
+                    // Square data block
+                    SetRect(px, size, 8, 8, 16, 16, bright);
+                    SetRect(px, size, 10, 10, 12, 12, dim);
+                    // Binary pattern
+                    Px(px, size, 12, 12, glow); Px(px, size, 18, 12, glow);
+                    Px(px, size, 15, 15, core); Px(px, size, 16, 15, core);
+                    Px(px, size, 12, 18, glow); Px(px, size, 18, 18, glow);
+                    // Data trails
+                    SetRect(px, size, 15, 4, 2, 4, glow);
+                    SetRect(px, size, 15, 24, 2, 4, glow);
+                    SetRect(px, size, 4, 15, 4, 2, glow);
+                    SetRect(px, size, 24, 15, 4, 2, glow);
+                    break;
+
+                case 8: // Spacefaring - plasma bolt
+                    // Elongated plasma shape
+                    SetRect(px, size, 14, 2, 4, 4, outer);
+                    SetRect(px, size, 12, 6, 8, 4, dim);
+                    SetRect(px, size, 10, 10, 12, 6, bright);
+                    SetRect(px, size, 8, 16, 16, 4, bright);
+                    SetRect(px, size, 10, 20, 12, 4, dim);
+                    SetRect(px, size, 12, 24, 8, 4, outer);
+                    // Plasma glow
+                    SetRect(px, size, 11, 12, 10, 8, glow);
+                    SetRect(px, size, 13, 14, 6, 4, core);
+                    // Energy corona
+                    Px(px, size, 6, 16, glow); Px(px, size, 25, 16, glow);
+                    break;
+
+                case 9: // Transcendent - pure light orb
+                    // Perfect circle of light
+                    SetRect(px, size, 12, 6, 8, 4, bright);
+                    SetRect(px, size, 8, 10, 16, 4, bright);
+                    SetRect(px, size, 6, 14, 20, 4, core);
+                    SetRect(px, size, 8, 18, 16, 4, bright);
+                    SetRect(px, size, 12, 22, 8, 4, bright);
+                    // Inner pure core
+                    SetRect(px, size, 10, 12, 12, 8, core);
+                    SetRect(px, size, 12, 10, 8, 12, core);
+                    // Outer radiance
+                    Px(px, size, 15, 0, glow); Px(px, size, 16, 0, glow);
+                    Px(px, size, 15, 31, glow); Px(px, size, 16, 31, glow);
+                    Px(px, size, 0, 15, glow); Px(px, size, 0, 16, glow);
+                    Px(px, size, 31, 15, glow); Px(px, size, 31, 16, glow);
+                    // Diagonal sparkles
+                    Px(px, size, 4, 4, glow); Px(px, size, 27, 4, glow);
+                    Px(px, size, 4, 27, glow); Px(px, size, 27, 27, glow);
+                    break;
+
+                default:
+                    // Default diamond bolt
+                    SetRect(px, size, 13, 2, 6, 4, outer);
+                    SetRect(px, size, 10, 6, 12, 4, dim);
+                    SetRect(px, size, 7, 10, 18, 4, bright);
+                    SetRect(px, size, 5, 14, 22, 4, bright);
+                    SetRect(px, size, 7, 18, 18, 4, bright);
+                    SetRect(px, size, 10, 22, 12, 4, dim);
+                    SetRect(px, size, 13, 26, 6, 4, outer);
+                    SetRect(px, size, 11, 13, 10, 6, core);
+                    break;
+            }
         }
 
         public static Sprite GetWeaponPickupSprite(WeaponTier tier)

@@ -6,9 +6,8 @@ namespace SixteenBit.Tests
 {
     /// <summary>
     /// Test suite for the LevelID encoder/decoder.
-    /// Updated for the 10-era system (era 0-9) and difficulty 0-3.
-    /// Validates round-trip encoding, parsing edge cases, format compliance,
-    /// era/difficulty names, equality, and constructor validation.
+    /// Updated for epoch-based system (epoch 0-9) with seed-derived parameters.
+    /// Format: E-XXXXXXXX where E is epoch (0-9) and XXXXXXXX is 8 base32 characters.
     /// </summary>
     public static class LevelIDTests
     {
@@ -34,176 +33,201 @@ namespace SixteenBit.Tests
 
             messages.Add("=== LevelID Tests ===");
 
-            // Test 1: Round-trip encode/decode across all 10 eras
+            // Test 1: Round-trip encode/decode across all 10 epochs
             {
                 bool allPassed = true;
-                for (int era = 0; era <= LevelID.MAX_ERA; era++)
+                for (int epoch = 0; epoch <= LevelID.MAX_EPOCH; epoch++)
                 {
-                    int difficulty = era % (LevelID.MAX_DIFFICULTY + 1);
-                    ulong seed = 0xA1B2C3D4E5F6A7B8UL + (ulong)era;
-                    var id = LevelID.Create(difficulty, era, seed);
-                    string encoded = id.Encode();
+                    ulong seed = 0xA1B2C3D4E5UL + (ulong)epoch;
+                    var id = LevelID.Create(epoch, seed);
+                    string encoded = id.ToCode();
                     bool ok = LevelID.TryParse(encoded, out LevelID decoded);
 
                     if (!ok ||
-                        decoded.Version != id.Version ||
-                        decoded.Difficulty != id.Difficulty ||
-                        decoded.Era != id.Era ||
+                        decoded.Epoch != id.Epoch ||
                         decoded.Seed != id.Seed)
                     {
                         allPassed = false;
-                        messages.Add($"    DETAIL: Round-trip failed for era={era}, difficulty={difficulty}");
+                        messages.Add($"    DETAIL: Round-trip failed for epoch={epoch}");
                     }
                 }
-                Assert(allPassed, "Round-trip: encode/decode succeeds for all 10 eras (0-9)");
+                Assert(allPassed, "Round-trip: encode/decode succeeds for all 10 epochs (0-9)");
             }
 
-            // Test 2: Encode format compliance
+            // Test 2: Code format compliance (E-XXXXXXXX)
             {
-                var id = new LevelID(1, 3, 5, 0x0000000000000001UL);
-                string encoded = id.Encode();
-                Assert(encoded == "LVLID_1_3_5_0000000000000001",
-                    $"Format: '{encoded}' (expected 'LVLID_1_3_5_0000000000000001')");
+                var id = LevelID.Create(3, 0x0000000001UL);
+                string code = id.ToCode();
+                Assert(code.Length == 10 && code[1] == '-' && code[0] == '3',
+                    $"Format: '{code}' starts with epoch and hyphen");
             }
 
-            // Test 3: Encode preserves leading zeros in seed
+            // Test 3: Seed masked to 40 bits
             {
-                var id = LevelID.Create(0, 0, 0x000000000000ABCDUL);
-                string encoded = id.Encode();
-                Assert(encoded.EndsWith("000000000000ABCD"),
-                    $"Leading zeros preserved: '{encoded}'");
+                var id = LevelID.Create(0, 0xFFFFFFFFFFFFFFFFUL);
+                Assert(id.Seed == 0xFFFFFFFFFFUL, "Seed masked to 40 bits (max value)");
             }
 
-            // Test 4: Parse valid ID with era values
+            // Test 4: Parse valid code
             {
-                bool ok = LevelID.TryParse("LVLID_1_3_7_FFFFFFFFFFFFFFFF", out LevelID result);
-                Assert(ok, "Parse valid ID with max seed and era=7");
-                Assert(result.Difficulty == 3, "Parsed difficulty = 3 (Extreme)");
-                Assert(result.Era == 7, "Parsed era = 7 (Digital)");
-                Assert(result.Seed == ulong.MaxValue, "Parsed seed = max ulong");
+                // Create a known ID and parse its code
+                var original = LevelID.Create(7, 0x123456789AUL);
+                string code = original.ToCode();
+                bool ok = LevelID.TryParse(code, out LevelID result);
+                Assert(ok, $"Parse valid code: {code}");
+                Assert(result.Epoch == 7, "Parsed epoch = 7 (Digital)");
+                Assert(result.Seed == original.Seed, "Parsed seed matches original");
             }
 
-            // Test 5: Parse valid IDs at era boundaries
+            // Test 5: Parse valid codes at epoch boundaries
             {
-                bool okEra0 = LevelID.TryParse("LVLID_1_0_0_0000000000000001", out LevelID r0);
-                bool okEra9 = LevelID.TryParse("LVLID_1_0_9_0000000000000001", out LevelID r9);
-                Assert(okEra0 && r0.Era == 0, "Parse valid ID with era=0 (minimum)");
-                Assert(okEra9 && r9.Era == 9, "Parse valid ID with era=9 (maximum)");
+                var id0 = LevelID.Create(0, 1);
+                var id9 = LevelID.Create(9, 1);
+                bool okEpoch0 = LevelID.TryParse(id0.ToCode(), out LevelID r0);
+                bool okEpoch9 = LevelID.TryParse(id9.ToCode(), out LevelID r9);
+                Assert(okEpoch0 && r0.Epoch == 0, "Parse valid code with epoch=0 (minimum)");
+                Assert(okEpoch9 && r9.Epoch == 9, "Parse valid code with epoch=9 (maximum)");
             }
 
-            // Test 6: Reject invalid prefix
+            // Test 6: Reject invalid format
             {
-                bool ok = LevelID.TryParse("WRONG_1_2_0_A1B2C3D4E5F6A7B8", out _);
-                Assert(!ok, "Rejects invalid prefix");
+                bool ok1 = LevelID.TryParse("INVALID", out _);
+                bool ok2 = LevelID.TryParse("A-12345678", out _); // Invalid epoch character
+                Assert(!ok1 && !ok2, "Rejects invalid format");
             }
 
-            // Test 7: Reject missing components
+            // Test 7: Reject incomplete/empty/null input
             {
-                bool ok1 = LevelID.TryParse("LVLID_1_2", out _);
-                bool ok2 = LevelID.TryParse("LVLID_1_2_0", out _);
-                bool ok3 = LevelID.TryParse("", out _);
-                bool ok4 = LevelID.TryParse(null, out _);
-                Assert(!ok1 && !ok2 && !ok3 && !ok4, "Rejects incomplete/empty/null input");
+                bool ok1 = LevelID.TryParse("3-ABC", out _); // Too short
+                bool ok2 = LevelID.TryParse("", out _);
+                bool ok3 = LevelID.TryParse(null, out _);
+                Assert(!ok1 && !ok2 && !ok3, "Rejects incomplete/empty/null input");
             }
 
-            // Test 8: Reject out-of-range difficulty (> 3)
+            // Test 8: Reject invalid base32 characters
             {
-                bool ok = LevelID.TryParse("LVLID_1_4_0_A1B2C3D4E5F6A7B8", out _);
-                Assert(!ok, "Rejects difficulty 4 (max is 3)");
+                bool ok = LevelID.TryParse("3-IIIIIIII", out _); // 'I' is not in base32 alphabet
+                Assert(!ok, "Rejects invalid base32 characters (I, O, Y, Z not allowed)");
             }
 
-            // Test 9: Reject out-of-range era (> 9)
+            // Test 9: EpochName returns correct names for all 10 epochs
             {
-                bool ok10 = LevelID.TryParse("LVLID_1_2_10_A1B2C3D4E5F6A7B8", out _);
-                Assert(!ok10, "Rejects era > 9");
-            }
-
-            // Test 10: Reject invalid hex seed
-            {
-                bool ok = LevelID.TryParse("LVLID_1_2_0_ZZZZZZZZZZZZZZZZ", out _);
-                Assert(!ok, "Rejects non-hex seed");
-            }
-
-            // Test 11: EraName returns correct names for all 10 eras
-            {
-                string[] expectedEraNames = {
+                string[] expectedEpochNames = {
                     "Stone Age", "Bronze Age", "Classical", "Medieval", "Renaissance",
                     "Industrial", "Modern", "Digital", "Spacefaring", "Transcendent"
                 };
 
                 bool allCorrect = true;
-                for (int era = 0; era < expectedEraNames.Length; era++)
+                for (int epoch = 0; epoch < expectedEpochNames.Length; epoch++)
                 {
-                    string actual = LevelID.Create(0, era, 1).EraName;
-                    if (actual != expectedEraNames[era])
+                    string actual = LevelID.Create(epoch, 1).EpochName;
+                    if (actual != expectedEpochNames[epoch])
                     {
                         allCorrect = false;
-                        messages.Add($"    DETAIL: EraName mismatch for era={era}: got '{actual}', expected '{expectedEraNames[era]}'");
+                        messages.Add($"    DETAIL: EpochName mismatch for epoch={epoch}: got '{actual}', expected '{expectedEpochNames[epoch]}'");
                     }
                 }
-                Assert(allCorrect, "EraName: all 10 eras return correct names");
+                Assert(allCorrect, "EpochName: all 10 epochs return correct names");
             }
 
-            // Test 12: DifficultyName returns correct names
+            // Test 10: DerivedIntensity is in valid range (0.0-1.0)
             {
-                Assert(LevelID.Create(0, 0, 1).DifficultyName == "Easy", "DifficultyName: Easy");
-                Assert(LevelID.Create(1, 0, 1).DifficultyName == "Normal", "DifficultyName: Normal");
-                Assert(LevelID.Create(2, 0, 1).DifficultyName == "Hard", "DifficultyName: Hard");
-                Assert(LevelID.Create(3, 0, 1).DifficultyName == "Extreme", "DifficultyName: Extreme");
+                bool allValid = true;
+                for (int i = 0; i < 100; i++)
+                {
+                    var id = LevelID.GenerateRandom(i % 10);
+                    if (id.DerivedIntensity < 0f || id.DerivedIntensity > 1f)
+                    {
+                        allValid = false;
+                        messages.Add($"    DETAIL: DerivedIntensity out of range: {id.DerivedIntensity}");
+                        break;
+                    }
+                }
+                Assert(allValid, "DerivedIntensity: always in range [0.0, 1.0]");
             }
 
-            // Test 13: Equality comparison
+            // Test 11: DerivedLengthMod is in valid range (0.8-1.2)
             {
-                var id1 = LevelID.Create(2, 5, 12345UL);
-                var id2 = LevelID.Create(2, 5, 12345UL);
-                var id3 = LevelID.Create(2, 5, 12346UL);
-                var id4 = LevelID.Create(2, 6, 12345UL);
+                bool allValid = true;
+                for (int i = 0; i < 100; i++)
+                {
+                    var id = LevelID.GenerateRandom(i % 10);
+                    if (id.DerivedLengthMod < 0.8f || id.DerivedLengthMod > 1.2f)
+                    {
+                        allValid = false;
+                        messages.Add($"    DETAIL: DerivedLengthMod out of range: {id.DerivedLengthMod}");
+                        break;
+                    }
+                }
+                Assert(allValid, "DerivedLengthMod: always in range [0.8, 1.2]");
+            }
+
+            // Test 12: Equality comparison
+            {
+                var id1 = LevelID.Create(5, 12345UL);
+                var id2 = LevelID.Create(5, 12345UL);
+                var id3 = LevelID.Create(5, 12346UL);
+                var id4 = LevelID.Create(6, 12345UL);
 
                 Assert(id1 == id2, "Equal IDs compare as equal");
                 Assert(id1 != id3, "Different seeds compare as not equal");
-                Assert(id1 != id4, "Different eras compare as not equal");
+                Assert(id1 != id4, "Different epochs compare as not equal");
                 Assert(id1.GetHashCode() == id2.GetHashCode(), "Equal IDs have equal hash codes");
             }
 
-            // Test 14: GenerateNew produces unique IDs
+            // Test 13: GenerateRandom produces unique IDs
             {
                 var seen = new HashSet<ulong>();
                 bool allUnique = true;
                 for (int i = 0; i < 100; i++)
                 {
-                    int era = i % (LevelID.MAX_ERA + 1);
-                    int difficulty = i % (LevelID.MAX_DIFFICULTY + 1);
-                    var id = LevelID.GenerateNew(difficulty, era);
+                    int epoch = i % (LevelID.MAX_EPOCH + 1);
+                    var id = LevelID.GenerateRandom(epoch);
                     if (!seen.Add(id.Seed))
                     {
                         allUnique = false;
                         break;
                     }
                 }
-                Assert(allUnique, "GenerateNew produces 100 unique seeds across eras");
+                Assert(allUnique, "GenerateRandom produces 100 unique seeds across epochs");
             }
 
-            // Test 15: Constructor rejects invalid values
+            // Test 14: Next() produces deterministic sequence
+            {
+                var id1 = LevelID.Create(0, 12345UL);
+                var next1 = id1.Next();
+                var next2 = id1.Next();
+                Assert(next1 == next2, "Next() is deterministic (same input = same output)");
+                Assert(next1.Epoch == 1, "Next() advances epoch by 1");
+                Assert(next1.Seed != id1.Seed, "Next() changes seed");
+            }
+
+            // Test 15: Next() wraps epoch at MAX_EPOCH
+            {
+                var id = LevelID.Create(9, 12345UL);
+                var next = id.Next();
+                Assert(next.Epoch == 0, "Next() wraps epoch from 9 to 0");
+            }
+
+            // Test 16: Constructor rejects invalid epoch
             {
                 bool threw = false;
-                try { new LevelID(1, -1, 0, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
-                Assert(threw, "Constructor rejects negative difficulty");
+                try { new LevelID(-1, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
+                Assert(threw, "Constructor rejects negative epoch");
 
                 threw = false;
-                try { new LevelID(1, 0, -1, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
-                Assert(threw, "Constructor rejects negative era");
+                try { new LevelID(10, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
+                Assert(threw, "Constructor rejects epoch > MAX_EPOCH (9)");
+            }
 
-                threw = false;
-                try { new LevelID(-1, 0, 0, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
-                Assert(threw, "Constructor rejects negative version");
-
-                threw = false;
-                try { new LevelID(1, 4, 0, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
-                Assert(threw, "Constructor rejects difficulty > MAX_DIFFICULTY (3)");
-
-                threw = false;
-                try { new LevelID(1, 0, 10, 1); } catch (ArgumentOutOfRangeException) { threw = true; }
-                Assert(threw, "Constructor rejects era > MAX_ERA (9)");
+            // Test 17: Case insensitive parsing
+            {
+                var id = LevelID.Create(3, 0xABCDEF1234UL);
+                string upperCode = id.ToCode();
+                string lowerCode = upperCode.ToLowerInvariant();
+                bool okUpper = LevelID.TryParse(upperCode, out LevelID r1);
+                bool okLower = LevelID.TryParse(lowerCode, out LevelID r2);
+                Assert(okUpper && okLower && r1 == r2, "Parsing is case insensitive");
             }
 
             messages.Add($"\nResults: {passed} passed, {failed} failed");

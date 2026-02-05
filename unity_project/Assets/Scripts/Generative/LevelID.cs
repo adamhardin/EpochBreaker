@@ -1,109 +1,178 @@
 using System;
-using System.Globalization;
+using System.Text;
 
 namespace SixteenBit.Generative
 {
     /// <summary>
-    /// Encodes and decodes Level IDs in the format: LVLID_[VERSION]_[DIFFICULTY]_[ERA]_[SEED64]
-    /// Example: LVLID_1_2_5_A1B2C3D4E5F6A7B8
+    /// Encodes and decodes Level IDs as shareable codes.
+    /// Format: E-XXXXXXXX where E is epoch (0-9) and XXXXXXXX is 8 base32 characters.
+    /// Example: 3-K7XM2P9A (Medieval epoch, seed K7XM2P9A)
     ///
-    /// Components:
-    ///   VERSION:    Format version for backwards compatibility (0-255)
-    ///   DIFFICULTY: 0=Easy, 1=Normal, 2=Hard, 3=Extreme (0-3)
-    ///   ERA:        Historical era 0-9 determining tileset, materials, enemies
-    ///   SEED64:     64-bit hex seed for deterministic generation
+    /// Base32 alphabet: 0-9, A-V (32 characters = 5 bits each)
+    /// 8 characters = 40 bits = ~1 trillion unique levels per epoch
+    ///
+    /// The same code always produces the exact same level.
     /// </summary>
     public readonly struct LevelID : IEquatable<LevelID>
     {
-        public const string PREFIX = "LVLID";
-        public const int CURRENT_VERSION = 1;
-        public const int MAX_DIFFICULTY = 3;
-        public const int MAX_ERA = 9;
+        public const int MAX_EPOCH = 9;
+        private const string BASE32_CHARS = "0123456789ABCDEFGHJKLMNPQRSTUVWX";
 
-        public readonly int Version;
-        public readonly int Difficulty;
-        public readonly int Era;
+        public readonly int Epoch;
         public readonly ulong Seed;
 
-        public LevelID(int version, int difficulty, int era, ulong seed)
+        public LevelID(int epoch, ulong seed)
         {
-            if (version < 0 || version > 255)
-                throw new ArgumentOutOfRangeException(nameof(version), "Version must be 0-255");
-            if (difficulty < 0 || difficulty > MAX_DIFFICULTY)
-                throw new ArgumentOutOfRangeException(nameof(difficulty), $"Difficulty must be 0-{MAX_DIFFICULTY}");
-            if (era < 0 || era > MAX_ERA)
-                throw new ArgumentOutOfRangeException(nameof(era), $"Era must be 0-{MAX_ERA}");
+            if (epoch < 0 || epoch > MAX_EPOCH)
+                throw new ArgumentOutOfRangeException(nameof(epoch), $"Epoch must be 0-{MAX_EPOCH}");
 
-            Version = version;
-            Difficulty = difficulty;
-            Era = era;
+            Epoch = epoch;
             Seed = seed;
         }
 
-        public static LevelID Create(int difficulty, int era, ulong seed)
-        {
-            return new LevelID(CURRENT_VERSION, difficulty, era, seed);
-        }
-
         private static long _seedCounter = 0;
-        public static LevelID GenerateNew(int difficulty, int era)
+
+        /// <summary>
+        /// Generate a new random level code for the given epoch.
+        /// </summary>
+        public static LevelID GenerateRandom(int epoch)
         {
+            if (epoch < 0 || epoch > MAX_EPOCH)
+                epoch = 0;
+
             ulong timePart = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             ulong counterPart = (ulong)System.Threading.Interlocked.Increment(ref _seedCounter);
             ulong seed = timePart ^ (counterPart << 32) ^ 0xDEADBEEFCAFEBABEUL;
 
+            // Mix the bits
             seed ^= seed << 13;
             seed ^= seed >> 7;
             seed ^= seed << 17;
             if (seed == 0) seed = 1;
 
-            return Create(difficulty, era, seed);
+            // Mask to 40 bits (8 base32 chars)
+            seed &= 0xFFFFFFFFFFUL;
+
+            return new LevelID(epoch, seed);
         }
 
-        public string Encode()
+        /// <summary>
+        /// Generate a completely random level (random epoch + random seed).
+        /// </summary>
+        public static LevelID GenerateRandom()
         {
-            return string.Format("{0}_{1}_{2}_{3}_{4:X16}",
-                PREFIX, Version, Difficulty, Era, Seed);
+            ulong timePart = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            int epoch = (int)(timePart % 10);
+            return GenerateRandom(epoch);
         }
 
-        public static bool TryParse(string input, out LevelID result)
+        /// <summary>
+        /// Generate the next level code derived from this one.
+        /// Creates a deterministic sequence of levels.
+        /// </summary>
+        public LevelID Next()
+        {
+            // Mix current seed to get next
+            ulong next = Seed;
+            next ^= next << 13;
+            next ^= next >> 7;
+            next ^= next << 17;
+            if (next == 0) next = 1;
+
+            // Mask to 40 bits
+            next &= 0xFFFFFFFFFFUL;
+
+            // Progress through epochs (wrap around)
+            int nextEpoch = (Epoch + 1) % (MAX_EPOCH + 1);
+
+            return new LevelID(nextEpoch, next);
+        }
+
+        /// <summary>
+        /// Encode to shareable code format: E-XXXXXXXX
+        /// </summary>
+        public string ToCode()
+        {
+            var sb = new StringBuilder(11);
+            sb.Append(Epoch);
+            sb.Append('-');
+
+            // Encode 40-bit seed as 8 base32 characters
+            ulong val = Seed;
+            char[] chars = new char[8];
+            for (int i = 7; i >= 0; i--)
+            {
+                chars[i] = BASE32_CHARS[(int)(val & 0x1F)];
+                val >>= 5;
+            }
+            sb.Append(chars);
+
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Try to parse a code string into a LevelID.
+        /// </summary>
+        public static bool TryParse(string code, out LevelID result)
         {
             result = default;
 
-            if (string.IsNullOrWhiteSpace(input))
+            if (string.IsNullOrWhiteSpace(code))
                 return false;
 
-            string[] parts = input.Trim().Split('_');
-            if (parts.Length != 5)
+            code = code.Trim().ToUpperInvariant();
+
+            // Remove any spaces or extra hyphens
+            code = code.Replace(" ", "").Replace("--", "-");
+
+            // Expected format: E-XXXXXXXX (length 10)
+            if (code.Length != 10)
                 return false;
 
-            if (parts[0] != PREFIX)
+            if (code[1] != '-')
                 return false;
 
-            if (!int.TryParse(parts[1], out int version) || version < 0 || version > 255)
+            // Parse epoch
+            if (!int.TryParse(code.Substring(0, 1), out int epoch) || epoch < 0 || epoch > MAX_EPOCH)
                 return false;
 
-            if (!int.TryParse(parts[2], out int difficulty) || difficulty < 0 || difficulty > MAX_DIFFICULTY)
-                return false;
+            // Parse seed from base32
+            string seedStr = code.Substring(2, 8);
+            ulong seed = 0;
+            for (int i = 0; i < 8; i++)
+            {
+                int idx = BASE32_CHARS.IndexOf(seedStr[i]);
+                if (idx < 0)
+                    return false;
+                seed = (seed << 5) | (uint)idx;
+            }
 
-            if (!int.TryParse(parts[3], out int era) || era < 0 || era > MAX_ERA)
-                return false;
-
-            if (!ulong.TryParse(parts[4], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong seed))
-                return false;
-
-            result = new LevelID(version, difficulty, era, seed);
+            result = new LevelID(epoch, seed);
             return true;
         }
 
-        public static LevelID Parse(string input)
+        /// <summary>
+        /// Parse a code string, throwing on invalid format.
+        /// </summary>
+        public static LevelID Parse(string code)
         {
-            if (!TryParse(input, out LevelID result))
-                throw new FormatException($"Invalid Level ID format: '{input}'. Expected: {PREFIX}_VERSION_DIFFICULTY_ERA_SEED64HEX");
+            if (!TryParse(code, out LevelID result))
+                throw new FormatException($"Invalid level code: '{code}'. Expected format: E-XXXXXXXX (e.g., 3-K7XM2P9A)");
             return result;
         }
 
-        public string EraName => Era switch
+        /// <summary>
+        /// Create a LevelID from a specific epoch and seed.
+        /// </summary>
+        public static LevelID Create(int epoch, ulong seed)
+        {
+            return new LevelID(epoch, seed & 0xFFFFFFFFFFUL);
+        }
+
+        /// <summary>
+        /// Get the display name for the current epoch.
+        /// </summary>
+        public string EpochName => Epoch switch
         {
             0 => "Stone Age",
             1 => "Bronze Age",
@@ -118,20 +187,53 @@ namespace SixteenBit.Generative
             _ => "Unknown"
         };
 
-        public string DifficultyName => Difficulty switch
+        /// <summary>
+        /// Get the short epoch prefix (single character).
+        /// </summary>
+        public string EpochPrefix => Epoch switch
         {
-            0 => "Easy",
-            1 => "Normal",
-            2 => "Hard",
-            3 => "Extreme",
-            _ => "Unknown"
+            0 => "S",
+            1 => "B",
+            2 => "C",
+            3 => "M",
+            4 => "R",
+            5 => "I",
+            6 => "O",
+            7 => "D",
+            8 => "P",
+            9 => "T",
+            _ => "?"
         };
 
-        public override string ToString() => Encode();
-        public override int GetHashCode() => HashCode.Combine(Version, Difficulty, Era, Seed);
-        public bool Equals(LevelID other) =>
-            Version == other.Version && Difficulty == other.Difficulty &&
-            Era == other.Era && Seed == other.Seed;
+        /// <summary>
+        /// Derive a difficulty-like value (0.0-1.0) from the seed.
+        /// Higher values indicate more challenging generation parameters.
+        /// </summary>
+        public float DerivedIntensity
+        {
+            get
+            {
+                // Use lower bits of seed to derive intensity
+                uint intensityBits = (uint)(Seed & 0xFFFF);
+                return intensityBits / 65535f;
+            }
+        }
+
+        /// <summary>
+        /// Derive level length modifier from seed (0.8 to 1.2).
+        /// </summary>
+        public float DerivedLengthMod
+        {
+            get
+            {
+                uint lengthBits = (uint)((Seed >> 16) & 0xFF);
+                return 0.8f + (lengthBits / 255f) * 0.4f;
+            }
+        }
+
+        public override string ToString() => ToCode();
+        public override int GetHashCode() => HashCode.Combine(Epoch, Seed);
+        public bool Equals(LevelID other) => Epoch == other.Epoch && Seed == other.Seed;
         public override bool Equals(object obj) => obj is LevelID other && Equals(other);
         public static bool operator ==(LevelID a, LevelID b) => a.Equals(b);
         public static bool operator !=(LevelID a, LevelID b) => !a.Equals(b);

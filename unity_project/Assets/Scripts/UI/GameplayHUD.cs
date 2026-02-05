@@ -114,8 +114,8 @@ namespace SixteenBit.UI
             eraRect.anchoredPosition = new Vector2(-20, -50);
 
             var gm = Gameplay.GameManager.Instance;
-            if (gm != null && gm.CurrentLevelID.Era >= 0)
-                _eraText.text = $"{gm.CurrentLevelID.EraName} - {gm.CurrentLevelID.DifficultyName}";
+            if (gm != null && gm.CurrentLevelID.Epoch >= 0)
+                _eraText.text = $"{gm.CurrentLevelID.EpochName} [{gm.CurrentLevelID.ToCode()}]";
 
             // Pause button (top-right corner)
             CreatePauseButton(canvasGO.transform);

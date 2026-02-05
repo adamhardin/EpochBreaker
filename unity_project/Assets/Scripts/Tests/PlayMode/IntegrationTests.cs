@@ -26,7 +26,7 @@ namespace SixteenBit.Tests.PlayMode
         public void LevelGeneration_ProducesValidData()
         {
             var generator = new LevelGenerator();
-            var id = LevelID.Create(1, 3, 99999UL);
+            var id = LevelID.Create(3, 99999UL);
             var level = generator.Generate(id);
 
             Assert.IsNotNull(level);
@@ -42,7 +42,7 @@ namespace SixteenBit.Tests.PlayMode
         public void LevelGeneration_DeterministicAcrossRuns()
         {
             var generator = new LevelGenerator();
-            var id = LevelID.Create(2, 5, 42UL);
+            var id = LevelID.Create(5, 42UL);
 
             var level1 = generator.Generate(id);
             var level2 = generator.Generate(id);
@@ -54,8 +54,8 @@ namespace SixteenBit.Tests.PlayMode
         public void LevelGeneration_DifferentSeeds_DifferentLevels()
         {
             var generator = new LevelGenerator();
-            var id1 = LevelID.Create(0, 0, 111UL);
-            var id2 = LevelID.Create(0, 0, 222UL);
+            var id1 = LevelID.Create(0, 111UL);
+            var id2 = LevelID.Create(0, 222UL);
 
             var level1 = generator.Generate(id1);
             var level2 = generator.Generate(id2);
@@ -67,7 +67,7 @@ namespace SixteenBit.Tests.PlayMode
         public void LevelGeneration_HasEnemies()
         {
             var generator = new LevelGenerator();
-            var id = LevelID.Create(2, 4, 55555UL);
+            var id = LevelID.Create(4, 55555UL);
             var level = generator.Generate(id);
 
             Assert.IsNotNull(level.Enemies);
@@ -78,7 +78,7 @@ namespace SixteenBit.Tests.PlayMode
         public void LevelGeneration_HasCheckpoints()
         {
             var generator = new LevelGenerator();
-            var id = LevelID.Create(1, 2, 77777UL);
+            var id = LevelID.Create(2, 77777UL);
             var level = generator.Generate(id);
 
             Assert.IsNotNull(level.Checkpoints);

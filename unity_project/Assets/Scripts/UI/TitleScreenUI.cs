@@ -13,13 +13,13 @@ namespace SixteenBit.UI
     {
         private Canvas _canvas;
         private GameObject _levelSelectorPanel;
+        private GameObject _levelHistoryPanel;
+        private GameObject _historyContentParent;
 
-        private static readonly string[] EraNames = {
-            "Stone", "Bronze", "Classical", "Medieval", "Renaissance",
-            "Industrial", "Modern", "Digital", "Space", "Transcend"
+        private static readonly string[] EpochNames = {
+            "Stone Age", "Bronze Age", "Classical", "Medieval", "Renaissance",
+            "Industrial", "Modern", "Digital", "Spacefaring", "Transcendent"
         };
-
-        private static readonly string[] DiffNames = { "Easy", "Normal", "Hard", "Extreme" };
 
         private void Start()
         {
@@ -28,11 +28,13 @@ namespace SixteenBit.UI
 
         private void Update()
         {
-            // Close level selector with Escape
-            if (_levelSelectorPanel != null && _levelSelectorPanel.activeSelf &&
-                Input.GetKeyDown(KeyCode.Escape))
+            // Close overlays with Escape
+            if (Input.GetKeyDown(KeyCode.Escape))
             {
-                _levelSelectorPanel.SetActive(false);
+                if (_levelSelectorPanel != null && _levelSelectorPanel.activeSelf)
+                    _levelSelectorPanel.SetActive(false);
+                if (_levelHistoryPanel != null && _levelHistoryPanel.activeSelf)
+                    _levelHistoryPanel.SetActive(false);
             }
         }
 
@@ -106,6 +108,9 @@ namespace SixteenBit.UI
 
             // Level selector overlay (initially hidden)
             CreateLevelSelectorOverlay(canvasGO.transform);
+
+            // Level history overlay (initially hidden)
+            CreateLevelHistoryOverlay(canvasGO.transform);
         }
 
         private void CreateMainMenu(Transform parent)
@@ -117,8 +122,19 @@ namespace SixteenBit.UI
                     GameManager.Instance?.StartGame();
                 });
 
+            // Level History button
+            CreateMenuButton(parent, "LEVEL HISTORY", new Vector2(0, 50),
+                new Vector2(300, 50), new Color(0.35f, 0.45f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (_levelHistoryPanel != null)
+                    {
+                        RefreshHistoryContent();
+                        _levelHistoryPanel.SetActive(true);
+                    }
+                });
+
             // Level Selector button (dev)
-            CreateMenuButton(parent, "LEVEL SELECT [DEV]", new Vector2(0, 50),
+            CreateMenuButton(parent, "LEVEL SELECT [DEV]", new Vector2(0, -20),
                 new Vector2(300, 50), new Color(0.4f, 0.35f, 0.5f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     if (_levelSelectorPanel != null)
@@ -137,7 +153,7 @@ namespace SixteenBit.UI
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.sizeDelta = new Vector2(800, 280);
-            panelRect.anchoredPosition = new Vector2(0, -180);
+            panelRect.anchoredPosition = new Vector2(0, -210);
 
             // Header
             var headerGO = CreateText(panelGO.transform, "GAME ELEMENTS", 20, new Color(0.9f, 0.9f, 1f));
@@ -251,16 +267,113 @@ namespace SixteenBit.UI
             var panelRect = panelGO.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(700, 700);
+            panelRect.sizeDelta = new Vector2(600, 700);
             panelRect.anchoredPosition = Vector2.zero;
 
             // Title
-            var titleGO = CreateText(panelGO.transform, "LEVEL SELECTOR", 32, new Color(1f, 0.85f, 0.1f));
+            var titleGO = CreateText(panelGO.transform, "EPOCH SELECTOR", 32, new Color(1f, 0.85f, 0.1f));
             var titleRect = titleGO.GetComponent<RectTransform>();
             titleRect.anchoredPosition = new Vector2(0, 310);
 
             // Subtitle
-            var subGO = CreateText(panelGO.transform, "Development Testing Only", 16,
+            var subGO = CreateText(panelGO.transform, "Select an epoch to generate a random level", 16,
+                new Color(0.6f, 0.5f, 0.7f));
+            var subRect = subGO.GetComponent<RectTransform>();
+            subRect.anchoredPosition = new Vector2(0, 275);
+
+            // Close button
+            CreateMenuButton(panelGO.transform, "X", new Vector2(270, 310),
+                new Vector2(40, 40), new Color(0.6f, 0.25f, 0.25f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _levelSelectorPanel.SetActive(false);
+                });
+
+            // Epoch buttons - two columns of 5
+            float rowHeight = 50f;
+            float gridStartY = 210f;
+            float colWidth = 240f;
+
+            for (int epoch = 0; epoch < 10; epoch++)
+            {
+                int col = epoch / 5;
+                int row = epoch % 5;
+                float x = (col == 0) ? -130f : 130f;
+                float y = gridStartY - row * rowHeight;
+
+                int capturedEpoch = epoch;
+                CreateMenuButton(panelGO.transform,
+                    $"{epoch}: {EpochNames[epoch]}",
+                    new Vector2(x, y),
+                    new Vector2(colWidth, 42),
+                    GetEpochColor(epoch),
+                    () => {
+                        AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                        GameManager.Instance?.StartTestLevel(capturedEpoch);
+                    });
+            }
+
+            // Random level button
+            CreateMenuButton(panelGO.transform, "RANDOM EPOCH", new Vector2(0, -80),
+                new Vector2(200, 50), new Color(0.3f, 0.45f, 0.6f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    int randEpoch = Random.Range(0, 10);
+                    GameManager.Instance?.StartTestLevel(randEpoch);
+                });
+
+            // Level code section
+            var codeHeaderGO = CreateText(panelGO.transform, "Or enter a level code:", 16,
+                new Color(0.7f, 0.7f, 0.8f));
+            var codeHeaderRect = codeHeaderGO.GetComponent<RectTransform>();
+            codeHeaderRect.anchoredPosition = new Vector2(0, -150);
+
+            // Code input hint
+            var codeHintGO = CreateText(panelGO.transform, "Format: E-XXXXXXXX (e.g. 3-K7XM2P9A)", 14,
+                new Color(0.5f, 0.5f, 0.6f));
+            var codeHintRect = codeHintGO.GetComponent<RectTransform>();
+            codeHintRect.anchoredPosition = new Vector2(0, -180);
+
+            // Note: Full code input would require InputField, which needs more setup
+            // For now, codes can be entered via debug console
+
+            // Hint text
+            var hintGO = CreateText(panelGO.transform, "Press Esc to close", 14,
+                new Color(0.5f, 0.5f, 0.6f));
+            var hintRect = hintGO.GetComponent<RectTransform>();
+            hintRect.anchoredPosition = new Vector2(0, -310);
+
+            _levelSelectorPanel.SetActive(false);
+        }
+
+        private void CreateLevelHistoryOverlay(Transform parent)
+        {
+            // Overlay background (darkens screen)
+            _levelHistoryPanel = new GameObject("LevelHistoryOverlay");
+            _levelHistoryPanel.transform.SetParent(parent, false);
+            var overlayImg = _levelHistoryPanel.AddComponent<Image>();
+            overlayImg.color = new Color(0f, 0f, 0f, 0.85f);
+            var overlayRect = _levelHistoryPanel.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.sizeDelta = Vector2.zero;
+
+            // History panel
+            var panelGO = new GameObject("HistoryPanel");
+            panelGO.transform.SetParent(_levelHistoryPanel.transform, false);
+            var panelImg = panelGO.AddComponent<Image>();
+            panelImg.color = new Color(0.12f, 0.10f, 0.20f, 0.98f);
+            var panelRect = panelGO.GetComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(700, 700);
+            panelRect.anchoredPosition = Vector2.zero;
+
+            // Title
+            var titleGO = CreateText(panelGO.transform, "LEVEL HISTORY", 32, new Color(1f, 0.85f, 0.1f));
+            var titleRect = titleGO.GetComponent<RectTransform>();
+            titleRect.anchoredPosition = new Vector2(0, 310);
+
+            // Subtitle
+            var subGO = CreateText(panelGO.transform, "Tap code to copy to clipboard", 16,
                 new Color(0.6f, 0.5f, 0.7f));
             var subRect = subGO.GetComponent<RectTransform>();
             subRect.anchoredPosition = new Vector2(0, 275);
@@ -269,67 +382,25 @@ namespace SixteenBit.UI
             CreateMenuButton(panelGO.transform, "X", new Vector2(320, 310),
                 new Vector2(40, 40), new Color(0.6f, 0.25f, 0.25f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    _levelSelectorPanel.SetActive(false);
+                    _levelHistoryPanel.SetActive(false);
                 });
 
-            // Grid layout
-            float headerY = 230f;
-            float startX = -280f;
-            float colWidth = 70f;
-            float eraLabelWidth = 100f;
+            // Content area for history entries (scrollable area)
+            var contentGO = new GameObject("HistoryContent");
+            contentGO.transform.SetParent(panelGO.transform, false);
+            var contentRect = contentGO.AddComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0.5f, 0.5f);
+            contentRect.anchorMax = new Vector2(0.5f, 0.5f);
+            contentRect.sizeDelta = new Vector2(650, 480);
+            contentRect.anchoredPosition = new Vector2(0, -20);
+            _historyContentParent = contentGO;
 
-            // "Era" label in corner
-            var cornerGO = CreateText(panelGO.transform, "ERA", 14, new Color(0.6f, 0.6f, 0.7f));
-            var cornerRect = cornerGO.GetComponent<RectTransform>();
-            cornerRect.anchoredPosition = new Vector2(startX + eraLabelWidth / 2 - 30, headerY);
-
-            // Difficulty column headers
-            for (int d = 0; d < 4; d++)
-            {
-                var diffGO = CreateText(panelGO.transform, DiffNames[d], 12, GetDifficultyColor(d));
-                var diffRect = diffGO.GetComponent<RectTransform>();
-                diffRect.anchoredPosition = new Vector2(startX + eraLabelWidth + d * colWidth + colWidth / 2, headerY);
-            }
-
-            // Era rows with buttons
-            float rowHeight = 46f;
-            float gridStartY = headerY - 40f;
-
-            for (int era = 0; era < 10; era++)
-            {
-                float rowY = gridStartY - era * rowHeight;
-
-                // Era name label
-                var eraGO = CreateText(panelGO.transform, EraNames[era], 14, GetEraColor(era));
-                var eraRect = eraGO.GetComponent<RectTransform>();
-                eraRect.anchoredPosition = new Vector2(startX + eraLabelWidth / 2, rowY);
-                eraRect.sizeDelta = new Vector2(eraLabelWidth, 24);
-
-                // Difficulty buttons for this era
-                for (int diff = 0; diff < 4; diff++)
-                {
-                    int capturedEra = era;
-                    int capturedDiff = diff;
-
-                    CreateLevelButton(panelGO.transform,
-                        $"{era + 1}-{diff + 1}",
-                        new Vector2(startX + eraLabelWidth + diff * colWidth + colWidth / 2, rowY),
-                        new Vector2(60, 38),
-                        GetButtonColor(era, diff),
-                        () => {
-                            AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                            GameManager.Instance?.StartTestLevel(capturedEra, capturedDiff);
-                        });
-                }
-            }
-
-            // Random level button
-            CreateMenuButton(panelGO.transform, "RANDOM", new Vector2(0, -290),
-                new Vector2(160, 45), new Color(0.3f, 0.45f, 0.6f), () => {
+            // Clear history button
+            CreateMenuButton(panelGO.transform, "CLEAR HISTORY", new Vector2(0, -300),
+                new Vector2(180, 40), new Color(0.5f, 0.3f, 0.3f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    int randEra = Random.Range(0, 10);
-                    int randDiff = Random.Range(0, 4);
-                    GameManager.Instance?.StartTestLevel(randEra, randDiff);
+                    GameManager.ClearLevelHistory();
+                    RefreshHistoryContent();
                 });
 
             // Hint text
@@ -338,41 +409,159 @@ namespace SixteenBit.UI
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -330);
 
-            _levelSelectorPanel.SetActive(false);
+            _levelHistoryPanel.SetActive(false);
         }
 
-        private Color GetEraColor(int era)
+        private void RefreshHistoryContent()
         {
-            float t = era / 9f;
-            return Color.Lerp(
+            if (_historyContentParent == null) return;
+
+            // Clear existing content
+            foreach (Transform child in _historyContentParent.transform)
+            {
+                Destroy(child.gameObject);
+            }
+
+            var history = GameManager.LoadLevelHistory();
+
+            if (history.Entries.Count == 0)
+            {
+                var noHistoryGO = CreateText(_historyContentParent.transform, "No levels played yet", 20,
+                    new Color(0.5f, 0.5f, 0.6f));
+                var noHistoryRect = noHistoryGO.GetComponent<RectTransform>();
+                noHistoryRect.anchoredPosition = new Vector2(0, 100);
+                return;
+            }
+
+            // Column headers
+            float headerY = 220f;
+            CreateHistoryHeader(_historyContentParent.transform, "CODE", new Vector2(-240, headerY), 140);
+            CreateHistoryHeader(_historyContentParent.transform, "EPOCH", new Vector2(-70, headerY), 160);
+            CreateHistoryHeader(_historyContentParent.transform, "SCORE", new Vector2(100, headerY), 100);
+            CreateHistoryHeader(_historyContentParent.transform, "STARS", new Vector2(200, headerY), 80);
+            CreateHistoryHeader(_historyContentParent.transform, "COPY", new Vector2(280, headerY), 80);
+
+            // Display up to 10 entries (scrolling would require ScrollRect setup)
+            float rowY = 180f;
+            float rowHeight = 42f;
+            int maxDisplay = Mathf.Min(history.Entries.Count, 10);
+
+            for (int i = 0; i < maxDisplay; i++)
+            {
+                var entry = history.Entries[i];
+                CreateHistoryRow(_historyContentParent.transform, entry, rowY);
+                rowY -= rowHeight;
+            }
+
+            if (history.Entries.Count > 10)
+            {
+                var moreGO = CreateText(_historyContentParent.transform,
+                    $"... and {history.Entries.Count - 10} more", 14,
+                    new Color(0.5f, 0.5f, 0.6f));
+                var moreRect = moreGO.GetComponent<RectTransform>();
+                moreRect.anchoredPosition = new Vector2(0, rowY - 10);
+            }
+        }
+
+        private void CreateHistoryHeader(Transform parent, string text, Vector2 position, float width)
+        {
+            var go = CreateText(parent, text, 16, new Color(0.7f, 0.7f, 0.8f));
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(width, 24);
+        }
+
+        private void CreateHistoryRow(Transform parent, LevelHistoryEntry entry, float y)
+        {
+            // Row background
+            var rowGO = new GameObject("HistoryRow");
+            rowGO.transform.SetParent(parent, false);
+            var rowImg = rowGO.AddComponent<Image>();
+            rowImg.color = new Color(0.15f, 0.12f, 0.25f, 0.6f);
+            var rowRect = rowGO.GetComponent<RectTransform>();
+            rowRect.anchorMin = new Vector2(0.5f, 0.5f);
+            rowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            rowRect.sizeDelta = new Vector2(620, 38);
+            rowRect.anchoredPosition = new Vector2(0, y);
+
+            // Code (clickable to copy)
+            var codeGO = CreateText(rowGO.transform, entry.Code, 18, new Color(0.5f, 0.8f, 1f));
+            var codeRect = codeGO.GetComponent<RectTransform>();
+            codeRect.anchoredPosition = new Vector2(-240, 0);
+            codeRect.sizeDelta = new Vector2(140, 30);
+
+            // Epoch name
+            string epochShort = entry.EpochName.Length > 12 ? entry.EpochName.Substring(0, 10) + ".." : entry.EpochName;
+            var epochGO = CreateText(rowGO.transform, epochShort, 16, GetEpochColor(entry.Epoch) * 2f);
+            var epochRect = epochGO.GetComponent<RectTransform>();
+            epochRect.anchoredPosition = new Vector2(-70, 0);
+            epochRect.sizeDelta = new Vector2(160, 30);
+
+            // Score
+            var scoreGO = CreateText(rowGO.transform, entry.Score.ToString("N0"), 16, Color.white);
+            var scoreRect = scoreGO.GetComponent<RectTransform>();
+            scoreRect.anchoredPosition = new Vector2(100, 0);
+            scoreRect.sizeDelta = new Vector2(100, 30);
+
+            // Stars
+            string stars = new string('*', entry.Stars) + new string('-', 3 - entry.Stars);
+            var starsGO = CreateText(rowGO.transform, stars, 18, new Color(1f, 0.85f, 0.1f));
+            var starsRect = starsGO.GetComponent<RectTransform>();
+            starsRect.anchoredPosition = new Vector2(200, 0);
+            starsRect.sizeDelta = new Vector2(80, 30);
+
+            // Copy button
+            string capturedCode = entry.Code;
+            CreateSmallButton(rowGO.transform, "COPY", new Vector2(280, 0), new Vector2(60, 28),
+                new Color(0.3f, 0.5f, 0.4f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    GameManager.CopyToClipboard(capturedCode);
+                });
+        }
+
+        private void CreateSmallButton(Transform parent, string text, Vector2 position, Vector2 size,
+            Color bgColor, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject("SmallBtn");
+            go.transform.SetParent(parent, false);
+
+            var img = go.AddComponent<Image>();
+            img.color = bgColor;
+
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(onClick);
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = size;
+            rect.anchoredPosition = position;
+
+            // Text label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(go.transform, false);
+            var labelText = labelGO.AddComponent<Text>();
+            labelText.text = text;
+            labelText.fontSize = 12;
+            labelText.color = Color.white;
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.sizeDelta = Vector2.zero;
+        }
+
+        private Color GetEpochColor(int epoch)
+        {
+            float t = epoch / 9f;
+            Color baseColor = Color.Lerp(
                 new Color(0.9f, 0.7f, 0.4f),
                 new Color(0.5f, 0.7f, 1.0f),
                 t
             );
-        }
-
-        private Color GetDifficultyColor(int diff)
-        {
-            return diff switch
-            {
-                0 => new Color(0.4f, 0.8f, 0.4f),
-                1 => new Color(0.9f, 0.8f, 0.3f),
-                2 => new Color(0.9f, 0.5f, 0.2f),
-                3 => new Color(0.9f, 0.3f, 0.3f),
-                _ => Color.white
-            };
-        }
-
-        private Color GetButtonColor(int era, int diff)
-        {
-            Color eraColor = GetEraColor(era);
-            float intensity = 0.3f + diff * 0.15f;
-            return new Color(
-                eraColor.r * intensity,
-                eraColor.g * intensity,
-                eraColor.b * intensity,
-                1f
-            );
+            return new Color(baseColor.r * 0.5f, baseColor.g * 0.5f, baseColor.b * 0.5f, 1f);
         }
 
         private GameObject CreatePanel(Transform parent, string name, Color color)

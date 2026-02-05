@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -11,7 +12,31 @@ namespace SixteenBit.Gameplay
         Loading,
         Playing,
         Paused,
-        LevelComplete
+        LevelComplete,
+        GameOver
+    }
+
+    /// <summary>
+    /// Stores data about a played level for history display.
+    /// </summary>
+    [Serializable]
+    public class LevelHistoryEntry
+    {
+        public string Code;
+        public int Epoch;
+        public string EpochName;
+        public int Score;
+        public int Stars;
+        public long PlayedTimestamp; // Unix timestamp
+    }
+
+    /// <summary>
+    /// Container for serializing level history to JSON.
+    /// </summary>
+    [Serializable]
+    public class LevelHistoryData
+    {
+        public List<LevelHistoryEntry> Entries = new List<LevelHistoryEntry>();
     }
 
     /// <summary>
@@ -25,8 +50,9 @@ namespace SixteenBit.Gameplay
         public static GameManager Instance { get; private set; }
 
         public GameState CurrentState { get; private set; } = GameState.TitleScreen;
-        public int CurrentDifficulty { get; set; } = 0;
-        public int CurrentEra { get; set; } = 0;
+        public int CurrentEpoch { get; set; } = 0;
+        public const int MAX_LIVES_PER_LEVEL = 2;
+        public int LivesRemaining { get; private set; } = MAX_LIVES_PER_LEVEL;
         public int Score { get; set; }
         public int TotalScore { get; set; }
         public int TimeScore { get; private set; }
@@ -53,6 +79,7 @@ namespace SixteenBit.Gameplay
         private GameObject _hudObj;
         private GameObject _pauseMenuObj;
         private GameObject _levelCompleteObj;
+        private GameObject _gameOverObj;
         private GameObject _touchControlsObj;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -75,6 +102,7 @@ namespace SixteenBit.Gameplay
 
             _levelLoader = gameObject.AddComponent<LevelLoader>();
             gameObject.AddComponent<AudioManager>();
+            gameObject.AddComponent<AchievementManager>();
 
             // Ensure EventSystem exists for UI interaction
             if (FindAnyObjectByType<EventSystem>() == null)
@@ -166,9 +194,24 @@ namespace SixteenBit.Gameplay
                     TimeScore = CalculateScore(LevelElapsedTime);
                     Score = TimeScore + ItemBonusScore + EnemyBonusScore;
                     TotalScore += Score;
+                    SaveLevelToHistory();
+
+                    // Record achievement progress
+                    int stars = GetStarRating(LevelElapsedTime);
+                    AchievementManager.Instance?.RecordLevelComplete(
+                        CurrentLevelID.Epoch, LevelElapsedTime, Score, stars);
+
                     AudioManager.StopMusic();
                     AudioManager.PlaySFX(PlaceholderAudio.GetLevelCompleteSFX());
                     CreateLevelComplete();
+                    break;
+
+                case GameState.GameOver:
+                    Time.timeScale = 1f;
+                    _timerRunning = false;
+                    AudioManager.StopMusic();
+                    AudioManager.PlaySFX(PlaceholderAudio.GetPlayerHurtSFX());
+                    CreateGameOverUI();
                     break;
             }
         }
@@ -216,20 +259,39 @@ namespace SixteenBit.Gameplay
 
         public void NextLevel()
         {
-            // Advance era every 4 levels, cycle difficulty
-            CurrentDifficulty = (CurrentDifficulty + 1) % 4;
-            if (CurrentDifficulty == 0)
-                CurrentEra = Mathf.Min(CurrentEra + 1, 9);
+            // Derive next level from current (deterministic sequence, advances epoch)
+            CurrentLevelID = CurrentLevelID.Next();
+            CurrentEpoch = CurrentLevelID.Epoch;
             TransitionTo(GameState.Loading);
         }
 
         /// <summary>
-        /// DEBUG: Start a specific era/difficulty for testing.
+        /// DEBUG: Start a specific epoch for testing. Generates a random level code for that epoch.
         /// </summary>
-        public void StartTestLevel(int era, int difficulty)
+        public void StartTestLevel(int epoch)
         {
-            CurrentEra = Mathf.Clamp(era, 0, 9);
-            CurrentDifficulty = Mathf.Clamp(difficulty, 0, 3);
+            CurrentEpoch = Mathf.Clamp(epoch, 0, LevelID.MAX_EPOCH);
+            CurrentLevelID = LevelID.GenerateRandom(CurrentEpoch);
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Start a level from a specific level code (e.g., "3-K7XM2P9A").
+        /// </summary>
+        public void StartLevelFromCode(string code)
+        {
+            if (!LevelID.TryParse(code, out LevelID levelID))
+            {
+                Debug.LogWarning($"Invalid level code: {code}");
+                return;
+            }
+            CurrentLevelID = levelID;
+            CurrentEpoch = levelID.Epoch;
             Score = 0;
             TotalScore = 0;
             LevelNumber = 0;
@@ -241,7 +303,13 @@ namespace SixteenBit.Gameplay
         private void StartLevel()
         {
             LevelNumber++;
-            CurrentLevelID = LevelID.GenerateNew(CurrentDifficulty, CurrentEra);
+            // Reset lives at the start of each level
+            LivesRemaining = MAX_LIVES_PER_LEVEL;
+            // If no level ID set yet (first level), generate a random one for current epoch
+            if (CurrentLevelID.Seed == 0)
+            {
+                CurrentLevelID = LevelID.GenerateRandom(CurrentEpoch);
+            }
             LevelElapsedTime = 0f;
             EnemiesKilled = 0;
             RewardsCollected = 0;
@@ -252,6 +320,15 @@ namespace SixteenBit.Gameplay
             _rewardCounts.Clear();
             _weaponCounts.Clear();
             _levelLoader.LoadLevel(CurrentLevelID);
+
+            // Initialize achievements for this level
+            if (CurrentLevel != null && AchievementManager.Instance != null)
+            {
+                int totalDestructibles = CurrentLevel.Metadata.TotalDestructibleTiles;
+                int totalItems = CurrentLevel.Metadata.TotalRewards + CurrentLevel.Metadata.TotalWeaponDrops;
+                AchievementManager.Instance.StartLevel(totalDestructibles, totalItems);
+            }
+
             TransitionTo(GameState.Playing);
         }
 
@@ -288,6 +365,8 @@ namespace SixteenBit.Gameplay
             int baseValue = GetRewardBaseValue(type);
             int bonus = baseValue * count;
             ItemBonusScore += bonus;
+
+            AchievementManager.Instance?.RecordItemCollected();
             return bonus;
         }
 
@@ -304,6 +383,9 @@ namespace SixteenBit.Gameplay
             int baseValue = GetWeaponBaseValue(tier);
             int bonus = baseValue * count;
             ItemBonusScore += bonus;
+
+            AchievementManager.Instance?.RecordItemCollected();
+            AchievementManager.Instance?.RecordWeaponAcquired(tier);
             return bonus;
         }
 
@@ -315,7 +397,25 @@ namespace SixteenBit.Gameplay
             EnemiesKilled++;
             int bonus = 100 * EnemiesKilled;
             EnemyBonusScore += bonus;
+
+            AchievementManager.Instance?.RecordEnemyKilled();
             return bonus;
+        }
+
+        /// <summary>
+        /// Record a destructible block being destroyed (for achievements).
+        /// </summary>
+        public void RecordBlockDestroyed()
+        {
+            AchievementManager.Instance?.RecordBlockDestroyed();
+        }
+
+        /// <summary>
+        /// Record that the player took damage (for achievements).
+        /// </summary>
+        public void RecordPlayerDamage()
+        {
+            AchievementManager.Instance?.RecordDamageTaken();
         }
 
         /// <summary>
@@ -357,6 +457,114 @@ namespace SixteenBit.Gameplay
             }
         }
 
+        // =====================================================================
+        // Level History
+        // =====================================================================
+
+        private const string HISTORY_PREFS_KEY = "EpochBreaker_LevelHistory";
+        private const int MAX_HISTORY_ENTRIES = 50;
+
+        /// <summary>
+        /// Save the current level to history when completed.
+        /// </summary>
+        private void SaveLevelToHistory()
+        {
+            var history = LoadLevelHistory();
+
+            // Check if this code already exists (update it if so)
+            string code = CurrentLevelID.ToCode();
+            int existingIdx = history.Entries.FindIndex(e => e.Code == code);
+
+            var entry = new LevelHistoryEntry
+            {
+                Code = code,
+                Epoch = CurrentLevelID.Epoch,
+                EpochName = CurrentLevelID.EpochName,
+                Score = Score,
+                Stars = GetStarRating(LevelElapsedTime),
+                PlayedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
+
+            if (existingIdx >= 0)
+            {
+                // Update existing entry if new score is higher
+                if (Score > history.Entries[existingIdx].Score)
+                {
+                    history.Entries[existingIdx] = entry;
+                }
+                else
+                {
+                    // Just update timestamp
+                    history.Entries[existingIdx].PlayedTimestamp = entry.PlayedTimestamp;
+                }
+                // Move to front (most recent)
+                var existing = history.Entries[existingIdx];
+                history.Entries.RemoveAt(existingIdx);
+                history.Entries.Insert(0, existing);
+            }
+            else
+            {
+                // Add new entry at the front
+                history.Entries.Insert(0, entry);
+
+                // Trim to max size
+                while (history.Entries.Count > MAX_HISTORY_ENTRIES)
+                {
+                    history.Entries.RemoveAt(history.Entries.Count - 1);
+                }
+            }
+
+            SaveLevelHistory(history);
+        }
+
+        /// <summary>
+        /// Load level history from PlayerPrefs.
+        /// </summary>
+        public static LevelHistoryData LoadLevelHistory()
+        {
+            string json = PlayerPrefs.GetString(HISTORY_PREFS_KEY, "");
+            if (string.IsNullOrEmpty(json))
+            {
+                return new LevelHistoryData();
+            }
+
+            try
+            {
+                return JsonUtility.FromJson<LevelHistoryData>(json) ?? new LevelHistoryData();
+            }
+            catch
+            {
+                return new LevelHistoryData();
+            }
+        }
+
+        /// <summary>
+        /// Save level history to PlayerPrefs.
+        /// </summary>
+        private static void SaveLevelHistory(LevelHistoryData history)
+        {
+            string json = JsonUtility.ToJson(history);
+            PlayerPrefs.SetString(HISTORY_PREFS_KEY, json);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Clear all level history.
+        /// </summary>
+        public static void ClearLevelHistory()
+        {
+            PlayerPrefs.DeleteKey(HISTORY_PREFS_KEY);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Copy text to system clipboard.
+        /// </summary>
+        public static void CopyToClipboard(string text)
+        {
+            GUIUtility.systemCopyBuffer = text;
+        }
+
         private void DestroyUI()
         {
             if (_titleScreenObj) Destroy(_titleScreenObj);
@@ -364,6 +572,7 @@ namespace SixteenBit.Gameplay
             if (_pauseMenuObj) Destroy(_pauseMenuObj);
             if (_levelCompleteObj) Destroy(_levelCompleteObj);
             if (_touchControlsObj) Destroy(_touchControlsObj);
+            if (_gameOverObj) Destroy(_gameOverObj);
         }
 
         private void CreateTitleScreen()
@@ -391,6 +600,26 @@ namespace SixteenBit.Gameplay
         {
             _levelCompleteObj = new GameObject("LevelCompleteUI");
             AddUI(_levelCompleteObj, "SixteenBit.UI.LevelCompleteUI");
+        }
+
+        private void CreateGameOverUI()
+        {
+            _gameOverObj = new GameObject("GameOverUI");
+            AddUI(_gameOverObj, "SixteenBit.UI.GameOverUI");
+        }
+
+        /// <summary>
+        /// Called when the player dies. Returns true if respawn allowed, false if game over.
+        /// </summary>
+        public bool LoseLife()
+        {
+            LivesRemaining--;
+            if (LivesRemaining <= 0)
+            {
+                TransitionTo(GameState.GameOver);
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
