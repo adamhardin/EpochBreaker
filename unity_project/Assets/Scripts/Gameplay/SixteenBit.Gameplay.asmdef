@@ -1,0 +1,16 @@
+{
+    "name": "SixteenBit.Gameplay",
+    "rootNamespace": "SixteenBit.Gameplay",
+    "references": [
+        "SixteenBit.Generative"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

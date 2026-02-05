@@ -135,7 +135,7 @@ namespace SixteenBit.Gameplay
                 var tile = ScriptableObject.CreateInstance<Tile>();
                 tile.sprite = PlaceholderAssets.GetTileSprite((byte)i);
                 tile.color = Color.white;
-                tile.colliderType = Tile.ColliderType.None; // We use composite collider
+                tile.colliderType = Tile.ColliderType.Grid; // Full cell collider, merged into composite
                 _tileAssets[i] = tile;
             }
         }

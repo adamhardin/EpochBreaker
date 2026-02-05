@@ -183,7 +183,7 @@ namespace SixteenBit.Gameplay
             if (_playerTransform == null) return;
 
             Vector2 dir = ((Vector2)_playerTransform.position - (Vector2)transform.position).normalized;
-            Vector3 spawnPos = transform.position + (Vector3)(dir * 0.8f);
+            Vector3 spawnPos = transform.position + (Vector3)(dir * 1.0f);
 
             var projGO = new GameObject("EnemyProjectile");
             projGO.transform.position = spawnPos;

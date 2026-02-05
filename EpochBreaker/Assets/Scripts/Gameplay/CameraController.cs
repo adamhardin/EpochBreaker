@@ -14,8 +14,8 @@ namespace SixteenBit.Gameplay
 
         private float _smoothSpeedX = 8f;
         private float _smoothSpeedY = 4f;
-        private float _verticalDeadZone = 2f;
-        private float _lookAheadX = 2f;
+        private float _verticalDeadZone = 1.5f;
+        private float _lookAheadX = 1.5f;
 
         public void Initialize(Transform target, LevelRenderer tilemapRenderer)
         {

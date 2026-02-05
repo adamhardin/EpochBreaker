@@ -93,8 +93,8 @@ namespace SixteenBit.Gameplay
 
             // Collider (smaller than sprite for forgiving gameplay)
             var col = _playerObj.AddComponent<BoxCollider2D>();
-            col.size = new Vector2(0.8f, 0.9f);
-            col.offset = new Vector2(0f, 0.45f);
+            col.size = new Vector2(0.9f, 1.2f);
+            col.offset = new Vector2(0f, 0.6f);
 
             // Components
             Player = _playerObj.AddComponent<PlayerController>();
@@ -121,7 +121,7 @@ namespace SixteenBit.Gameplay
 
             var cam = _mainCamera.AddComponent<Camera>();
             cam.orthographic = true;
-            cam.orthographicSize = 9f;
+            cam.orthographicSize = 7f;
             cam.backgroundColor = new Color(0.10f, 0.08f, 0.15f); // dark blue-purple sky
             cam.clearFlags = CameraClearFlags.SolidColor;
 
@@ -160,8 +160,8 @@ namespace SixteenBit.Gameplay
                 rb.interpolation = RigidbodyInterpolation2D.Interpolate;
 
                 var col = go.AddComponent<BoxCollider2D>();
-                col.size = new Vector2(0.9f, 0.9f);
-                col.offset = new Vector2(0f, 0.45f);
+                col.size = new Vector2(1.0f, 1.2f);
+                col.offset = new Vector2(0f, 0.6f);
 
                 var enemy = go.AddComponent<EnemyBase>();
                 enemy.Initialize(enemyData, _tilemapRenderer);
@@ -253,7 +253,7 @@ namespace SixteenBit.Gameplay
 
                 var col = go.AddComponent<BoxCollider2D>();
                 col.isTrigger = true;
-                col.size = new Vector2(0.8f, 1.5f);
+                col.size = new Vector2(0.8f, 2.5f);
 
                 var cpScript = go.AddComponent<CheckpointTrigger>();
                 cpScript.CheckpointPosition = pos;
@@ -274,7 +274,7 @@ namespace SixteenBit.Gameplay
 
             var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
-            col.size = new Vector2(1.5f, 2f);
+            col.size = new Vector2(2.5f, 3.5f);
 
             go.AddComponent<GoalTrigger>();
         }

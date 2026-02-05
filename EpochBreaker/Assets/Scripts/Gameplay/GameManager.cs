@@ -189,28 +189,42 @@ namespace SixteenBit.Gameplay
         private void CreateTitleScreen()
         {
             _titleScreenObj = new GameObject("TitleScreenUI");
-            _titleScreenObj.AddComponent<SixteenBit.UI.TitleScreenUI>();
+            AddUI(_titleScreenObj, "SixteenBit.UI.TitleScreenUI");
         }
 
         private void CreateHUD()
         {
             _hudObj = new GameObject("GameplayHUD");
-            _hudObj.AddComponent<SixteenBit.UI.GameplayHUD>();
+            AddUI(_hudObj, "SixteenBit.UI.GameplayHUD");
 
             _touchControlsObj = new GameObject("TouchControls");
-            _touchControlsObj.AddComponent<SixteenBit.UI.TouchControlsUI>();
+            AddUI(_touchControlsObj, "SixteenBit.UI.TouchControlsUI");
         }
 
         private void CreatePauseMenu()
         {
             _pauseMenuObj = new GameObject("PauseMenuUI");
-            _pauseMenuObj.AddComponent<SixteenBit.UI.PauseMenuUI>();
+            AddUI(_pauseMenuObj, "SixteenBit.UI.PauseMenuUI");
         }
 
         private void CreateLevelComplete()
         {
             _levelCompleteObj = new GameObject("LevelCompleteUI");
-            _levelCompleteObj.AddComponent<SixteenBit.UI.LevelCompleteUI>();
+            AddUI(_levelCompleteObj, "SixteenBit.UI.LevelCompleteUI");
+        }
+
+        /// <summary>
+        /// Add a UI component by type name via reflection.
+        /// Avoids compile-time dependency on UI assembly from gameplay assembly.
+        /// </summary>
+        private static void AddUI(GameObject go, string typeName)
+        {
+            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var t = asm.GetType(typeName);
+                if (t != null) { go.AddComponent(t); return; }
+            }
+            Debug.LogWarning($"UI type not found: {typeName}");
         }
     }
 }

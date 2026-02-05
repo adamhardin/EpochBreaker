@@ -78,7 +78,7 @@ namespace SixteenBit.Gameplay
 
             Vector2 dir = ((Vector2)_currentTarget.position - (Vector2)transform.position).normalized;
             Vector3 spawnPos = transform.position + (Vector3)(dir * 0.6f);
-            spawnPos.y += 0.5f; // Offset to chest height
+            spawnPos.y += 0.75f; // Offset to chest height (1.5-unit character)
 
             var projGO = new GameObject("PlayerProjectile");
             projGO.transform.position = spawnPos;
