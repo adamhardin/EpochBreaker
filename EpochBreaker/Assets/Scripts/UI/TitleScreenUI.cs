@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
+using SixteenBit.Generative;
+using SixteenBit.Gameplay;
 
 namespace SixteenBit.UI
 {
@@ -42,33 +44,37 @@ namespace SixteenBit.UI
             // Title text
             var titleGO = CreateText(canvasGO.transform, "EPOCH BREAKER", 72, Color.white);
             var titleRect = titleGO.GetComponent<RectTransform>();
-            titleRect.anchoredPosition = new Vector2(0, 150);
+            titleRect.anchoredPosition = new Vector2(0, 280);
 
             // Subtitle
             var subGO = CreateText(canvasGO.transform, "A 16-Bit Adventure Through Time", 24,
                 new Color(0.7f, 0.7f, 0.8f));
             var subRect = subGO.GetComponent<RectTransform>();
-            subRect.anchoredPosition = new Vector2(0, 70);
+            subRect.anchoredPosition = new Vector2(0, 210);
 
             // Play button
-            CreateButton(canvasGO.transform, "PLAY", new Vector2(0, -40), new Vector2(300, 70),
+            CreateButton(canvasGO.transform, "PLAY", new Vector2(0, 130), new Vector2(300, 70),
                 new Color(0.2f, 0.6f, 0.3f), () => {
+                    Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.StartGame();
                 });
+
+            // Item legend
+            CreateItemLegend(canvasGO.transform);
 
             // Era/Difficulty info
             var infoGO = CreateText(canvasGO.transform,
                 $"Era: {GetCurrentEraName()} | Difficulty: {GetCurrentDifficultyName()}", 20,
                 new Color(0.6f, 0.6f, 0.7f));
             var infoRect = infoGO.GetComponent<RectTransform>();
-            infoRect.anchoredPosition = new Vector2(0, -130);
+            infoRect.anchoredPosition = new Vector2(0, -260);
 
             // Controls hint
             var hintGO = CreateText(canvasGO.transform,
-                "Arrow Keys: Move | Space: Jump | X: Target Cycle | Esc: Pause", 16,
+                "A/D: Move | Space: Jump | Down: Ground Pound | Esc: Pause", 16,
                 new Color(0.5f, 0.5f, 0.6f));
             var hintRect = hintGO.GetComponent<RectTransform>();
-            hintRect.anchoredPosition = new Vector2(0, -200);
+            hintRect.anchoredPosition = new Vector2(0, -300);
 
             // Version
             var verGO = CreateText(canvasGO.transform, "v0.1.0 - Prototype", 14,
@@ -131,6 +137,104 @@ namespace SixteenBit.UI
             rect.sizeDelta = new Vector2(800, fontSize + 20);
 
             return go;
+        }
+
+        private void CreateItemLegend(Transform parent)
+        {
+            // Container panel
+            var panelGO = new GameObject("ItemLegend");
+            panelGO.transform.SetParent(parent, false);
+
+            var panelImg = panelGO.AddComponent<Image>();
+            panelImg.color = new Color(0.12f, 0.10f, 0.20f, 0.8f);
+
+            var panelRect = panelGO.GetComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(700, 280);
+            panelRect.anchoredPosition = new Vector2(0, -60);
+
+            // Header
+            var headerGO = CreateText(panelGO.transform, "ITEMS", 22, new Color(1f, 0.85f, 0.1f));
+            var headerRect = headerGO.GetComponent<RectTransform>();
+            headerRect.anchoredPosition = new Vector2(0, 120);
+
+            // Row 1: Pickups
+            float row1Y = 60f;
+            float startX = -300f;
+            float spacing = 150f;
+
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.HealthSmall),
+                "Health", startX, row1Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.Shield),
+                "Shield", startX + spacing, row1Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.Coin),
+                "Coin", startX + spacing * 2, row1Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.AttackBoost),
+                "Attack+", startX + spacing * 3, row1Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.SpeedBoost),
+                "Speed+", startX + spacing * 4, row1Y);
+
+            // Row 2: Weapons and structures
+            float row2Y = -20f;
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponTier.Starting),
+                "Sword", startX, row2Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponTier.Medium),
+                "Crossbow", startX + spacing, row2Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponTier.Heavy),
+                "Cannon", startX + spacing * 2, row2Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetCheckpointSprite(CheckpointType.MidLevel),
+                "Checkpoint", startX + spacing * 3, row2Y);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetGoalSprite(),
+                "Goal", startX + spacing * 4, row2Y);
+
+            // Tip text
+            var tipGO = CreateText(panelGO.transform,
+                "Auto-fire targets enemies | Jump into blocks to break them | Down to ground pound",
+                14, new Color(0.6f, 0.6f, 0.7f));
+            var tipRect = tipGO.GetComponent<RectTransform>();
+            tipRect.anchoredPosition = new Vector2(0, -100);
+        }
+
+        private void CreateLegendItem(Transform parent, Sprite sprite, string label, float x, float y)
+        {
+            var itemGO = new GameObject($"Item_{label}");
+            itemGO.transform.SetParent(parent, false);
+
+            var itemRect = itemGO.AddComponent<RectTransform>();
+            itemRect.anchorMin = new Vector2(0.5f, 0.5f);
+            itemRect.anchorMax = new Vector2(0.5f, 0.5f);
+            itemRect.sizeDelta = new Vector2(120, 70);
+            itemRect.anchoredPosition = new Vector2(x, y);
+
+            // Icon
+            var iconGO = new GameObject("Icon");
+            iconGO.transform.SetParent(itemGO.transform, false);
+            var iconImg = iconGO.AddComponent<Image>();
+            iconImg.sprite = sprite;
+            iconImg.preserveAspect = true;
+
+            var iconRect = iconGO.GetComponent<RectTransform>();
+            iconRect.anchorMin = new Vector2(0.5f, 0.5f);
+            iconRect.anchorMax = new Vector2(0.5f, 0.5f);
+            iconRect.sizeDelta = new Vector2(40, 40);
+            iconRect.anchoredPosition = new Vector2(0, 10);
+
+            // Label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(itemGO.transform, false);
+            var labelText = labelGO.AddComponent<Text>();
+            labelText.text = label;
+            labelText.fontSize = 14;
+            labelText.color = new Color(0.85f, 0.85f, 0.9f);
+            labelText.alignment = TextAnchor.MiddleCenter;
+            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.sizeDelta = new Vector2(120, 20);
+            labelRect.anchoredPosition = new Vector2(0, -25);
         }
 
         private void CreateButton(Transform parent, string text, Vector2 position, Vector2 size,

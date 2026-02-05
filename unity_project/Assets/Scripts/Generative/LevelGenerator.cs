@@ -55,23 +55,23 @@ namespace SixteenBit.Generative
         // --- Destruction density per zone type ---
         private static readonly float[] ZONE_DESTRUCTION_DENSITY =
         {
-            0.3f, // Intro
-            0.4f, // Traversal
-            0.8f, // Destruction
-            0.5f, // Combat
-            0.6f, // BossArena
-            0.2f, // Buffer
+            0.03f, // Intro
+            0.04f, // Traversal
+            0.08f, // Destruction
+            0.05f, // Combat
+            0.06f, // BossArena
+            0.02f, // Buffer
         };
 
         // --- Solid fill density per zone type ---
         private static readonly float[] ZONE_SOLID_FILL =
         {
-            0.4f, // Intro
-            0.5f, // Traversal
-            0.85f, // Destruction
-            0.5f, // Combat
-            0.6f, // BossArena
-            0.3f, // Buffer
+            0.04f, // Intro
+            0.05f, // Traversal
+            0.085f, // Destruction
+            0.05f, // Combat
+            0.06f, // BossArena
+            0.03f, // Buffer
         };
 
         // --- Era material distributions: [era][5] = {soft, medium, hard, reinforced, indestructible} ---
@@ -167,6 +167,9 @@ namespace SixteenBit.Generative
             data.Layout.StartX = 2;
             data.Layout.StartY = FindGroundLevel(data, 2) - 1;
             if (data.Layout.StartY < 0) data.Layout.StartY = 1;
+
+            // Clear spawn area so player doesn't start inside blocks
+            ClearSpawnArea(data, width, height);
 
             // ---- Stage 3: Weapon Drop Placement ----
             PlaceWeaponDrops(data, id.Era, rng);
@@ -1678,6 +1681,39 @@ namespace SixteenBit.Generative
         // =====================================================================
         // Utility Methods
         // =====================================================================
+
+        /// <summary>
+        /// Clear blocks around the player spawn point so they don't start trapped.
+        /// Clears a 5-wide × 3-tall area (in level-space) above the ground at spawn.
+        /// </summary>
+        private void ClearSpawnArea(LevelData data, int width, int height)
+        {
+            int sx = data.Layout.StartX;
+            int sy = data.Layout.StartY;
+
+            // Clear from sx-1 to sx+3 (5 wide), sy-2 to sy (3 tall above ground)
+            // In level-space, up = decreasing y
+            for (int dx = -1; dx <= 3; dx++)
+            {
+                for (int dy = 0; dy >= -2; dy--)
+                {
+                    int cx = sx + dx;
+                    int cy = sy + dy;
+                    if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+
+                    int idx = cy * width + cx;
+                    byte tileType = data.Layout.Tiles[idx];
+
+                    // Don't remove ground tiles
+                    if (tileType == (byte)TileType.GroundTop || tileType == (byte)TileType.Ground)
+                        continue;
+
+                    data.Layout.Tiles[idx] = (byte)TileType.Empty;
+                    data.Layout.Collision[idx] = (byte)CollisionType.None;
+                    data.Layout.Destructibles[idx] = default;
+                }
+            }
+        }
 
         /// <summary>
         /// Find the Y coordinate of the topmost solid ground at column x.

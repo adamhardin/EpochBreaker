@@ -10,7 +10,7 @@ namespace SixteenBit.UI
     {
         private Canvas _canvas;
         private Image[] _hearts;
-        private Text _scoreText;
+        private Text _timerText;
         private Text _weaponText;
         private Text _eraText;
         private Gameplay.HealthSystem _healthSystem;
@@ -25,7 +25,7 @@ namespace SixteenBit.UI
 
         private void Update()
         {
-            UpdateScore();
+            UpdateTimer();
             UpdateWeaponDisplay();
         }
 
@@ -84,14 +84,15 @@ namespace SixteenBit.UI
                 _hearts[i] = img;
             }
 
-            // Score (top-left, below hearts)
-            var scoreGO = CreateHUDText(canvasGO.transform, "Score: 0", TextAnchor.UpperLeft);
-            _scoreText = scoreGO.GetComponent<Text>();
-            var scoreRect = scoreGO.GetComponent<RectTransform>();
-            scoreRect.anchorMin = new Vector2(0, 1);
-            scoreRect.anchorMax = new Vector2(0, 1);
-            scoreRect.pivot = new Vector2(0, 1);
-            scoreRect.anchoredPosition = new Vector2(20, -70);
+            // Timer (top-left, below hearts)
+            var timerGO = CreateHUDText(canvasGO.transform, "0:00.0", TextAnchor.UpperLeft);
+            _timerText = timerGO.GetComponent<Text>();
+            _timerText.fontSize = 26;
+            var timerRect = timerGO.GetComponent<RectTransform>();
+            timerRect.anchorMin = new Vector2(0, 1);
+            timerRect.anchorMax = new Vector2(0, 1);
+            timerRect.pivot = new Vector2(0, 1);
+            timerRect.anchoredPosition = new Vector2(20, -70);
 
             // Weapon tier (top-right)
             var weaponGO = CreateHUDText(canvasGO.transform, "Weapon: Starting", TextAnchor.UpperRight);
@@ -132,10 +133,13 @@ namespace SixteenBit.UI
             }
         }
 
-        private void UpdateScore()
+        private void UpdateTimer()
         {
-            if (_scoreText != null && Gameplay.GameManager.Instance != null)
-                _scoreText.text = $"Score: {Gameplay.GameManager.Instance.Score}";
+            if (_timerText == null || Gameplay.GameManager.Instance == null) return;
+            float elapsed = Gameplay.GameManager.Instance.LevelElapsedTime;
+            int minutes = (int)(elapsed / 60f);
+            float seconds = elapsed % 60f;
+            _timerText.text = $"{minutes}:{seconds:00.0}";
         }
 
         private void UpdateWeaponDisplay()

@@ -91,10 +91,17 @@ namespace SixteenBit.Gameplay
             rb.interpolation = RigidbodyInterpolation2D.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
 
-            // Collider (smaller than sprite for forgiving gameplay)
-            var col = _playerObj.AddComponent<BoxCollider2D>();
-            col.size = new Vector2(0.9f, 1.2f);
+            // Capsule collider — rounded edges prevent catching on tile seams
+            var col = _playerObj.AddComponent<CapsuleCollider2D>();
+            col.size = new Vector2(0.8f, 1.2f);
             col.offset = new Vector2(0f, 0.6f);
+            col.direction = CapsuleDirection2D.Vertical;
+
+            // Frictionless material for smooth wall sliding
+            var mat = new PhysicsMaterial2D("PlayerFrictionless");
+            mat.friction = 0f;
+            mat.bounciness = 0f;
+            col.sharedMaterial = mat;
 
             // Components
             Player = _playerObj.AddComponent<PlayerController>();
@@ -107,6 +114,11 @@ namespace SixteenBit.Gameplay
             checkpointGO.AddComponent<CheckpointManager>();
 
             _playerObj.transform.position = startPos;
+
+            // Grant spawn protection so enemies near start don't instantly kill the player
+            var health = _playerObj.GetComponent<HealthSystem>();
+            if (health != null)
+                health.GrantSpawnProtection();
         }
 
         private void CreateCamera()
@@ -128,9 +140,9 @@ namespace SixteenBit.Gameplay
             var camController = _mainCamera.AddComponent<CameraController>();
             camController.Initialize(Player.transform, _tilemapRenderer);
 
-            // Position at player
+            // Position at player with vertical offset (matching CameraController's offset)
             Vector3 playerPos = Player.transform.position;
-            _mainCamera.transform.position = new Vector3(playerPos.x, playerPos.y, -10f);
+            _mainCamera.transform.position = new Vector3(playerPos.x, playerPos.y + 5f, -10f);
         }
 
         private void SpawnEnemies(LevelData data)
@@ -143,6 +155,11 @@ namespace SixteenBit.Gameplay
             for (int i = 0; i < data.Enemies.Count; i++)
             {
                 var enemyData = data.Enemies[i];
+
+                // Skip enemies too close to the start — give player a safe zone
+                int dx = Mathf.Abs(enemyData.TileX - data.Layout.StartX);
+                if (dx < 8) continue;
+
                 Vector3 pos = _tilemapRenderer.LevelToWorld(enemyData.TileX, enemyData.TileY);
 
                 var go = new GameObject($"Enemy_{i}_{enemyData.Type}");

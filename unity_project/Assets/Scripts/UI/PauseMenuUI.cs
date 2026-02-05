@@ -44,18 +44,21 @@ namespace SixteenBit.UI
             // Resume button
             CreateButton(canvasGO.transform, "RESUME", new Vector2(0, 30),
                 new Color(0.2f, 0.5f, 0.3f), () => {
+                    Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.ResumeGame();
                 });
 
             // Restart button
             CreateButton(canvasGO.transform, "RESTART", new Vector2(0, -50),
                 new Color(0.5f, 0.4f, 0.2f), () => {
+                    Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.RestartLevel();
                 });
 
             // Quit to Menu
             CreateButton(canvasGO.transform, "QUIT TO MENU", new Vector2(0, -130),
                 new Color(0.5f, 0.2f, 0.2f), () => {
+                    Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.ReturnToTitle();
                 });
         }

@@ -4,8 +4,10 @@ using SixteenBit.Generative;
 namespace SixteenBit.Gameplay
 {
     /// <summary>
-    /// Manages the player's weapon. Auto-fires at the nearest enemy
-    /// within range. Weapon tier determines what materials can be broken.
+    /// Manages the player's weapon. Auto-fires continuously:
+    /// targets nearest enemy in range, or fires in the player's
+    /// facing direction when no enemies are nearby.
+    /// Weapon tier determines what materials can be broken.
     /// </summary>
     public class WeaponSystem : MonoBehaviour
     {
@@ -18,15 +20,22 @@ namespace SixteenBit.Gameplay
         private int _damage = 1;
 
         private Transform _currentTarget;
+        private PlayerController _player;
+
+        private void Awake()
+        {
+            _player = GetComponent<PlayerController>();
+        }
 
         private void Update()
         {
             if (GameManager.Instance.CurrentState != GameState.Playing) return;
+            if (_player != null && !_player.IsAlive) return;
 
             _fireTimer -= Time.deltaTime;
             FindTarget();
 
-            if (_currentTarget != null && _fireTimer <= 0f)
+            if (_fireTimer <= 0f)
             {
                 Fire();
                 _fireTimer = _fireRate;
@@ -74,9 +83,20 @@ namespace SixteenBit.Gameplay
 
         private void Fire()
         {
-            if (_currentTarget == null) return;
+            Vector2 dir;
 
-            Vector2 dir = ((Vector2)_currentTarget.position - (Vector2)transform.position).normalized;
+            if (_currentTarget != null)
+            {
+                // Aim at nearest enemy
+                dir = ((Vector2)_currentTarget.position - (Vector2)transform.position).normalized;
+            }
+            else
+            {
+                // No enemy in range — fire in facing direction
+                bool facingRight = _player != null ? _player.FacingRight : true;
+                dir = facingRight ? Vector2.right : Vector2.left;
+            }
+
             Vector3 spawnPos = transform.position + (Vector3)(dir * 0.6f);
             spawnPos.y += 0.75f; // Offset to chest height (1.5-unit character)
 
@@ -84,11 +104,11 @@ namespace SixteenBit.Gameplay
             projGO.transform.position = spawnPos;
 
             var sr = projGO.AddComponent<SpriteRenderer>();
-            sr.sprite = PlaceholderAssets.GetProjectileSprite();
+            sr.sprite = PlaceholderAssets.GetProjectileSprite(CurrentTier);
             sr.sortingOrder = 11;
 
             var rb = projGO.AddComponent<Rigidbody2D>();
-            rb.isKinematic = true;
+            rb.bodyType = RigidbodyType2D.Kinematic;
             rb.gravityScale = 0f;
 
             var col = projGO.AddComponent<CircleCollider2D>();
@@ -98,6 +118,8 @@ namespace SixteenBit.Gameplay
             var proj = projGO.AddComponent<Projectile>();
             proj.Initialize(dir, _projectileSpeed, _damage, false);
             proj.WeaponTier = CurrentTier;
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetShootSFX());
         }
     }
 }

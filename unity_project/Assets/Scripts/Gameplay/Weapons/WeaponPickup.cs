@@ -39,6 +39,10 @@ namespace SixteenBit.Gameplay
                 weapon.UpgradeWeapon(Tier);
             }
 
+            if (GameManager.Instance != null)
+                GameManager.Instance.CollectWeapon(Tier);
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetWeaponPickupSFX());
             Destroy(gameObject);
         }
     }

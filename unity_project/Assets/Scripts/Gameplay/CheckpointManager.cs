@@ -29,6 +29,7 @@ namespace SixteenBit.Gameplay
         public void ActivateCheckpoint(Vector3 position)
         {
             CurrentRespawnPoint = position;
+            AudioManager.PlaySFX(PlaceholderAudio.GetCheckpointSFX());
         }
     }
 }

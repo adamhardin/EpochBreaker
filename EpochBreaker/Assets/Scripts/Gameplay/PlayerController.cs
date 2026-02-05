@@ -1,4 +1,5 @@
 using UnityEngine;
+using SixteenBit.Generative;
 
 namespace SixteenBit.Gameplay
 {
@@ -8,7 +9,7 @@ namespace SixteenBit.Gameplay
     /// jump buffer, asymmetric gravity.
     /// </summary>
     [RequireComponent(typeof(Rigidbody2D))]
-    [RequireComponent(typeof(BoxCollider2D))]
+    [RequireComponent(typeof(CapsuleCollider2D))]
     public class PlayerController : MonoBehaviour
     {
         // Movement
@@ -24,11 +25,14 @@ namespace SixteenBit.Gameplay
         private const int COYOTE_FRAMES = 5;
         private const int JUMP_BUFFER_FRAMES = 6;
 
+        // Ground pound
+        private const float STOMP_SPEED = 30f;
+
         // Ground detection
         private const float GROUND_CHECK_DISTANCE = 0.1f;
 
         private Rigidbody2D _rb;
-        private BoxCollider2D _collider;
+        private CapsuleCollider2D _collider;
         private SpriteRenderer _spriteRenderer;
 
         private Vector2 _velocity;
@@ -37,14 +41,17 @@ namespace SixteenBit.Gameplay
         private int _jumpBufferTimer;
         private bool _facingRight = true;
         private bool _jumpCut;
+        private bool _isStomping;
 
         public bool IsGrounded => _isGrounded;
+        public bool FacingRight => _facingRight;
+        public bool IsStomping => _isStomping;
         public bool IsAlive { get; set; } = true;
 
         private void Awake()
         {
             _rb = GetComponent<Rigidbody2D>();
-            _collider = GetComponent<BoxCollider2D>();
+            _collider = GetComponent<CapsuleCollider2D>();
             _spriteRenderer = GetComponent<SpriteRenderer>();
             _rb.gravityScale = 0f; // We handle gravity manually
         }
@@ -56,6 +63,7 @@ namespace SixteenBit.Gameplay
 
             CheckGround();
             HandleJumpBuffer();
+            HandleStompInput();
         }
 
         private void FixedUpdate()
@@ -63,6 +71,15 @@ namespace SixteenBit.Gameplay
             if (!IsAlive || GameManager.Instance.CurrentState != GameState.Playing)
             {
                 _rb.linearVelocity = Vector2.zero;
+                return;
+            }
+
+            if (_isStomping)
+            {
+                // During stomp: override velocity, no horizontal control
+                _velocity.x = 0f;
+                _velocity.y = -STOMP_SPEED;
+                ApplyVelocity();
                 return;
             }
 
@@ -103,6 +120,8 @@ namespace SixteenBit.Gameplay
             if (_isGrounded)
             {
                 _coyoteTimer = COYOTE_FRAMES;
+                if (_isStomping)
+                    _isStomping = false;
             }
             else if (wasGrounded)
             {
@@ -156,6 +175,7 @@ namespace SixteenBit.Gameplay
                 _coyoteTimer = 0;
                 _jumpBufferTimer = 0;
                 _jumpCut = false;
+                AudioManager.PlaySFX(PlaceholderAudio.GetJumpSFX());
             }
 
             // Variable jump height: cut jump short ONCE when button released
@@ -201,6 +221,96 @@ namespace SixteenBit.Gameplay
             transform.position = position;
             _velocity = Vector2.zero;
             _rb.linearVelocity = Vector2.zero;
+        }
+
+        private void HandleStompInput()
+        {
+            if (InputManager.StompPressed && !_isGrounded && !_isStomping)
+            {
+                _isStomping = true;
+                _velocity.y = -STOMP_SPEED;
+                _velocity.x = 0f;
+            }
+        }
+
+        private void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (!IsAlive) return;
+
+            foreach (ContactPoint2D contact in collision.contacts)
+            {
+                // Head bump: hit something above while jumping
+                if (contact.normal.y < -0.5f && _velocity.y > 0f)
+                {
+                    TryBreakTileAbove(contact.point);
+                    _velocity.y = 0f;
+                    break;
+                }
+
+                // Ground pound landing: hit ground below while stomping
+                if (contact.normal.y > 0.5f && _isStomping)
+                {
+                    _isStomping = false;
+                    AudioManager.PlaySFX(PlaceholderAudio.GetStompSFX());
+                    TryBreakTilesBelow(contact.point);
+                    _velocity.y = 6f; // Small bounce after stomp
+                    break;
+                }
+            }
+        }
+
+        private void TryBreakTileAbove(Vector2 contactPoint)
+        {
+            var levelRenderer = FindAnyObjectByType<LevelRenderer>();
+            if (levelRenderer == null) return;
+
+            // Nudge into the tile we hit (slightly above the contact point)
+            Vector2 checkPoint = contactPoint + Vector2.up * 0.1f;
+            Vector2Int levelPos = levelRenderer.WorldToLevel(checkPoint);
+            TryBreakAt(levelRenderer, levelPos.x, levelPos.y);
+        }
+
+        private void TryBreakTilesBelow(Vector2 contactPoint)
+        {
+            var levelRenderer = FindAnyObjectByType<LevelRenderer>();
+            if (levelRenderer == null) return;
+
+            // Nudge into the tile below the contact point
+            Vector2 checkPoint = contactPoint + Vector2.down * 0.1f;
+            Vector2Int levelPos = levelRenderer.WorldToLevel(checkPoint);
+
+            // Break a small area below: center tile and one on each side
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                TryBreakAt(levelRenderer, levelPos.x + dx, levelPos.y);
+            }
+        }
+
+        private void TryBreakAt(LevelRenderer levelRenderer, int tileX, int tileY)
+        {
+            var destructible = levelRenderer.GetDestructibleAt(tileX, tileY);
+
+            if (destructible.MaterialClass > 0 &&
+                destructible.MaterialClass < (byte)MaterialClass.Indestructible)
+            {
+                var weapon = GetComponent<WeaponSystem>();
+                WeaponTier tier = weapon != null ? weapon.CurrentTier : WeaponTier.Starting;
+                MaterialClass mat = (MaterialClass)destructible.MaterialClass;
+
+                bool canBreak = mat switch
+                {
+                    MaterialClass.Soft => true,
+                    MaterialClass.Medium => true,
+                    MaterialClass.Hard => tier >= WeaponTier.Medium,
+                    MaterialClass.Reinforced => tier >= WeaponTier.Heavy,
+                    _ => false,
+                };
+
+                if (canBreak)
+                {
+                    levelRenderer.DestroyTile(tileX, tileY);
+                }
+            }
         }
     }
 }

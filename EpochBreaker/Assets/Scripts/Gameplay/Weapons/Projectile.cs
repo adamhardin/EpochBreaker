@@ -57,36 +57,35 @@ namespace SixteenBit.Gameplay
                     if (enemy != null)
                         enemy.TakeDamage(_damage);
                     Destroy(gameObject);
+                    return;
+                }
+
+                // Hit a non-trigger collider (tile/wall) — try to destroy it
+                if (!other.isTrigger)
+                {
+                    TryDestroyTile();
+                    Destroy(gameObject);
                 }
             }
         }
 
-        private void OnCollisionEnter2D(Collision2D collision)
+        private void TryDestroyTile()
         {
-            // Hit a tile (ground or destructible)
-            if (!_isEnemyProjectile)
-            {
-                // Check if it's a destructible tile
-                var tilemapRenderer = FindAnyObjectByType<LevelRenderer>();
-                if (tilemapRenderer != null)
-                {
-                    Vector2Int levelPos = tilemapRenderer.WorldToLevel(transform.position);
-                    var destructible = tilemapRenderer.GetDestructibleAt(levelPos.x, levelPos.y);
+            var tilemapRenderer = FindAnyObjectByType<LevelRenderer>();
+            if (tilemapRenderer == null) return;
 
-                    if (destructible.MaterialClass > 0 &&
-                        destructible.MaterialClass < (byte)MaterialClass.Indestructible)
-                    {
-                        // Check if weapon can break this material
-                        bool canBreak = CanBreak((MaterialClass)destructible.MaterialClass, WeaponTier);
-                        if (canBreak)
-                        {
-                            tilemapRenderer.DestroyTile(levelPos.x, levelPos.y);
-                        }
-                    }
+            Vector2Int levelPos = tilemapRenderer.WorldToLevel(transform.position);
+            var destructible = tilemapRenderer.GetDestructibleAt(levelPos.x, levelPos.y);
+
+            if (destructible.MaterialClass > 0 &&
+                destructible.MaterialClass < (byte)MaterialClass.Indestructible)
+            {
+                bool canBreak = CanBreak((MaterialClass)destructible.MaterialClass, WeaponTier);
+                if (canBreak)
+                {
+                    tilemapRenderer.DestroyTile(levelPos.x, levelPos.y);
                 }
             }
-
-            Destroy(gameObject);
         }
 
         private static bool CanBreak(MaterialClass material, WeaponTier tier)

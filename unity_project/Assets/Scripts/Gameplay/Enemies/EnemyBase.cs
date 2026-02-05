@@ -195,7 +195,7 @@ namespace SixteenBit.Gameplay
             sr.sortingOrder = 11;
 
             var rb = projGO.AddComponent<Rigidbody2D>();
-            rb.isKinematic = true;
+            rb.bodyType = RigidbodyType2D.Kinematic;
             rb.gravityScale = 0f;
 
             var col = projGO.AddComponent<CircleCollider2D>();
@@ -211,6 +211,8 @@ namespace SixteenBit.Gameplay
             if (IsDead) return;
 
             Health -= amount;
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetEnemyHitSFX());
 
             // Flash red
             if (_sr != null)
@@ -233,9 +235,10 @@ namespace SixteenBit.Gameplay
         {
             IsDead = true;
 
-            // Add score
             if (GameManager.Instance != null)
-                GameManager.Instance.Score += 100;
+                GameManager.Instance.RecordEnemyKill();
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetEnemyDieSFX());
 
             // Simple death: destroy after brief delay
             if (_rb != null)

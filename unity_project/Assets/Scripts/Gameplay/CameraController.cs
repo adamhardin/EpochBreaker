@@ -4,7 +4,8 @@ namespace SixteenBit.Gameplay
 {
     /// <summary>
     /// Follows the player horizontally with smooth tracking.
-    /// Clamped to level bounds. Vertical tracking with dead zone.
+    /// Vertical offset keeps player in bottom ~30% of screen (side-scroller standard).
+    /// Clamped to level bounds.
     /// </summary>
     public class CameraController : MonoBehaviour
     {
@@ -13,9 +14,14 @@ namespace SixteenBit.Gameplay
         private Camera _camera;
 
         private float _smoothSpeedX = 8f;
-        private float _smoothSpeedY = 4f;
-        private float _verticalDeadZone = 1.5f;
+        private float _smoothSpeedY = 5f;
+        private float _verticalDeadZone = 1.0f;
         private float _lookAheadX = 1.5f;
+
+        // Vertical offset: camera center sits above the player so the player
+        // appears near the bottom of the screen. With ortho size 7 (14 units
+        // visible), offset 5 puts the player at (7-5)/14 ≈ 14% from bottom.
+        private float _verticalOffset = 5.0f;
 
         public void Initialize(Transform target, LevelRenderer tilemapRenderer)
         {
@@ -39,12 +45,14 @@ namespace SixteenBit.Gameplay
             float targetX = targetPos.x + lookAhead;
             float newX = Mathf.Lerp(currentPos.x, targetX, _smoothSpeedX * Time.deltaTime);
 
-            // Vertical: follow with dead zone
+            // Vertical: offset target upward so player is in bottom portion of screen
+            float offsetTargetY = targetPos.y + _verticalOffset;
+
             float newY = currentPos.y;
-            float vertDiff = targetPos.y - currentPos.y;
+            float vertDiff = offsetTargetY - currentPos.y;
             if (Mathf.Abs(vertDiff) > _verticalDeadZone)
             {
-                float targetY = targetPos.y - Mathf.Sign(vertDiff) * _verticalDeadZone;
+                float targetY = offsetTargetY - Mathf.Sign(vertDiff) * _verticalDeadZone;
                 newY = Mathf.Lerp(currentPos.y, targetY, _smoothSpeedY * Time.deltaTime);
             }
 

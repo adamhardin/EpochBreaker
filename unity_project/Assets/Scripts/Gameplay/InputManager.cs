@@ -21,6 +21,9 @@ namespace SixteenBit.Gameplay
         /// <summary>True on the frame attack/target-cycle was pressed</summary>
         public static bool AttackPressed { get; set; }
 
+        /// <summary>True on the frame stomp/down was pressed (while airborne → ground pound)</summary>
+        public static bool StompPressed { get; set; }
+
         /// <summary>True on the frame pause was pressed</summary>
         public static bool PausePressed { get; set; }
 
@@ -49,6 +52,10 @@ namespace SixteenBit.Gameplay
             if (Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.J))
                 AttackPressed = true;
 
+            // Stomp / ground pound (down while airborne)
+            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+                StompPressed = true;
+
             // Pause
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
                 PausePressed = true;
@@ -61,6 +68,7 @@ namespace SixteenBit.Gameplay
         {
             JumpPressed = false;
             AttackPressed = false;
+            StompPressed = false;
             PausePressed = false;
             // MoveX and JumpHeld persist until next frame's update
         }
@@ -74,6 +82,7 @@ namespace SixteenBit.Gameplay
             JumpPressed = false;
             JumpHeld = false;
             AttackPressed = false;
+            StompPressed = false;
             PausePressed = false;
         }
     }

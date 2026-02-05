@@ -21,6 +21,7 @@ namespace SixteenBit.Gameplay
         private float _invulnerabilityTimer;
         private const float INVULNERABILITY_DURATION = 1f; // 60 frames at 60fps
         private const float KNOCKBACK_FORCE = 8f;
+        private const float SPAWN_PROTECTION_DURATION = 2f;
 
         private PlayerController _player;
         private SpriteRenderer _spriteRenderer;
@@ -58,6 +59,12 @@ namespace SixteenBit.Gameplay
                     }
                 }
             }
+
+            // Kill plane: respawn if player falls below the level
+            if (_player != null && _player.IsAlive && transform.position.y < -5f)
+            {
+                Die();
+            }
         }
 
         public void TakeDamage(int amount, Vector2 damageSource)
@@ -67,6 +74,7 @@ namespace SixteenBit.Gameplay
             CurrentHealth = Mathf.Max(0, CurrentHealth - amount);
             OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
             OnDamage?.Invoke();
+            AudioManager.PlaySFX(PlaceholderAudio.GetPlayerHurtSFX());
 
             // Knockback away from damage source
             if (_player != null)
@@ -122,7 +130,17 @@ namespace SixteenBit.Gameplay
                 _player.TeleportTo(checkpoint.CurrentRespawnPoint);
                 _player.IsAlive = true;
                 ResetHealth();
+                GrantSpawnProtection();
             }
+        }
+
+        /// <summary>
+        /// Grant temporary invulnerability after spawning or respawning.
+        /// </summary>
+        public void GrantSpawnProtection()
+        {
+            IsInvulnerable = true;
+            _invulnerabilityTimer = SPAWN_PROTECTION_DURATION;
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

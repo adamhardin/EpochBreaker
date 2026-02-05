@@ -56,6 +56,10 @@ namespace SixteenBit.Gameplay
                 }
             }
 
+            if (GameManager.Instance != null)
+                GameManager.Instance.CollectReward(Type);
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetRewardPickupSFX());
             Destroy(gameObject);
         }
     }

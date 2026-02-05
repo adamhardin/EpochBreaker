@@ -923,7 +923,12 @@ namespace SixteenBit.Gameplay
 
         public static Sprite GetProjectileSprite()
         {
-            string key = "projectile";
+            return GetProjectileSprite(WeaponTier.Starting);
+        }
+
+        public static Sprite GetProjectileSprite(WeaponTier tier)
+        {
+            string key = $"projectile_{tier}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 32;
@@ -931,11 +936,32 @@ namespace SixteenBit.Gameplay
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
-            Color bright = new Color(1f, 1f, 0.50f);
-            Color core   = new Color(1f, 1f, 0.90f);
-            Color dim    = new Color(0.80f, 0.70f, 0.10f);
-            Color glow   = new Color(1f, 0.95f, 0.30f);
-            Color outer  = new Color(0.60f, 0.50f, 0.05f);
+            // Tier-specific color palettes
+            Color bright, core, dim, glow, outer;
+            switch (tier)
+            {
+                case WeaponTier.Heavy:
+                    bright = new Color(1f, 0.30f, 0.15f);
+                    core   = new Color(1f, 0.85f, 0.70f);
+                    dim    = new Color(0.70f, 0.10f, 0.05f);
+                    glow   = new Color(1f, 0.50f, 0.10f);
+                    outer  = new Color(0.50f, 0.05f, 0.02f);
+                    break;
+                case WeaponTier.Medium:
+                    bright = new Color(0.20f, 1f, 0.50f);
+                    core   = new Color(0.80f, 1f, 0.90f);
+                    dim    = new Color(0.05f, 0.70f, 0.20f);
+                    glow   = new Color(0.30f, 1f, 0.60f);
+                    outer  = new Color(0.02f, 0.50f, 0.10f);
+                    break;
+                default: // Starting
+                    bright = new Color(1f, 1f, 0.50f);
+                    core   = new Color(1f, 1f, 0.90f);
+                    dim    = new Color(0.80f, 0.70f, 0.10f);
+                    glow   = new Color(1f, 0.95f, 0.30f);
+                    outer  = new Color(0.60f, 0.50f, 0.05f);
+                    break;
+            }
 
             // Diamond bolt shape (native 32x32)
             SetRect(px, size, 13, 2, 6, 4, outer);
@@ -945,9 +971,24 @@ namespace SixteenBit.Gameplay
             SetRect(px, size, 7, 18, 18, 4, bright);
             SetRect(px, size, 10, 22, 12, 4, dim);
             SetRect(px, size, 13, 26, 6, 4, outer);
-            // Center hot core
-            SetRect(px, size, 11, 13, 10, 6, core);
-            SetRect(px, size, 13, 12, 6, 8, core);
+
+            // Center hot core — larger for higher tiers
+            if (tier == WeaponTier.Heavy)
+            {
+                SetRect(px, size, 9, 11, 14, 10, core);
+                SetRect(px, size, 11, 10, 10, 12, core);
+            }
+            else if (tier == WeaponTier.Medium)
+            {
+                SetRect(px, size, 10, 12, 12, 8, core);
+                SetRect(px, size, 12, 11, 8, 10, core);
+            }
+            else
+            {
+                SetRect(px, size, 11, 13, 10, 6, core);
+                SetRect(px, size, 13, 12, 6, 8, core);
+            }
+
             // Inner glow ring
             SetRect(px, size, 9, 11, 2, 10, glow);
             SetRect(px, size, 21, 11, 2, 10, glow);
