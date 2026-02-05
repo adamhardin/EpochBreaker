@@ -1357,16 +1357,44 @@ namespace SixteenBit.Gameplay
             Color poleHi = Lighten(pole, 0.25f);
             Color poleMid = Darken(pole, 0.85f);
 
-            // Pole (8px wide, full height)
-            SetRect(px, w, 8, 0, 8, 192, pole);
-            SetRect(px, w, 8, 0, 3, 192, poleDk);
-            SetRect(px, w, 13, 0, 3, 192, poleHi);
+            // Stone brick base (48x32 px)
+            Color stone = new Color(0.45f, 0.42f, 0.38f);
+            Color stoneDk = Darken(stone, 0.70f);
+            Color stoneHi = Lighten(stone, 0.20f);
+            Color mortar = Darken(stone, 0.55f);
+
+            // Base platform layers (bottom to top)
+            SetRect(px, w, 0, 0, 48, 8, stoneDk);    // bottom shadow layer
+            SetRect(px, w, 2, 2, 44, 6, stone);      // bottom row bricks
+            SetRect(px, w, 0, 8, 48, 16, stone);     // main brick body
+            SetRect(px, w, 2, 22, 44, 4, stoneHi);   // top highlight
+            SetRect(px, w, 4, 24, 40, 2, Lighten(stoneHi, 0.15f)); // top edge
+
+            // Brick pattern (mortar lines)
+            SetRect(px, w, 0, 8, 48, 1, mortar);     // horizontal mortar
+            SetRect(px, w, 0, 16, 48, 1, mortar);    // horizontal mortar
+            // Vertical mortar lines (staggered)
+            for (int bx = 12; bx < 48; bx += 16) { SetRect(px, w, bx, 9, 1, 7, mortar); }
+            for (int bx = 4; bx < 48; bx += 16) { SetRect(px, w, bx, 17, 1, 5, mortar); }
+
+            // Brick highlights and shadows
+            for (int by = 9; by < 22; by += 8)
+            {
+                for (int bx = 2; bx < 46; bx += 16)
+                {
+                    Px(px, w, bx, by + 5, stoneDk);     // shadow
+                    Px(px, w, bx + 1, by, stoneHi);     // highlight
+                }
+            }
+
+            // Pole mounted on base (8px wide, from base top)
+            int poleBottom = 26;
+            SetRect(px, w, 8, poleBottom, 8, 192 - poleBottom, pole);
+            SetRect(px, w, 8, poleBottom, 3, 192 - poleBottom, poleDk);
+            SetRect(px, w, 13, poleBottom, 3, 192 - poleBottom, poleHi);
             // Wood grain on pole
-            for (int i = 0; i < 12; i++) Px(px, w, 11, 10 + i * 15, poleMid);
-            // Base (stone pedestal)
-            SetRect(px, w, 0, 0, 24, 12, poleDk);
-            SetRect(px, w, 2, 8, 20, 4, pole);
-            SetRect(px, w, 4, 10, 16, 2, poleHi);
+            for (int i = 0; i < 10; i++) Px(px, w, 11, poleBottom + 8 + i * 15, poleMid);
+
             // Pole cap (ornamental ball)
             SetRect(px, w, 6, 184, 12, 8, poleHi);
             SetRect(px, w, 8, 186, 8, 4, Lighten(poleHi, 0.20f));
@@ -1698,6 +1726,402 @@ namespace SixteenBit.Gameplay
             sprite.name = key;
             _cache[key] = sprite;
             return sprite;
+        }
+
+        #endregion
+
+        #region UI Elements
+
+        /// <summary>
+        /// Creates a pixel art "EPOCH BREAKER" logo using blocky retro-style letters.
+        /// Single line, large text for maximum impact.
+        /// </summary>
+        public static Sprite GetTitleLogoSprite()
+        {
+            const string key = "title_logo";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            // Logo dimensions: wide for single line, larger blocks
+            int blockSize = 10;  // Large blocks for title
+            int letterW = 5 * blockSize;
+            int letterH = 7 * blockSize;
+            int spacing = 8;
+            int spaceWidth = blockSize * 3;  // Extra wide space between words
+
+            // "EPOCH BREAKER" = 12 letters + 1 space
+            // Total width: 12 letters + spacing + word gap
+            int totalW = 12 * letterW + 11 * spacing + spaceWidth + 32;  // padding
+            int totalH = letterH + 32;  // padding for shadow
+
+            int w = totalW, h = totalH;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[w * h];
+
+            // Colors - rich gold with depth
+            Color gold = new Color(1f, 0.82f, 0.15f);
+            Color goldHi = new Color(1f, 0.95f, 0.45f);
+            Color goldDk = new Color(0.75f, 0.50f, 0.08f);
+            Color shadow = new Color(0.12f, 0.08f, 0.20f);
+            Color outline = new Color(0.35f, 0.18f, 0.05f);
+
+            // Font patterns (5x7)
+            int[,] fontE = { {1,1,1,1,1}, {1,0,0,0,0}, {1,1,1,1,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,1,1,1,1} };
+            int[,] fontP = { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0} };
+            int[,] fontO = { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} };
+            int[,] fontC = { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,1}, {0,1,1,1,0} };
+            int[,] fontH = { {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1} };
+            int[,] fontB = { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0} };
+            int[,] fontR = { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0}, {1,0,1,0,0}, {1,0,0,1,0}, {1,0,0,0,1} };
+            int[,] fontA = { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1} };
+            int[,] fontK = { {1,0,0,0,1}, {1,0,0,1,0}, {1,0,1,0,0}, {1,1,0,0,0}, {1,0,1,0,0}, {1,0,0,1,0}, {1,0,0,0,1} };
+
+            // "EPOCH BREAKER" as single line
+            int[][,] title = { fontE, fontP, fontO, fontC, fontH, null, fontB, fontR, fontE, fontA, fontK, fontE, fontR };
+
+            int x = 16;  // Left padding
+            int y = 12;  // Bottom padding
+
+            for (int i = 0; i < title.Length; i++)
+            {
+                if (title[i] == null)
+                {
+                    // Space between words
+                    x += spaceWidth;
+                }
+                else
+                {
+                    DrawBlockLetter(px, w, h, title[i], x, y, blockSize, gold, goldHi, goldDk, shadow, outline);
+                    x += letterW + spacing;
+                }
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 1f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        private static void DrawBlockLetter(Color[] px, int texW, int texH, int[,] pattern,
+            int startX, int startY, int blockSize, Color main, Color hi, Color dk, Color shadow, Color outline)
+        {
+            int fontH = pattern.GetLength(0);
+            int fontW = pattern.GetLength(1);
+
+            for (int fy = 0; fy < fontH; fy++)
+            {
+                for (int fx = 0; fx < fontW; fx++)
+                {
+                    if (pattern[fy, fx] == 0) continue;
+
+                    int bx = startX + fx * blockSize;
+                    int by = startY + (fontH - 1 - fy) * blockSize;  // Flip Y for bottom-up
+
+                    // Draw shadow (offset down-right)
+                    SetRect(px, texW, bx + 3, by - 3, blockSize, blockSize, shadow);
+
+                    // Draw outline
+                    SetRect(px, texW, bx - 1, by - 1, blockSize + 2, blockSize + 2, outline);
+
+                    // Draw main block with gradient
+                    SetRect(px, texW, bx, by, blockSize, blockSize, main);
+
+                    // Top highlight
+                    SetRect(px, texW, bx, by + blockSize - 2, blockSize, 2, hi);
+
+                    // Left highlight
+                    SetRect(px, texW, bx, by, 2, blockSize, Lighten(main, 0.15f));
+
+                    // Bottom shadow
+                    SetRect(px, texW, bx, by, blockSize, 2, dk);
+
+                    // Right shadow
+                    SetRect(px, texW, bx + blockSize - 2, by, 2, blockSize, dk);
+
+                    // Inner shine pixel
+                    Px(px, texW, bx + 2, by + blockSize - 3, Lighten(hi, 0.3f));
+                }
+            }
+        }
+
+        // 5x7 pixel font patterns for all needed characters
+        private static readonly Dictionary<char, int[,]> _pixelFont = new Dictionary<char, int[,]>
+        {
+            ['A'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1} },
+            ['B'] = new int[,] { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0} },
+            ['C'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['D'] = new int[,] { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0} },
+            ['E'] = new int[,] { {1,1,1,1,1}, {1,0,0,0,0}, {1,0,0,0,0}, {1,1,1,1,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,1,1,1,1} },
+            ['F'] = new int[,] { {1,1,1,1,1}, {1,0,0,0,0}, {1,0,0,0,0}, {1,1,1,1,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0} },
+            ['G'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,0}, {1,0,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['H'] = new int[,] { {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1} },
+            ['I'] = new int[,] { {1,1,1,1,1}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {1,1,1,1,1} },
+            ['J'] = new int[,] { {0,0,1,1,1}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {1,0,0,1,0}, {0,1,1,0,0} },
+            ['K'] = new int[,] { {1,0,0,0,1}, {1,0,0,1,0}, {1,0,1,0,0}, {1,1,0,0,0}, {1,0,1,0,0}, {1,0,0,1,0}, {1,0,0,0,1} },
+            ['L'] = new int[,] { {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,1,1,1,1} },
+            ['M'] = new int[,] { {1,0,0,0,1}, {1,1,0,1,1}, {1,0,1,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1} },
+            ['N'] = new int[,] { {1,0,0,0,1}, {1,1,0,0,1}, {1,0,1,0,1}, {1,0,0,1,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1} },
+            ['O'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['P'] = new int[,] { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0}, {1,0,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0} },
+            ['Q'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,1,0,1}, {1,0,0,1,0}, {0,1,1,0,1} },
+            ['R'] = new int[,] { {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {1,1,1,1,0}, {1,0,1,0,0}, {1,0,0,1,0}, {1,0,0,0,1} },
+            ['S'] = new int[,] { {0,1,1,1,1}, {1,0,0,0,0}, {1,0,0,0,0}, {0,1,1,1,0}, {0,0,0,0,1}, {0,0,0,0,1}, {1,1,1,1,0} },
+            ['T'] = new int[,] { {1,1,1,1,1}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0} },
+            ['U'] = new int[,] { {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['V'] = new int[,] { {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,0,1,0}, {0,1,0,1,0}, {0,0,1,0,0} },
+            ['W'] = new int[,] { {1,0,0,0,1}, {1,0,0,0,1}, {1,0,0,0,1}, {1,0,1,0,1}, {1,0,1,0,1}, {1,1,0,1,1}, {1,0,0,0,1} },
+            ['X'] = new int[,] { {1,0,0,0,1}, {0,1,0,1,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,1,0,1,0}, {1,0,0,0,1} },
+            ['Y'] = new int[,] { {1,0,0,0,1}, {0,1,0,1,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0} },
+            ['Z'] = new int[,] { {1,1,1,1,1}, {0,0,0,0,1}, {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0}, {1,0,0,0,0}, {1,1,1,1,1} },
+            ['0'] = new int[,] { {0,1,1,1,0}, {1,0,0,1,1}, {1,0,1,0,1}, {1,0,1,0,1}, {1,1,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['1'] = new int[,] { {0,0,1,0,0}, {0,1,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,1,1,1,0} },
+            ['2'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {0,0,0,0,1}, {0,0,1,1,0}, {0,1,0,0,0}, {1,0,0,0,0}, {1,1,1,1,1} },
+            ['3'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {0,0,0,0,1}, {0,0,1,1,0}, {0,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['4'] = new int[,] { {0,0,0,1,0}, {0,0,1,1,0}, {0,1,0,1,0}, {1,0,0,1,0}, {1,1,1,1,1}, {0,0,0,1,0}, {0,0,0,1,0} },
+            ['5'] = new int[,] { {1,1,1,1,1}, {1,0,0,0,0}, {1,1,1,1,0}, {0,0,0,0,1}, {0,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['6'] = new int[,] { {0,0,1,1,0}, {0,1,0,0,0}, {1,0,0,0,0}, {1,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['7'] = new int[,] { {1,1,1,1,1}, {0,0,0,0,1}, {0,0,0,1,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0} },
+            ['8'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,0} },
+            ['9'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {1,0,0,0,1}, {0,1,1,1,1}, {0,0,0,0,1}, {0,0,0,1,0}, {0,1,1,0,0} },
+            [' '] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0} },
+            [':'] = new int[,] { {0,0,0,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,0,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,0,0,0} },
+            ['-'] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {1,1,1,1,1}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0} },
+            ['/'] = new int[,] { {0,0,0,0,1}, {0,0,0,0,1}, {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0}, {1,0,0,0,0}, {1,0,0,0,0} },
+            ['|'] = new int[,] { {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0} },
+            ['['] = new int[,] { {0,1,1,1,0}, {0,1,0,0,0}, {0,1,0,0,0}, {0,1,0,0,0}, {0,1,0,0,0}, {0,1,0,0,0}, {0,1,1,1,0} },
+            [']'] = new int[,] { {0,1,1,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,1,1,1,0} },
+            ['.'] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,1,0,0}, {0,0,1,0,0} },
+        };
+
+        /// <summary>
+        /// Creates a pixel art text sprite for UI display.
+        /// </summary>
+        public static Sprite GetPixelTextSprite(string text, Color color, int scale = 2)
+        {
+            text = text.ToUpper();
+            string key = $"pixeltext_{text}_{ColorToHex(color)}_{scale}";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int charW = 5 * scale;
+            int charH = 7 * scale;
+            int spacing = scale;
+            int padding = scale * 2;
+
+            int totalW = padding * 2 + text.Length * (charW + spacing) - spacing;
+            int totalH = padding * 2 + charH;
+
+            var tex = new Texture2D(totalW, totalH, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[totalW * totalH];
+
+            Color hi = Lighten(color, 0.3f);
+            Color dk = Darken(color, 0.7f);
+
+            int x = padding;
+            foreach (char c in text)
+            {
+                if (_pixelFont.TryGetValue(c, out var pattern))
+                {
+                    DrawPixelChar(px, totalW, pattern, x, padding, scale, color, hi, dk);
+                }
+                x += charW + spacing;
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, totalW, totalH), new Vector2(0.5f, 0.5f), 1f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        private static void DrawPixelChar(Color[] px, int texW, int[,] pattern, int startX, int startY, int scale,
+            Color main, Color hi, Color dk)
+        {
+            int fontH = pattern.GetLength(0);
+            int fontW = pattern.GetLength(1);
+
+            for (int fy = 0; fy < fontH; fy++)
+            {
+                for (int fx = 0; fx < fontW; fx++)
+                {
+                    if (pattern[fy, fx] == 0) continue;
+
+                    int bx = startX + fx * scale;
+                    int by = startY + (fontH - 1 - fy) * scale;
+
+                    // Draw scaled pixel block
+                    SetRect(px, texW, bx, by, scale, scale, main);
+
+                    // Subtle highlight on top edge
+                    if (scale >= 2)
+                    {
+                        SetRect(px, texW, bx, by + scale - 1, scale, 1, hi);
+                        SetRect(px, texW, bx, by, scale, 1, dk);
+                    }
+                }
+            }
+        }
+
+        private static string ColorToHex(Color c)
+        {
+            return $"{(int)(c.r * 255):X2}{(int)(c.g * 255):X2}{(int)(c.b * 255):X2}";
+        }
+
+        /// <summary>
+        /// Creates an ornate pixel art frame for the title screen border.
+        /// Uses 9-slice pattern: corners and edges that tile/stretch.
+        /// </summary>
+        public static Sprite GetOrnateFrameSprite()
+        {
+            const string key = "ornate_frame";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            // Frame dimensions to match 1920x1080 reference at scale
+            int w = 960, h = 540;
+            int borderW = 32;  // Width of the ornate border
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[w * h];
+
+            // Frame colors (gold/bronze ornate look)
+            Color frameOuter = new Color(0.35f, 0.25f, 0.12f);
+            Color frameMid = new Color(0.65f, 0.50f, 0.20f);
+            Color frameInner = new Color(0.85f, 0.70f, 0.30f);
+            Color frameHi = new Color(1f, 0.90f, 0.55f);
+            Color frameDk = new Color(0.25f, 0.18f, 0.08f);
+            Color gem = new Color(0.3f, 0.6f, 0.9f);
+            Color gemHi = new Color(0.6f, 0.85f, 1f);
+
+            // Draw outer edge (dark border)
+            SetRect(px, w, 0, 0, w, borderW, frameOuter);           // bottom
+            SetRect(px, w, 0, h - borderW, w, borderW, frameOuter); // top
+            SetRect(px, w, 0, 0, borderW, h, frameOuter);           // left
+            SetRect(px, w, w - borderW, 0, borderW, h, frameOuter); // right
+
+            // Draw mid frame layer
+            int m = 4;
+            SetRect(px, w, m, m, w - m * 2, borderW - m * 2, frameMid);
+            SetRect(px, w, m, h - borderW + m, w - m * 2, borderW - m * 2, frameMid);
+            SetRect(px, w, m, m, borderW - m * 2, h - m * 2, frameMid);
+            SetRect(px, w, w - borderW + m, m, borderW - m * 2, h - m * 2, frameMid);
+
+            // Inner highlight line
+            int i = 8;
+            SetRect(px, w, i, i, w - i * 2, 2, frameHi);
+            SetRect(px, w, i, h - i - 2, w - i * 2, 2, frameHi);
+            SetRect(px, w, i, i, 2, h - i * 2, frameHi);
+            SetRect(px, w, w - i - 2, i, 2, h - i * 2, frameHi);
+
+            // Inner shadow line
+            SetRect(px, w, borderW - 4, borderW - 4, w - (borderW - 4) * 2, 2, frameDk);
+            SetRect(px, w, borderW - 4, h - borderW + 2, w - (borderW - 4) * 2, 2, frameDk);
+            SetRect(px, w, borderW - 4, borderW - 4, 2, h - (borderW - 4) * 2, frameDk);
+            SetRect(px, w, w - borderW + 2, borderW - 4, 2, h - (borderW - 4) * 2, frameDk);
+
+            // Corner ornaments (decorative squares with gems)
+            DrawCornerOrnament(px, w, h, 0, 0, borderW, frameInner, frameHi, frameDk, gem, gemHi);                    // bottom-left
+            DrawCornerOrnament(px, w, h, w - borderW, 0, borderW, frameInner, frameHi, frameDk, gem, gemHi);          // bottom-right
+            DrawCornerOrnament(px, w, h, 0, h - borderW, borderW, frameInner, frameHi, frameDk, gem, gemHi);          // top-left
+            DrawCornerOrnament(px, w, h, w - borderW, h - borderW, borderW, frameInner, frameHi, frameDk, gem, gemHi);// top-right
+
+            // Edge decorations (repeating pattern along borders)
+            int gemSpacing = 80;
+            // Top edge gems
+            for (int gx = borderW + gemSpacing / 2; gx < w - borderW; gx += gemSpacing)
+                DrawEdgeGem(px, w, gx, h - borderW / 2, gem, gemHi, frameDk);
+            // Bottom edge gems
+            for (int gx = borderW + gemSpacing / 2; gx < w - borderW; gx += gemSpacing)
+                DrawEdgeGem(px, w, gx, borderW / 2, gem, gemHi, frameDk);
+            // Left edge gems
+            for (int gy = borderW + gemSpacing / 2; gy < h - borderW; gy += gemSpacing)
+                DrawEdgeGem(px, w, borderW / 2, gy, gem, gemHi, frameDk);
+            // Right edge gems
+            for (int gy = borderW + gemSpacing / 2; gy < h - borderW; gy += gemSpacing)
+                DrawEdgeGem(px, w, w - borderW / 2, gy, gem, gemHi, frameDk);
+
+            // Filigree pattern on frame edges
+            for (int fx = borderW + 20; fx < w - borderW - 10; fx += 40)
+            {
+                DrawFiligree(px, w, fx, 12, frameHi, frameDk);
+                DrawFiligree(px, w, fx, h - 20, frameHi, frameDk);
+            }
+            for (int fy = borderW + 20; fy < h - borderW - 10; fy += 40)
+            {
+                DrawFiligreeVert(px, w, 12, fy, frameHi, frameDk);
+                DrawFiligreeVert(px, w, w - 20, fy, frameHi, frameDk);
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 0.5f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        private static void DrawCornerOrnament(Color[] px, int texW, int texH, int cx, int cy, int size,
+            Color main, Color hi, Color dk, Color gem, Color gemHi)
+        {
+            // Ornate corner with layered squares and central gem
+            int s = size;
+            SetRect(px, texW, cx + 2, cy + 2, s - 4, s - 4, main);
+
+            // Diagonal line pattern
+            for (int d = 4; d < s - 4; d += 4)
+            {
+                Px(px, texW, cx + d, cy + d, hi);
+                Px(px, texW, cx + s - d - 1, cy + d, hi);
+            }
+
+            // Central gem
+            int gc = s / 2;
+            SetRect(px, texW, cx + gc - 4, cy + gc - 4, 8, 8, gem);
+            SetRect(px, texW, cx + gc - 3, cy + gc - 3, 6, 6, gemHi);
+            SetRect(px, texW, cx + gc - 2, cy + gc + 1, 4, 2, gem);
+            Px(px, texW, cx + gc - 1, cy + gc + 2, Lighten(gemHi, 0.5f));
+
+            // Corner highlight
+            SetRect(px, texW, cx + 2, cy + s - 4, s - 4, 2, hi);
+            SetRect(px, texW, cx + 2, cy + 2, 2, s - 4, hi);
+        }
+
+        private static void DrawEdgeGem(Color[] px, int texW, int x, int y, Color gem, Color hi, Color dk)
+        {
+            // Small diamond gem
+            Px(px, texW, x, y + 2, gem);
+            Px(px, texW, x, y - 2, gem);
+            Px(px, texW, x - 2, y, gem);
+            Px(px, texW, x + 2, y, gem);
+            SetRect(px, texW, x - 1, y - 1, 3, 3, gem);
+            Px(px, texW, x, y, hi);
+            Px(px, texW, x - 1, y + 1, hi);
+        }
+
+        private static void DrawFiligree(Color[] px, int texW, int x, int y, Color hi, Color dk)
+        {
+            // Simple horizontal scroll pattern
+            Px(px, texW, x, y, hi);
+            Px(px, texW, x + 1, y + 1, hi);
+            Px(px, texW, x + 2, y, hi);
+            Px(px, texW, x + 3, y - 1, hi);
+            Px(px, texW, x + 4, y, hi);
+            Px(px, texW, x + 5, y + 1, hi);
+            Px(px, texW, x + 6, y, hi);
+        }
+
+        private static void DrawFiligreeVert(Color[] px, int texW, int x, int y, Color hi, Color dk)
+        {
+            // Simple vertical scroll pattern
+            Px(px, texW, x, y, hi);
+            Px(px, texW, x + 1, y + 1, hi);
+            Px(px, texW, x, y + 2, hi);
+            Px(px, texW, x - 1, y + 3, hi);
+            Px(px, texW, x, y + 4, hi);
+            Px(px, texW, x + 1, y + 5, hi);
+            Px(px, texW, x, y + 6, hi);
         }
 
         #endregion

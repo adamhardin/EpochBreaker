@@ -142,7 +142,7 @@ namespace SixteenBit.Gameplay
         {
             if (_cache.TryGetValue("sfx_shoot", out var c)) return c;
             var buf = MakeBuffer(0.08f);
-            AddTone(buf, 0f, 0.08f, 1200f, 300f, Wave.Square, 0.2f, 0.002f, 0.01f);
+            AddTone(buf, 0f, 0.08f, 1200f, 300f, Wave.Square, 0.02f, 0.002f, 0.01f);
             var clip = MakeClip("SFX_Shoot", buf);
             _cache["sfx_shoot"] = clip;
             return clip;

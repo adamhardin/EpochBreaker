@@ -44,7 +44,7 @@ namespace SixteenBit.Gameplay
             }
         }
 
-        public static void PlaySFX(AudioClip clip)
+        public static void PlaySFX(AudioClip clip, float volume = 1f)
         {
             if (Instance == null || clip == null) return;
 
@@ -59,7 +59,7 @@ namespace SixteenBit.Gameplay
             // PlayOneShot doesn't interrupt other sounds on the same source
             var src = Instance._sfxSources[Instance._sfxIndex];
             Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
-            src.PlayOneShot(clip);
+            src.PlayOneShot(clip, volume);
         }
 
         public static void PlayMusic(AudioClip clip)

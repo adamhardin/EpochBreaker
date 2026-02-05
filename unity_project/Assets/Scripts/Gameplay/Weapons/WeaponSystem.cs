@@ -16,7 +16,7 @@ namespace SixteenBit.Gameplay
         private float _fireRate = 0.25f; // 4 shots per second
         private float _fireTimer;
         private float _range = 12f;
-        private float _projectileSpeed = 14f;
+        private float _projectileSpeed = 24f;
         private int _damage = 1;
 
         private Transform _currentTarget;
@@ -119,7 +119,7 @@ namespace SixteenBit.Gameplay
             proj.Initialize(dir, _projectileSpeed, _damage, false);
             proj.WeaponTier = CurrentTier;
 
-            AudioManager.PlaySFX(PlaceholderAudio.GetShootSFX());
+            AudioManager.PlaySFX(PlaceholderAudio.GetShootSFX(), 0.1f);
         }
     }
 }

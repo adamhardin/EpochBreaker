@@ -137,6 +137,8 @@ namespace SixteenBit.Gameplay
             cam.backgroundColor = new Color(0.10f, 0.08f, 0.15f); // dark blue-purple sky
             cam.clearFlags = CameraClearFlags.SolidColor;
 
+            _mainCamera.AddComponent<AudioListener>();
+
             var camController = _mainCamera.AddComponent<CameraController>();
             camController.Initialize(Player.transform, _tilemapRenderer);
 
@@ -259,6 +261,8 @@ namespace SixteenBit.Gameplay
             {
                 var cp = data.Checkpoints[i];
                 Vector3 pos = _tilemapRenderer.LevelToWorld(cp.TileX, cp.TileY);
+                // Raise checkpoint to sit on top of ground tile (sprite pivot is at bottom)
+                pos.y += 1f;
 
                 var go = new GameObject($"Checkpoint_{cp.Type}_{i}");
                 go.transform.SetParent(checkpointParent.transform);
@@ -271,9 +275,11 @@ namespace SixteenBit.Gameplay
                 var col = go.AddComponent<BoxCollider2D>();
                 col.isTrigger = true;
                 col.size = new Vector2(0.8f, 2.5f);
+                col.offset = new Vector2(0f, 1.25f); // Center on 3-unit tall sprite
 
                 var cpScript = go.AddComponent<CheckpointTrigger>();
-                cpScript.CheckpointPosition = pos;
+                // Respawn at ground level (where player stands), not at flag base
+                cpScript.CheckpointPosition = new Vector3(pos.x, pos.y, pos.z);
             }
         }
 

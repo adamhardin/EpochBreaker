@@ -40,7 +40,9 @@ namespace SixteenBit.Gameplay
         public LevelData CurrentLevel { get; set; }
         public LevelID CurrentLevelID { get; set; }
 
-        // Per-type collection counts for multiplier bonuses
+        // Per-type collection counts for multiplier bonuses (exposed for UI display)
+        public Dictionary<RewardType, int> RewardCounts => _rewardCounts;
+        public Dictionary<WeaponTier, int> WeaponCounts => _weaponCounts;
         private Dictionary<RewardType, int> _rewardCounts = new Dictionary<RewardType, int>();
         private Dictionary<WeaponTier, int> _weaponCounts = new Dictionary<WeaponTier, int>();
 
@@ -214,10 +216,25 @@ namespace SixteenBit.Gameplay
 
         public void NextLevel()
         {
-            // Advance era every 5 levels, cycle difficulty
+            // Advance era every 4 levels, cycle difficulty
             CurrentDifficulty = (CurrentDifficulty + 1) % 4;
             if (CurrentDifficulty == 0)
                 CurrentEra = Mathf.Min(CurrentEra + 1, 9);
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// DEBUG: Start a specific era/difficulty for testing.
+        /// </summary>
+        public void StartTestLevel(int era, int difficulty)
+        {
+            CurrentEra = Mathf.Clamp(era, 0, 9);
+            CurrentDifficulty = Mathf.Clamp(difficulty, 0, 3);
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
             TransitionTo(GameState.Loading);
         }
 
