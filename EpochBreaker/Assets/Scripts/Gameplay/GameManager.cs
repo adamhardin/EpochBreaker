@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 using EpochBreaker.Generative;
 
 namespace EpochBreaker.Gameplay
@@ -105,12 +106,12 @@ namespace EpochBreaker.Gameplay
             gameObject.AddComponent<AudioManager>();
             gameObject.AddComponent<AchievementManager>();
 
-            // Ensure EventSystem exists for UI interaction
+            // Ensure EventSystem exists for UI interaction (using new Input System)
             if (FindAnyObjectByType<EventSystem>() == null)
             {
                 var esGO = new GameObject("EventSystem");
                 esGO.AddComponent<EventSystem>();
-                esGO.AddComponent<StandaloneInputModule>();
+                esGO.AddComponent<InputSystemUIInputModule>();
                 DontDestroyOnLoad(esGO);
             }
         }
