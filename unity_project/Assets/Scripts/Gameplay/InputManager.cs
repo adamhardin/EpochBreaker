@@ -89,11 +89,8 @@ namespace EpochBreaker.Gameplay
             // If using Input System actions
             if (_moveAction != null)
             {
-                // Read move value (touch controls can override via direct assignment)
-                float actionMove = _moveAction.ReadValue<float>();
-                // Only use action value if touch isn't actively controlling
-                if (Mathf.Abs(MoveX) < 0.01f)
-                    MoveX = actionMove;
+                // Read move value directly from action
+                MoveX = _moveAction.ReadValue<float>();
 
                 // Jump (button)
                 if (_jumpAction.WasPressedThisFrame())

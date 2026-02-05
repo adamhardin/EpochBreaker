@@ -16,12 +16,11 @@ namespace EpochBreaker.UI
 
         private void Start()
         {
-            // Only show on touch devices (or always in editor for testing)
-            #if UNITY_EDITOR
-            CreateUI();
-            #elif UNITY_IOS || UNITY_ANDROID
-            CreateUI();
-            #endif
+            // Touch controls disabled - using keyboard/gamepad via Input System
+            // Re-enable for mobile builds by uncommenting below:
+            // #if UNITY_IOS || UNITY_ANDROID
+            // CreateUI();
+            // #endif
         }
 
         private void CreateUI()
