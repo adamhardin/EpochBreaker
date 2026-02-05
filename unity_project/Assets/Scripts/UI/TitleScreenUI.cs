@@ -15,7 +15,10 @@ namespace EpochBreaker.UI
         private Canvas _canvas;
         private GameObject _levelSelectorPanel;
         private GameObject _levelHistoryPanel;
+        private GameObject _enterCodePanel;
         private GameObject _historyContentParent;
+        private InputField _codeInputField;
+        private Text _codeErrorText;
 
         private static readonly string[] EpochNames = {
             "Stone Age", "Bronze Age", "Classical", "Medieval", "Renaissance",
@@ -29,12 +32,25 @@ namespace EpochBreaker.UI
 
         private void Update()
         {
+            if (Keyboard.current == null) return;
+
+            // Submit code with Enter when code panel is open
+            if (_enterCodePanel != null && _enterCodePanel.activeSelf)
+            {
+                if (Keyboard.current.enterKey.wasPressedThisFrame ||
+                    Keyboard.current.numpadEnterKey.wasPressedThisFrame)
+                    SubmitLevelCode();
+                else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+                    _enterCodePanel.SetActive(false);
+                return;
+            }
+
             // Close overlays with Escape
-            if (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
                 if (_levelSelectorPanel != null && _levelSelectorPanel.activeSelf)
                     _levelSelectorPanel.SetActive(false);
-                if (_levelHistoryPanel != null && _levelHistoryPanel.activeSelf)
+                else if (_levelHistoryPanel != null && _levelHistoryPanel.activeSelf)
                     _levelHistoryPanel.SetActive(false);
             }
         }
@@ -107,6 +123,9 @@ namespace EpochBreaker.UI
             verRect.pivot = new Vector2(0, 0);
             verRect.anchoredPosition = new Vector2(20, 20);
 
+            // Enter code overlay (initially hidden)
+            CreateEnterCodeOverlay(canvasGO.transform);
+
             // Level selector overlay (initially hidden)
             CreateLevelSelectorOverlay(canvasGO.transform);
 
@@ -117,14 +136,27 @@ namespace EpochBreaker.UI
         private void CreateMainMenu(Transform parent)
         {
             // Play Game button (primary)
-            CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 140),
+            CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 155),
                 new Vector2(300, 70), new Color(0.2f, 0.55f, 0.3f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     GameManager.Instance?.StartGame();
                 });
 
+            // Enter Code button
+            CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 75),
+                new Vector2(300, 50), new Color(0.4f, 0.5f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (_enterCodePanel != null)
+                    {
+                        _codeInputField.text = "";
+                        _codeErrorText.gameObject.SetActive(false);
+                        _enterCodePanel.SetActive(true);
+                        _codeInputField.ActivateInputField();
+                    }
+                });
+
             // Level History button
-            CreateMenuButton(parent, "LEVEL HISTORY", new Vector2(0, 50),
+            CreateMenuButton(parent, "LEVEL HISTORY", new Vector2(0, 10),
                 new Vector2(300, 50), new Color(0.35f, 0.45f, 0.55f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     if (_levelHistoryPanel != null)
@@ -135,7 +167,7 @@ namespace EpochBreaker.UI
                 });
 
             // Level Selector button (dev)
-            CreateMenuButton(parent, "LEVEL SELECT [DEV]", new Vector2(0, -20),
+            CreateMenuButton(parent, "LEVEL SELECT [DEV]", new Vector2(0, -55),
                 new Vector2(300, 50), new Color(0.4f, 0.35f, 0.5f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     if (_levelSelectorPanel != null)
@@ -154,7 +186,7 @@ namespace EpochBreaker.UI
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.sizeDelta = new Vector2(800, 280);
-            panelRect.anchoredPosition = new Vector2(0, -210);
+            panelRect.anchoredPosition = new Vector2(0, -240);
 
             // Header
             var headerGO = CreateText(panelGO.transform, "GAME ELEMENTS", 20, new Color(0.9f, 0.9f, 1f));
@@ -248,6 +280,162 @@ namespace EpochBreaker.UI
             labelRect.anchoredPosition = new Vector2(0, 5);
         }
 
+        private void CreateEnterCodeOverlay(Transform parent)
+        {
+            // Overlay background
+            _enterCodePanel = new GameObject("EnterCodeOverlay");
+            _enterCodePanel.transform.SetParent(parent, false);
+            var overlayImg = _enterCodePanel.AddComponent<Image>();
+            overlayImg.color = new Color(0f, 0f, 0f, 0.85f);
+            var overlayRect = _enterCodePanel.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.sizeDelta = Vector2.zero;
+
+            // Panel
+            var panelGO = new GameObject("EnterCodePanel");
+            panelGO.transform.SetParent(_enterCodePanel.transform, false);
+            var panelImg = panelGO.AddComponent<Image>();
+            panelImg.color = new Color(0.12f, 0.10f, 0.20f, 0.98f);
+            var panelRect = panelGO.GetComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(520, 340);
+            panelRect.anchoredPosition = Vector2.zero;
+
+            // Title
+            var titleGO = CreateText(panelGO.transform, "ENTER LEVEL CODE", 32, new Color(1f, 0.85f, 0.1f));
+            var titleRect = titleGO.GetComponent<RectTransform>();
+            titleRect.anchoredPosition = new Vector2(0, 130);
+
+            // Format hint
+            var hintGO = CreateText(panelGO.transform, "Format: E-XXXXXXXX  (e.g. 3-K7XM2P9A)", 16,
+                new Color(0.6f, 0.6f, 0.7f));
+            var hintRect = hintGO.GetComponent<RectTransform>();
+            hintRect.anchoredPosition = new Vector2(0, 90);
+
+            // Close button
+            CreateMenuButton(panelGO.transform, "X", new Vector2(230, 130),
+                new Vector2(40, 40), new Color(0.6f, 0.25f, 0.25f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _enterCodePanel.SetActive(false);
+                });
+
+            // InputField background
+            var inputBgGO = new GameObject("InputFieldBg");
+            inputBgGO.transform.SetParent(panelGO.transform, false);
+            var inputBgImg = inputBgGO.AddComponent<Image>();
+            inputBgImg.color = new Color(0.06f, 0.05f, 0.12f, 1f);
+            var inputBgRect = inputBgGO.GetComponent<RectTransform>();
+            inputBgRect.anchorMin = new Vector2(0.5f, 0.5f);
+            inputBgRect.anchorMax = new Vector2(0.5f, 0.5f);
+            inputBgRect.sizeDelta = new Vector2(360, 55);
+            inputBgRect.anchoredPosition = new Vector2(0, 30);
+
+            // InputField text
+            var inputTextGO = new GameObject("Text");
+            inputTextGO.transform.SetParent(inputBgGO.transform, false);
+            var inputText = inputTextGO.AddComponent<Text>();
+            inputText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            inputText.fontSize = 28;
+            inputText.color = Color.white;
+            inputText.alignment = TextAnchor.MiddleCenter;
+            inputText.supportRichText = false;
+            var inputTextRect = inputTextGO.GetComponent<RectTransform>();
+            inputTextRect.anchorMin = new Vector2(0.05f, 0f);
+            inputTextRect.anchorMax = new Vector2(0.95f, 1f);
+            inputTextRect.sizeDelta = Vector2.zero;
+
+            // Placeholder text
+            var placeholderGO = new GameObject("Placeholder");
+            placeholderGO.transform.SetParent(inputBgGO.transform, false);
+            var placeholderText = placeholderGO.AddComponent<Text>();
+            placeholderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            placeholderText.fontSize = 28;
+            placeholderText.color = new Color(0.35f, 0.35f, 0.45f);
+            placeholderText.alignment = TextAnchor.MiddleCenter;
+            placeholderText.fontStyle = FontStyle.Italic;
+            placeholderText.text = "0-00000000";
+            var placeholderRect = placeholderGO.GetComponent<RectTransform>();
+            placeholderRect.anchorMin = new Vector2(0.05f, 0f);
+            placeholderRect.anchorMax = new Vector2(0.95f, 1f);
+            placeholderRect.sizeDelta = Vector2.zero;
+
+            // InputField component
+            _codeInputField = inputBgGO.AddComponent<InputField>();
+            _codeInputField.textComponent = inputText;
+            _codeInputField.placeholder = placeholderText;
+            _codeInputField.characterLimit = 10;
+            _codeInputField.contentType = InputField.ContentType.Custom;
+            _codeInputField.characterValidation = InputField.CharacterValidation.None;
+            _codeInputField.onValidateInput += (text, index, ch) =>
+            {
+                // Allow digits, uppercase letters, and hyphen
+                ch = char.ToUpper(ch);
+                if (char.IsDigit(ch) || (ch >= 'A' && ch <= 'Z') || ch == '-')
+                    return ch;
+                return '\0';
+            };
+
+            // Error text (hidden by default)
+            var errorGO = CreateText(panelGO.transform, "Invalid level code", 18, new Color(1f, 0.3f, 0.3f));
+            var errorRect = errorGO.GetComponent<RectTransform>();
+            errorRect.anchoredPosition = new Vector2(0, -15);
+            _codeErrorText = errorGO.GetComponent<Text>();
+            errorGO.SetActive(false);
+
+            // Play button
+            CreateMenuButton(panelGO.transform, "PLAY", new Vector2(0, -60),
+                new Vector2(200, 55), new Color(0.2f, 0.55f, 0.3f), () => {
+                    SubmitLevelCode();
+                });
+
+#if !UNITY_WEBGL || UNITY_EDITOR
+            // Paste from clipboard button (not available on WebGL — browser security)
+            CreateMenuButton(panelGO.transform, "PASTE", new Vector2(210, 30),
+                new Vector2(80, 40), new Color(0.35f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    string clipboard = GUIUtility.systemCopyBuffer;
+                    if (!string.IsNullOrEmpty(clipboard))
+                    {
+                        // Trim to 10 chars max (level code length)
+                        if (clipboard.Length > 10) clipboard = clipboard.Substring(0, 10);
+                        _codeInputField.text = clipboard.ToUpper();
+                    }
+                });
+#endif
+
+            // Escape hint
+            var escGO = CreateText(panelGO.transform, "Press Esc to close", 14,
+                new Color(0.5f, 0.5f, 0.6f));
+            var escRect = escGO.GetComponent<RectTransform>();
+            escRect.anchoredPosition = new Vector2(0, -130);
+
+            _enterCodePanel.SetActive(false);
+        }
+
+        private void SubmitLevelCode()
+        {
+            string code = _codeInputField.text.Trim().ToUpper();
+            if (string.IsNullOrEmpty(code))
+            {
+                _codeErrorText.text = "Please enter a level code";
+                _codeErrorText.gameObject.SetActive(true);
+                return;
+            }
+
+            if (!LevelID.TryParse(code, out _))
+            {
+                _codeErrorText.text = $"Invalid code: {code}";
+                _codeErrorText.gameObject.SetActive(true);
+                return;
+            }
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+            _enterCodePanel.SetActive(false);
+            GameManager.Instance?.StartLevelFromCode(code);
+        }
+
         private void CreateLevelSelectorOverlay(Transform parent)
         {
             // Overlay background (darkens screen)
@@ -320,21 +508,6 @@ namespace EpochBreaker.UI
                     int randEpoch = Random.Range(0, 10);
                     GameManager.Instance?.StartTestLevel(randEpoch);
                 });
-
-            // Level code section
-            var codeHeaderGO = CreateText(panelGO.transform, "Or enter a level code:", 16,
-                new Color(0.7f, 0.7f, 0.8f));
-            var codeHeaderRect = codeHeaderGO.GetComponent<RectTransform>();
-            codeHeaderRect.anchoredPosition = new Vector2(0, -150);
-
-            // Code input hint
-            var codeHintGO = CreateText(panelGO.transform, "Format: E-XXXXXXXX (e.g. 3-K7XM2P9A)", 14,
-                new Color(0.5f, 0.5f, 0.6f));
-            var codeHintRect = codeHintGO.GetComponent<RectTransform>();
-            codeHintRect.anchoredPosition = new Vector2(0, -180);
-
-            // Note: Full code input would require InputField, which needs more setup
-            // For now, codes can be entered via debug console
 
             // Hint text
             var hintGO = CreateText(panelGO.transform, "Press Esc to close", 14,

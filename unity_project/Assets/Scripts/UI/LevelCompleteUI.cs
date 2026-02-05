@@ -10,9 +10,34 @@ namespace EpochBreaker.UI
     /// </summary>
     public class LevelCompleteUI : MonoBehaviour
     {
+        private Button _continueBtn;
+        private Button _replayBtn;
+        private Button _menuBtn;
+        private Text _continueBtnLabel;
+        private Text _hintText;
+
         private void Start()
         {
             CreateUI();
+        }
+
+        private void Update()
+        {
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            float remaining = gm.LevelCompleteRemainingDelay;
+            bool locked = remaining > 0f;
+
+            if (_continueBtn) _continueBtn.interactable = !locked;
+            if (_replayBtn) _replayBtn.interactable = !locked;
+            if (_menuBtn) _menuBtn.interactable = !locked;
+
+            if (_continueBtnLabel)
+                _continueBtnLabel.text = locked ? $"CONTINUE ({Mathf.CeilToInt(remaining)}s)" : "CONTINUE";
+
+            if (_hintText)
+                _hintText.color = locked ? new Color(0.3f, 0.3f, 0.35f) : new Color(0.5f, 0.5f, 0.6f);
         }
 
         private void CreateUI()
@@ -142,29 +167,31 @@ namespace EpochBreaker.UI
             CreateItemsPanel(canvasGO.transform, gm);
 
             // Continue button (primary action)
-            CreateButton(canvasGO.transform, "CONTINUE", new Vector2(0, -280),
+            _continueBtn = CreateButton(canvasGO.transform, "CONTINUE", new Vector2(0, -280),
                 new Color(0.2f, 0.6f, 0.3f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.NextLevel();
                 });
+            _continueBtnLabel = _continueBtn.GetComponentInChildren<Text>();
 
             // Replay button
-            CreateButton(canvasGO.transform, "REPLAY", new Vector2(-140, -355),
+            _replayBtn = CreateButton(canvasGO.transform, "REPLAY", new Vector2(-140, -355),
                 new Color(0.3f, 0.4f, 0.6f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.RestartLevel();
                 });
 
             // Menu button
-            CreateButton(canvasGO.transform, "MENU", new Vector2(140, -355),
+            _menuBtn = CreateButton(canvasGO.transform, "MENU", new Vector2(140, -355),
                 new Color(0.4f, 0.3f, 0.3f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.ReturnToTitle();
                 });
 
             // Keyboard hint
-            CreateText(canvasGO.transform, "Enter: Continue | R: Replay | Esc: Menu", 14,
+            var hintGO = CreateText(canvasGO.transform, "Enter: Continue | R: Replay | Esc: Menu", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -420));
+            _hintText = hintGO.GetComponent<Text>();
         }
 
         private void CreateItemsPanel(Transform parent, Gameplay.GameManager gm)
@@ -348,7 +375,7 @@ namespace EpochBreaker.UI
             valueRect.anchoredPosition = new Vector2(-25, yPos);
         }
 
-        private void CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position)
+        private GameObject CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position)
         {
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
@@ -365,9 +392,11 @@ namespace EpochBreaker.UI
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(500, fontSize + 20);
             rect.anchoredPosition = position;
+
+            return go;
         }
 
-        private void CreateButton(Transform parent, string text, Vector2 position,
+        private Button CreateButton(Transform parent, string text, Vector2 position,
             Color bgColor, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("Button");
@@ -398,6 +427,8 @@ namespace EpochBreaker.UI
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
             textRect.sizeDelta = Vector2.zero;
+
+            return btn;
         }
     }
 }

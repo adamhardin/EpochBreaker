@@ -81,6 +81,8 @@ namespace EpochBreaker.Gameplay
         private GameObject _hudObj;
         private GameObject _pauseMenuObj;
         private GameObject _levelCompleteObj;
+        private float _levelCompleteTime;
+        private const float LevelCompleteMinDelay = 10f;
         private GameObject _gameOverObj;
         private GameObject _touchControlsObj;
 
@@ -130,6 +132,9 @@ namespace EpochBreaker.Gameplay
             {
                 case GameState.TitleScreen:
                     // Start game with Enter, Space, or Jump action
+                    // Skip if an InputField or other UI element has focus
+                    if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null)
+                        break;
                     if (Keyboard.current != null &&
                         (Keyboard.current.enterKey.wasPressedThisFrame ||
                          Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
@@ -147,7 +152,8 @@ namespace EpochBreaker.Gameplay
                         ResumeGame();
                     break;
                 case GameState.LevelComplete:
-                    if (Keyboard.current != null)
+                    if (Time.unscaledTime - _levelCompleteTime >= LevelCompleteMinDelay &&
+                        Keyboard.current != null)
                     {
                         if (Keyboard.current.enterKey.wasPressedThisFrame ||
                             Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
@@ -200,6 +206,7 @@ namespace EpochBreaker.Gameplay
                 case GameState.LevelComplete:
                     Time.timeScale = 1f;
                     _timerRunning = false;
+                    _levelCompleteTime = Time.unscaledTime;
                     TimeScore = CalculateScore(LevelElapsedTime);
                     Score = TimeScore + ItemBonusScore + EnemyBonusScore;
                     TotalScore += Score;
@@ -249,6 +256,9 @@ namespace EpochBreaker.Gameplay
             Time.timeScale = 1f;
             CreateHUD();
         }
+
+        public float LevelCompleteRemainingDelay =>
+            Mathf.Max(0f, LevelCompleteMinDelay - (Time.unscaledTime - _levelCompleteTime));
 
         public void CompleteLevel()
         {
@@ -571,8 +581,17 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public static void CopyToClipboard(string text)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            WebGLCopyToClipboard(text);
+#else
             GUIUtility.systemCopyBuffer = text;
+#endif
         }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [System.Runtime.InteropServices.DllImport("__Internal")]
+        private static extern void WebGLCopyToClipboard(string text);
+#endif
 
         private void DestroyUI()
         {
