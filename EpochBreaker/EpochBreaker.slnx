@@ -1,6 +1,6 @@
 ﻿<Solution>
   <Project Path="Assembly-CSharp.csproj" />
-  <Project Path="SixteenBit.Tests.Editor.csproj" />
-  <Project Path="SixteenBit.Generative.csproj" />
+  <Project Path="EpochBreaker.Tests.Editor.csproj" />
+  <Project Path="EpochBreaker.Generative.csproj" />
   <Project Path="Assembly-CSharp-Editor.csproj" />
 </Solution>

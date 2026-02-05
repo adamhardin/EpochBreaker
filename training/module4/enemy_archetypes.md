@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document defines 5 mechanically distinct enemy archetypes for the 16-bit side-scrolling mobile shooter (iOS). Each archetype is re-skinned and stat-scaled across 10 eras of human civilization progression. The player character uses auto-firing weapon attachments to blast through enemies alongside destructible terrain.
+This document defines 5 mechanically distinct enemy archetypes for the retro side-scrolling mobile shooter (iOS). Each archetype is re-skinned and stat-scaled across 10 eras of human civilization progression. The player character uses auto-firing weapon attachments to blast through enemies alongside destructible terrain.
 
 **Core Design Principle:** Every archetype defines a single behavioral pattern (state machine) that remains constant across all 10 eras. Only visuals, stat values, and difficulty weights change per era. This allows designers to build encounters using 5 known behaviors while artists produce era-appropriate sprites independently.
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies the destructible environment system for the 16-bit side-scrolling mobile shooter (iOS). The player's weapons auto-fire and blast through destructible terrain -- walls, rocks, floors, and era-specific materials. Destruction reveals pathways, bridges, stairs, and hidden areas. Strategically preserving material creates platforms, cover, and structural supports. Non-destructible environmental hazards are also present and must be navigated around.
+This document specifies the destructible environment system for the retro side-scrolling mobile shooter (iOS). The player's weapons auto-fire and blast through destructible terrain -- walls, rocks, floors, and era-specific materials. Destruction reveals pathways, bridges, stairs, and hidden areas. Strategically preserving material creates platforms, cover, and structural supports. Non-destructible environmental hazards are also present and must be navigated around.
 
 The destructible environment system integrates with procedural level generation and must pass validation rules guaranteeing every level remains completable regardless of what the player destroys.
 
@@ -856,7 +856,7 @@ All destructible terrain must be immediately readable at game speed (6 tiles/s s
 
 3. **State Transitions**: Visual damage states (DAMAGED_1, DAMAGED_2) must be clearly distinct from INTACT. Cracks should follow material-appropriate patterns (organic cracks for stone, dents for metal, fracture lines for glass).
 
-4. **Era Consistency**: All materials within an era must share a consistent color palette and texture style. Cross-era visual coherence is maintained through the 16-bit pixel art style.
+4. **Era Consistency**: All materials within an era must share a consistent color palette and texture style. Cross-era visual coherence is maintained through the retro pixel art style.
 
 5. **Particle Budget**: Maximum 80 active debris particles + 30 hazard particles = 110 total active particles on screen. Particles are pooled and recycled.
 

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace SixteenBit.UI
+namespace EpochBreaker.UI
 {
     /// <summary>
     /// Pause menu overlay with Resume, Restart, and Quit buttons.

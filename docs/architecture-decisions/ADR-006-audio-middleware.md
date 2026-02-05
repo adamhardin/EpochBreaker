@@ -5,7 +5,7 @@
 
 ## Context
 
-The game's 16-bit aesthetic demands a chiptune-inspired soundtrack and retro sound effects, but with modern production quality and dynamic mixing. The audio system must support:
+The game's retro aesthetic demands a chiptune-inspired soundtrack and retro sound effects, but with modern production quality and dynamic mixing. The audio system must support:
 
 1. **Real-time adaptive mixing.** Music intensity should shift in response to gameplay (combat, exploration, boss encounters) without audible seams or pops.
 2. **Chiptune playback fidelity.** The soundtrack uses synthesised waveforms (square, triangle, sawtooth, noise) that must play back without artefacts, aliasing, or unwanted filtering.
@@ -42,7 +42,7 @@ We will use **FMOD Studio** as the audio middleware, integrated via the official
 - **Adaptive music** is implemented using FMOD's parameter system. A `GameIntensity` parameter (0.0 - 1.0) drives transitions between exploration, action, and boss music layers. The game code sets this parameter; FMOD handles all crossfading and transition logic.
 - **SFX events** use FMOD's multi-instrument and scatterer features for procedural variation (random pitch, random sample selection).
 - **Haptic bridge.** A lightweight C# wrapper reads FMOD's playback timeline markers and beat callbacks to dispatch `CHHapticEvent` calls via a native iOS plugin. This provides beat-synchronised haptics with sub-frame accuracy.
-- **Chiptune playback.** The soundtrack is authored as tracker-style sequences in FMOD Studio. Instrument DSP chains use FMOD's built-in oscillator and bitcrusher effects to produce authentic 8-bit/16-bit waveforms while maintaining modern mixing (EQ, compression, reverb sends for spatial depth).
+- **Chiptune playback.** The soundtrack is authored as tracker-style sequences in FMOD Studio. Instrument DSP chains use FMOD's built-in oscillator and bitcrusher effects to produce authentic 8-bit/retro waveforms while maintaining modern mixing (EQ, compression, reverb sends for spatial depth).
 
 ### FMOD Configuration
 

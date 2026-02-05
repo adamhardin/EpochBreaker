@@ -1,9 +1,9 @@
 using NUnit.Framework;
 using UnityEngine;
-using SixteenBit.Gameplay;
-using SixteenBit.Generative;
+using EpochBreaker.Gameplay;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Tests.PlayMode
+namespace EpochBreaker.Tests.PlayMode
 {
     [TestFixture]
     [Category("Integration")]

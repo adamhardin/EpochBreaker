@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SixteenBit.Generative
+namespace EpochBreaker.Generative
 {
     /// <summary>
     /// Validates generated levels for playability and design quality,

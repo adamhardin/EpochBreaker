@@ -2,7 +2,7 @@
 
 ## Overview
 
-This specification defines the architecture for a deterministic, procedurally generated level system for a 16-bit side-scrolling mobile shooter on iOS. Each level is uniquely identifiable and reconstructible via a stable seed. The core gameplay loop centers on destructible environments: the player's weapons auto-fire, blasting through walls, rocks, and terrain to reveal hidden pathways, bridges, stairs, and secret areas. Strategic preservation of material creates platforms, cover, and structural aids, rewarding players who plan their destruction carefully. The system enables infinite replayability through shareable Level IDs while maintaining consistent difficulty and design quality across 10 eras of human civilization.
+This specification defines the architecture for a deterministic, procedurally generated level system for a retro side-scrolling mobile shooter on iOS. Each level is uniquely identifiable and reconstructible via a stable seed. The core gameplay loop centers on destructible environments: the player's weapons auto-fire, blasting through walls, rocks, and terrain to reveal hidden pathways, bridges, stairs, and secret areas. Strategic preservation of material creates platforms, cover, and structural aids, rewarding players who plan their destruction carefully. The system enables infinite replayability through shareable Level IDs while maintaining consistent difficulty and design quality across 10 eras of human civilization.
 
 ---
 

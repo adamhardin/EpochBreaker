@@ -1,14 +1,14 @@
-# Module 6: 16-Bit Audio & Aesthetics - Assessment Criteria
+# Module 6: retro Audio & Aesthetics - Assessment Criteria
 
 ## Module Overview
-This module develops expertise in authentic 16-bit visual and audio design, including pixel art animation, tilemap construction, parallax scrolling, chiptune composition, and sound effects design. Learners must demonstrate ability to create assets that are faithful to 16-bit era constraints while meeting modern mobile quality standards.
+This module develops expertise in authentic retro visual and audio design, including pixel art animation, tilemap construction, parallax scrolling, chiptune composition, and sound effects design. Learners must demonstrate ability to create assets that are faithful to retro era constraints while meeting modern mobile quality standards.
 
 ---
 
 ## Learning Objectives
 
 By completion, learners will be able to:
-1. Create pixel art animations that adhere to 16-bit hardware constraints
+1. Create pixel art animations that adhere to retro hardware constraints
 2. Design cohesive tilesets with efficient palette usage across biomes
 3. Compose chiptune music with authentic waveform and channel constraints
 4. Design sound effects that communicate gameplay information clearly
@@ -19,7 +19,7 @@ By completion, learners will be able to:
 ## Assessment 6.1: Pixel Art Animation Production
 
 ### Objective
-Produce a complete set of player character animations and two enemy animation sets that meet 16-bit era authenticity standards.
+Produce a complete set of player character animations and two enemy animation sets that meet retro era authenticity standards.
 
 ### Requirements
 
@@ -87,7 +87,7 @@ art_style_guide.md               (design rules, constraints, rationale)
 ## Assessment 6.2: Tileset & Biome Design
 
 ### Objective
-Design complete tilesets for two biomes that tile seamlessly, support level generation, and maintain 16-bit authenticity.
+Design complete tilesets for two biomes that tile seamlessly, support level generation, and maintain retro authenticity.
 
 ### Requirements
 
@@ -108,7 +108,7 @@ Design complete tilesets for two biomes that tile seamlessly, support level gene
 - [ ] Minimum 24 unique tiles
 
 **Technical Constraints:**
-- [ ] Tile size: 8x8 pixels (16-bit standard)
+- [ ] Tile size: 8x8 pixels (retro standard)
 - [ ] Maximum 32 colors per biome tileset (from master 256-color palette)
 - [ ] All ground/platform tiles must tile seamlessly (no visible seams)
 - [ ] Edge tiles must connect properly in all configurations (auto-tiling rules)
@@ -154,7 +154,7 @@ tiling_test_screenshots/         (5 level layouts per biome)
 ## Assessment 6.3: Chiptune Music Composition
 
 ### Objective
-Compose two complete music tracks (one level theme, one boss theme) using authentic 16-bit audio constraints.
+Compose two complete music tracks (one level theme, one boss theme) using authentic retro audio constraints.
 
 ### Requirements
 
@@ -187,7 +187,7 @@ Compose two complete music tracks (one level theme, one boss theme) using authen
 - [ ] Document the musical structure of each track (intro, verse, chorus, bridge)
 - [ ] Explain instrument assignments (which channel plays what)
 - [ ] Describe how the music enhances gameplay mood
-- [ ] Reference 2 classic 16-bit tracks that inspired the composition
+- [ ] Reference 2 classic retro tracks that inspired the composition
 
 ### Deliverables
 ```
@@ -203,7 +203,7 @@ channel_assignment.md            (which channel plays what, polyphony plan)
 ### Success Criteria
 - Both tracks loop seamlessly (no audible gap)
 - Channel count stays within 8-channel limit
-- Music sounds authentically 16-bit (not modern chiptune with reverb/effects)
+- Music sounds authentically retro (not modern chiptune with reverb/effects)
 - Level theme and boss theme are clearly distinct in mood
 - Tracks enhance gameplay rather than distract from it
 
@@ -211,7 +211,7 @@ channel_assignment.md            (which channel plays what, polyphony plan)
 | Criteria | Excellent (5) | Good (4) | Acceptable (3) | Needs Work (2) |
 |----------|--------------|---------|----------------|----------------|
 | Musical Quality | Memorable, professional | Good composition | Adequate | Unpolished |
-| Authenticity | Perfectly 16-bit | Very authentic | Mostly authentic | Modern artifacts |
+| Authenticity | Perfectly retro | Very authentic | Mostly authentic | Modern artifacts |
 | Looping | Seamless, invisible | Minor gap | Noticeable seam | Obvious loop point |
 | Mood Matching | Perfect for context | Good match | Acceptable | Doesn't fit |
 | Technical Compliance | All constraints met | 1 minor violation | 2 violations | Multiple violations |
@@ -296,7 +296,7 @@ sfx_integration_guide.md         (which game event triggers which SFX)
 |----------|-------|-------|
 | Sound Quality | /25 | Clean, professional chip sounds |
 | Gameplay Communication | /25 | Each SFX clearly communicates its event |
-| Authenticity | /20 | Genuinely 16-bit |
+| Authenticity | /20 | Genuinely retro |
 | Layering Design | /15 | No mudding, clear priorities |
 | Documentation | /15 | Complete specs and integration guide |
 
@@ -307,7 +307,7 @@ sfx_integration_guide.md         (which game event triggers which SFX)
 ## Assessment 6.5: Parallax Scrolling & Visual Layering
 
 ### Objective
-Design a complete parallax scrolling system with multiple depth layers that creates a convincing sense of depth using 16-bit techniques.
+Design a complete parallax scrolling system with multiple depth layers that creates a convincing sense of depth using retro techniques.
 
 ### Requirements
 

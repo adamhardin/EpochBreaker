@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace SixteenBit.Editor.QA
+namespace EpochBreaker.Editor.QA
 {
     [Serializable]
     public class QAItem

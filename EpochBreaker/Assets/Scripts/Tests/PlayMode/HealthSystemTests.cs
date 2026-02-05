@@ -2,9 +2,9 @@ using System.Collections;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
-using SixteenBit.Gameplay;
+using EpochBreaker.Gameplay;
 
-namespace SixteenBit.Tests.PlayMode
+namespace EpochBreaker.Tests.PlayMode
 {
     [TestFixture]
     [Category("HealthSystem")]

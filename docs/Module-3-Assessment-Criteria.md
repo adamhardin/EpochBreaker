@@ -19,7 +19,7 @@ By completion, learners will be able to:
 ## Assessment 3.1: Progression System Design
 
 ### Objective
-Design a complete progression system for a 16-bit side-scrolling game that sustains player engagement across 10+ hours of gameplay.
+Design a complete progression system for a retro side-scrolling game that sustains player engagement across 10+ hours of gameplay.
 
 ### Requirements
 
@@ -131,7 +131,7 @@ teaching_moments.md              (how each mechanic is introduced)
 ## Assessment 3.3: Retention Analysis & Design
 
 ### Objective
-Analyze retention patterns in mobile games and design specific features to improve Day-1, Day-7, and Day-30 retention for a 16-bit side-scroller.
+Analyze retention patterns in mobile games and design specific features to improve Day-1, Day-7, and Day-30 retention for a retro side-scroller.
 
 ### Requirements
 
@@ -299,7 +299,7 @@ ethical_compliance_checklist.md   (audit against dark patterns)
 ## Module 3 Final Assessment: Capstone Project
 
 ### Objective
-Produce a complete Game Design Document (GDD) section covering progression, difficulty, retention, rewards, and monetization for the 16-bit side-scroller.
+Produce a complete Game Design Document (GDD) section covering progression, difficulty, retention, rewards, and monetization for the retro side-scroller.
 
 ### Requirements
 - [ ] All five assessment areas integrated into a cohesive design

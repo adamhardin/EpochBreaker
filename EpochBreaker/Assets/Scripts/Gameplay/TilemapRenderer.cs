@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.Tilemaps;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 using UnityTilemapRenderer = UnityEngine.Tilemaps.TilemapRenderer;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Converts LevelData byte arrays into Unity Tilemaps.

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Placed at checkpoint locations. Activates on player contact.

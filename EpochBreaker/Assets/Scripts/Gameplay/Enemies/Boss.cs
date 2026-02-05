@@ -1,7 +1,7 @@
 using UnityEngine;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Boss enemy component. Larger than normal enemies, higher health,

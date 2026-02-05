@@ -1,7 +1,7 @@
 using UnityEngine;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Collectable reward/pickup. Heals, boosts, or gives coins.

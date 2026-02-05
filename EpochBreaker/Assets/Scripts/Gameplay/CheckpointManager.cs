@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Tracks activated checkpoints and provides respawn position.

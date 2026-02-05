@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
-using SixteenBit.Generative;
-using SixteenBit.Gameplay;
+using EpochBreaker.Generative;
+using EpochBreaker.Gameplay;
 
-namespace SixteenBit.UI
+namespace EpochBreaker.UI
 {
     /// <summary>
     /// Title screen with game logo, main menu, legend, and dev-only level selector.

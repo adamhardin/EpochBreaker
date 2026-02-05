@@ -2,14 +2,14 @@
 
 ## Overview
 
-This document describes the complete directory structure for the 16-Bit Mobile Game project and provides guidance on file organization throughout development.
+This document describes the complete directory structure for the retro Mobile Game project and provides guidance on file organization throughout development.
 
 ---
 
 ## Current Structure
 
 ```
-16 Bit Mobile Game/
+Retro Mobile Game/
 ├── README.md                          ← START HERE (project overview)
 ├── .gitignore
 ├── .github/
@@ -29,7 +29,7 @@ This document describes the complete directory structure for the 16-Bit Mobile G
     │                                  (Testing framework for gen system)
     │
     ├── Module-1-Assessment-Criteria.md
-    │   (16-Bit Design Fundamentals)
+    │   (retro Design Fundamentals)
     ├── Module-2-Assessment-Criteria.md
     │   (Mobile Game Development)
     ├── Module-3-Assessment-Criteria.md (COMING SOON)
@@ -39,7 +39,7 @@ This document describes the complete directory structure for the 16-Bit Mobile G
     ├── Module-5-Assessment-Criteria.md (COMING SOON)
     │   (Mobile UX & Accessibility)
     ├── Module-6-Assessment-Criteria.md (COMING SOON)
-    │   (16-Bit Audio & Aesthetics)
+    │   (retro Audio & Aesthetics)
     │
     ├── LIVING DOCUMENTS (Updated weekly)
     ├── Progress-Log.md               (Weekly status updates)
@@ -311,7 +311,7 @@ public class LevelGeneratorTests
 **Sprites**: 
 - Name format: `[character]_[action]_[frame].png`
 - Example: `player_walk_01.png`, `slime_idle_01.png`
-- Keep palette-optimized (16-bit constraints)
+- Keep palette-optimized (retro constraints)
 
 **Audio**:
 - Format: .ogg (compressed) or .wav (for editing)

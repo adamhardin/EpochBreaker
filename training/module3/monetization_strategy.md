@@ -2,7 +2,7 @@
 
 ## Overview
 
-Monetization model selection, justification, and revenue projection for the 16-bit side-scrolling shooter mobile game (iOS). This document evaluates three monetization models against the specific characteristics of this game, recommends a hybrid Premium + Cosmetic IAP approach, projects revenue across three scenarios, and provides a comprehensive ethical compliance audit.
+Monetization model selection, justification, and revenue projection for the retro side-scrolling shooter mobile game (iOS). This document evaluates three monetization models against the specific characteristics of this game, recommends a hybrid Premium + Cosmetic IAP approach, projects revenue across three scenarios, and provides a comprehensive ethical compliance audit.
 
 ---
 

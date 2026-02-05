@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 
-namespace SixteenBit.Tests
+namespace EpochBreaker.Tests
 {
     /// <summary>
     /// Shared utility for parsing RunAll() output into NUnit TestCaseData.

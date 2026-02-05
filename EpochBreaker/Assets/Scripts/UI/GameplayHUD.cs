@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace SixteenBit.UI
+namespace EpochBreaker.UI
 {
     /// <summary>
     /// In-game HUD showing health hearts, score, weapon tier, and pause button.

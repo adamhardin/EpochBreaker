@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This guide compiles research on procedural level generation for 16-bit side-scrollers, focusing on deterministic reconstruction via seed-based generation. The system enables infinite unique levels while maintaining design quality, difficulty balance, and player engagement.
+This guide compiles research on procedural level generation for retro side-scrollers, focusing on deterministic reconstruction via seed-based generation. The system enables infinite unique levels while maintaining design quality, difficulty balance, and player engagement.
 
 ---
 

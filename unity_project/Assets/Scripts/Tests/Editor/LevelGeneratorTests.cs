@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Tests
+namespace EpochBreaker.Tests
 {
     /// <summary>
     /// Test suite for the level generation pipeline.

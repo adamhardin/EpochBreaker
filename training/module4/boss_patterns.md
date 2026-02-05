@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies 10 boss encounters, one per era, for the 16-bit side-scrolling mobile shooter (iOS). Each era spans 5 levels, with the boss appearing at the end of level 5 of that era (levels 5, 10, 15, 20, 25, 30, 35, 40, 45, 50). All bosses integrate the game's core destructible environment mechanic -- players must blast apart arena elements to expose weak points, create platforms, remove cover, or trigger environmental hazards.
+This document specifies 10 boss encounters, one per era, for the retro side-scrolling mobile shooter (iOS). Each era spans 5 levels, with the boss appearing at the end of level 5 of that era (levels 5, 10, 15, 20, 25, 30, 35, 40, 45, 50). All bosses integrate the game's core destructible environment mechanic -- players must blast apart arena elements to expose weak points, create platforms, remove cover, or trigger environmental hazards.
 
 **Core Game Concept:**
 - Side-scrolling mobile shooter with auto-firing weapon attachments

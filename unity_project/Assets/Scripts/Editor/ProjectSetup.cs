@@ -5,7 +5,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
 using UnityEngine.EventSystems;
 
-namespace SixteenBit.Editor
+namespace EpochBreaker.Editor
 {
     /// <summary>
     /// Editor tool to set up the Epoch Breaker project.

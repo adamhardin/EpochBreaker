@@ -1,7 +1,9 @@
 {
-    "name": "SixteenBit.Generative",
-    "rootNamespace": "SixteenBit.Generative",
-    "references": [],
+    "name": "EpochBreaker.Gameplay",
+    "rootNamespace": "EpochBreaker.Gameplay",
+    "references": [
+        "EpochBreaker.Generative"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -10,5 +12,5 @@
     "autoReferenced": true,
     "defineConstraints": [],
     "versionDefines": [],
-    "noEngineReferences": true
+    "noEngineReferences": false
 }

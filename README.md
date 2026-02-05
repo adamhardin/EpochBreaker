@@ -1,6 +1,6 @@
-# 16-Bit Mobile Game -- Epoch Breaker
+# Epoch Breaker
 
-A 16-bit inspired side-scrolling mobile shooter for iOS where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments that evolve across 10 eras of human civilization.
+A retro side-scrolling mobile shooter for iOS where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments that evolve across 10 eras of human civilization.
 
 ---
 

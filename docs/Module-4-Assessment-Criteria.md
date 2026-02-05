@@ -1,7 +1,7 @@
 # Module 4: Side-Scrolling Mechanics - Assessment Criteria
 
 ## Module Overview
-This module develops deep expertise in the physics, controls, enemy design, camera systems, and level mechanics that define a quality side-scrolling platformer. Learners must demonstrate ability to tune game feel to professional standards, referencing classic 16-bit titles as benchmarks.
+This module develops deep expertise in the physics, controls, enemy design, camera systems, and level mechanics that define a quality side-scrolling platformer. Learners must demonstrate ability to tune game feel to professional standards, referencing classic retro titles as benchmarks.
 
 ---
 
@@ -19,7 +19,7 @@ By completion, learners will be able to:
 ## Assessment 4.1: Player Physics & Jump Tuning
 
 ### Objective
-Define and tune the complete player physics model for a 16-bit side-scroller, producing a character that feels responsive, weighty, and satisfying to control.
+Define and tune the complete player physics model for a retro side-scroller, producing a character that feels responsive, weighty, and satisfying to control.
 
 ### Requirements
 
@@ -329,7 +329,7 @@ placement_constraints.md         (rules for procedural generation)
 ## Module 4 Final Assessment: Capstone Project
 
 ### Objective
-Produce a complete mechanics specification document that integrates player physics, enemies, camera, combat, power-ups, and hazards into a coherent design for the 16-bit side-scroller.
+Produce a complete mechanics specification document that integrates player physics, enemies, camera, combat, power-ups, and hazards into a coherent design for the retro side-scroller.
 
 ### Requirements
 - [ ] All five assessment areas integrated into one cohesive mechanics document

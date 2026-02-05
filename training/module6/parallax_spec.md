@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete parallax scrolling specification defining 5 depth layers per biome for Forest and Cavern environments. Each layer has defined scroll speed multipliers, texture dimensions, color palettes, and memory budgets. The system creates a convincing sense of depth using 16-bit era techniques while meeting modern mobile performance requirements on iOS.
+Complete parallax scrolling specification defining 5 depth layers per biome for Forest and Cavern environments. Each layer has defined scroll speed multipliers, texture dimensions, color palettes, and memory budgets. The system creates a convincing sense of depth using retro era techniques while meeting modern mobile performance requirements on iOS.
 
 ---
 

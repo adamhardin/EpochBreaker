@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete progression system specification for a 16-bit side-scrolling mobile shooter (iOS) where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments across 10 eras of human civilization. The system sustains engagement across 15+ hours of gameplay through three nested loops, four progression layers, a weapon attachment growth system, and a 50-level unlock schedule spanning the Stone Age to the Transcendent era. All systems integrate with the deterministic level generation pipeline (Level ID format: `LVLID_[VERSION]_[ERA]_[LEVEL]_[SEED64]`).
+Complete progression system specification for a retro side-scrolling mobile shooter (iOS) where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments across 10 eras of human civilization. The system sustains engagement across 15+ hours of gameplay through three nested loops, four progression layers, a weapon attachment growth system, and a 50-level unlock schedule spanning the Stone Age to the Transcendent era. All systems integrate with the deterministic level generation pipeline (Level ID format: `LVLID_[VERSION]_[ERA]_[LEVEL]_[SEED64]`).
 
 **Controls reference**: Left thumb D-pad (8-directional movement), right thumb Jump button + Target Cycle button. Weapon attachments auto-fire toward the nearest or cycled target.
 
@@ -309,7 +309,7 @@ Light environmental storytelling -- no cutscenes, no text dumps. Human civilizat
 ## 4. First 15 Minutes Experience (Minute-by-Minute)
 
 ### Minute 0:00 - 0:30 | App Launch & Title Screen
-- App opens to a pixel-art title screen: scrolling prehistoric landscape parallax, 16-bit chiptune theme with primal drums
+- App opens to a pixel-art title screen: scrolling prehistoric landscape parallax, retro chiptune theme with primal drums
 - Game title rendered in stylized stone-carved pixel font
 - Single button: "TAP TO START" (pulsing gently with warm glow)
 - No account creation, no login wall, no permissions popup yet

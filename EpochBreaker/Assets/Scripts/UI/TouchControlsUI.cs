@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
-namespace SixteenBit.UI
+namespace EpochBreaker.UI
 {
     /// <summary>
     /// On-screen touch controls for mobile: D-pad (left/right), Jump button, and Attack button.

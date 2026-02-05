@@ -15,12 +15,12 @@
 - [x] Validation-QA-Suite.md - Testing framework
 
 ### Training Module Assessment Criteria
-- [x] Module-1-Assessment-Criteria.md - 16-Bit Design Fundamentals
+- [x] Module-1-Assessment-Criteria.md - retro Design Fundamentals
 - [x] Module-2-Assessment-Criteria.md - Mobile Game Development (iOS)
 - [x] Module-3-Assessment-Criteria.md - Game Design & Gamification
 - [x] Module-4-Assessment-Criteria.md - Side-Scrolling Mechanics
 - [x] Module-5-Assessment-Criteria.md - Mobile UX & Accessibility
-- [x] Module-6-Assessment-Criteria.md - 16-Bit Audio & Aesthetics
+- [x] Module-6-Assessment-Criteria.md - retro Audio & Aesthetics
 
 ### Living Documents (To be created/maintained during development)
 - [ ] Progress-Log.md - Weekly status updates
@@ -93,7 +93,7 @@
 
 ## Training Phase Checklist (Weeks 1-4)
 
-### Module 1: 16-Bit Design
+### Module 1: retro Design
 - [ ] Learners assigned
 - [ ] Assessment criteria reviewed
 - [ ] Sprite sheet assessment completed

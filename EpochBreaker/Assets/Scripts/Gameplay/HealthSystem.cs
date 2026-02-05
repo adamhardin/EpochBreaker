@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Player health system. 5-heart max, 60-frame i-frames,

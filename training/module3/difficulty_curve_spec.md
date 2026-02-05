@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete 20-level difficulty curve specification for the first two eras (Stone Age and Bronze Age) of the 16-bit side-scrolling shooter mobile game. This document defines four difficulty dimensions, assigns per-level composite scores on a 1-10 scale, documents every teaching moment, and specifies the escalation and climax sequences. The curve is designed for the procedural generation system to use as parameter constraints per level.
+Complete 20-level difficulty curve specification for the first two eras (Stone Age and Bronze Age) of the retro side-scrolling shooter mobile game. This document defines four difficulty dimensions, assigns per-level composite scores on a 1-10 scale, documents every teaching moment, and specifies the escalation and climax sequences. The curve is designed for the procedural generation system to use as parameter constraints per level.
 
 ---
 

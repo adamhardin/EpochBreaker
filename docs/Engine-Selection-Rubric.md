@@ -1,7 +1,7 @@
 # iOS Game Engine Selection Rubric
 
 ## Executive Summary
-This document evaluates three primary engines for developing a 16-bit side-scrolling mobile game targeting iOS. Selection criteria balance native performance, 16-bit aesthetics fidelity, development velocity, and deployment complexity.
+This document evaluates three primary engines for developing a retro side-scrolling mobile game targeting iOS. Selection criteria balance native performance, retro aesthetics fidelity, development velocity, and deployment complexity.
 
 ---
 
@@ -44,7 +44,7 @@ This document evaluates three primary engines for developing a 16-bit side-scrol
 
 ---
 
-### 2. 16-Bit Aesthetic Fidelity (Weight: 20%)
+### 2. retro Aesthetic Fidelity (Weight: 20%)
 
 #### SpriteKit
 - **Score: 8/10**
@@ -67,7 +67,7 @@ This document evaluates three primary engines for developing a 16-bit side-scrol
 - 2D focus makes this natural
 - **Cons**: Texture atlas tools less mature
 
-**Winner: Tie (all handle 16-bit well with proper setup)**
+**Winner: Tie (all handle retro well with proper setup)**
 
 ---
 

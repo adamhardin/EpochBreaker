@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Generates all game sprites at runtime via Texture2D pixel painting.

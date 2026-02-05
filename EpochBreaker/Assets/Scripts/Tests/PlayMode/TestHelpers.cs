@@ -1,7 +1,7 @@
 using UnityEngine;
-using SixteenBit.Gameplay;
+using EpochBreaker.Gameplay;
 
-namespace SixteenBit.Tests.PlayMode
+namespace EpochBreaker.Tests.PlayMode
 {
     /// <summary>
     /// Shared utility methods for creating test GameObjects with

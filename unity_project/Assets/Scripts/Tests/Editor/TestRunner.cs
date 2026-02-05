@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SixteenBit.Tests
+namespace EpochBreaker.Tests
 {
     /// <summary>
     /// Standalone test runner that executes all test suites.
@@ -24,7 +24,7 @@ namespace SixteenBit.Tests
         public static int Main(string[] args)
         {
             Console.WriteLine("================================================");
-            Console.WriteLine("  16-Bit Mobile Game - Test Suite");
+            Console.WriteLine("  Epoch Breaker - Test Suite");
             Console.WriteLine($"  Run at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
             Console.WriteLine("  System: 10-era, destructible environments");
             Console.WriteLine("================================================\n");

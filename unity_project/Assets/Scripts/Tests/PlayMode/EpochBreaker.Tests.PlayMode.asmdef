@@ -1,9 +1,9 @@
 {
-    "name": "SixteenBit.Tests.PlayMode",
-    "rootNamespace": "SixteenBit.Tests.PlayMode",
+    "name": "EpochBreaker.Tests.PlayMode",
+    "rootNamespace": "EpochBreaker.Tests.PlayMode",
     "references": [
-        "SixteenBit.Generative",
-        "SixteenBit.Gameplay",
+        "EpochBreaker.Generative",
+        "EpochBreaker.Gameplay",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

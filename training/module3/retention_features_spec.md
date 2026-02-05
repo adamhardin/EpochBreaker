@@ -2,7 +2,7 @@
 
 ## Overview
 
-Retention feature specifications for the 16-bit side-scrolling shooter mobile game (iOS). This document covers daily challenge systems, social sharing via Level IDs, achievement design, mastery goals, and a KPI dashboard with specific thresholds. All features leverage the procedural generation system and deterministic Level ID format (`LVLID_[VERSION]_[DIFFICULTY]_[ERA]_[SEED64]`).
+Retention feature specifications for the retro side-scrolling shooter mobile game (iOS). This document covers daily challenge systems, social sharing via Level IDs, achievement design, mastery goals, and a KPI dashboard with specific thresholds. All features leverage the procedural generation system and deterministic Level ID format (`LVLID_[VERSION]_[DIFFICULTY]_[ERA]_[SEED64]`).
 
 ---
 

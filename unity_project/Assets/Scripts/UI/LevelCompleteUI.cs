@@ -1,9 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 using System.Collections.Generic;
 
-namespace SixteenBit.UI
+namespace EpochBreaker.UI
 {
     /// <summary>
     /// Inter-level summary screen showing level stats, collected items with sprites, and continue button.

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Follows the player horizontally with smooth tracking.

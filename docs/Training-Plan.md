@@ -1,10 +1,10 @@
 # Expert Model Training & Implementation Plan
 
-This document captures the training plan implementation for the 16-bit inspired side-scrolling mobile game. It is intended as the single source of truth for the engineering team and will be updated as the project progresses.
+This document captures the training plan implementation for the retro inspired side-scrolling mobile game. It is intended as the single source of truth for the engineering team and will be updated as the project progresses.
 
 ## Goals
 
-- Build an expert knowledge base covering 16-bit era design, mobile development, and iOS App Store delivery.
+- Build an expert knowledge base covering retro era design, mobile development, and iOS App Store delivery.
 - Validate competency through rigorous, measurable assessments.
 - Integrate a generative level system with deterministic reconstruction via unique level IDs.
 - Ensure research, design, and implementation guidance are actionable by engineering.
@@ -22,15 +22,15 @@ This document captures the training plan implementation for the 16-bit inspired 
 **Deliverables**
 - Platform matrix
 - Engine selection rubric and decision
-- Asset style guide (16-bit fidelity constraints)
+- Asset style guide (retro fidelity constraints)
 
 ---
 
 ## Phase 1: Core Training Modules (Knowledge Foundation)
 
-### Module 1: 16-Bit Design Fundamentals
+### Module 1: retro Design Fundamentals
 **Topics**
-- 16-bit console era constraints and design conventions
+- retro console era constraints and design conventions
 - Pixel art theory: palettes, tiles, sprites, animation loops
 - Side-scroller mechanics and camera behaviors
 - Audio: chiptune composition and SFX design constraints
@@ -38,7 +38,7 @@ This document captures the training plan implementation for the 16-bit inspired 
 **Assessments**
 - Sprite sheet creation under constrained palettes
 - Level design critique and reconstruction
-- Analysis of authentic 16-bit titles and modern homages
+- Analysis of authentic retro titles and modern homages
 
 ### Module 2: Mobile Game Development (iOS)
 **Topics**
@@ -101,7 +101,7 @@ This document captures the training plan implementation for the 16-bit inspired 
 - 5.5: Interruption & State Management (backgrounding, save/restore, iCloud sync)
 - Capstone: Complete Mobile UX specification document
 
-### Module 6: 16-Bit Audio & Aesthetics
+### Module 6: retro Audio & Aesthetics
 **Topics**
 - Pixel art animation standards (8-12 frames)
 - Palette constraints and asset reuse

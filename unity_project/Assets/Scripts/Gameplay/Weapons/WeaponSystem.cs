@@ -1,7 +1,7 @@
 using UnityEngine;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Manages the player's weapon. Auto-fires continuously:

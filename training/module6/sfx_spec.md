@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete sound effects library specification for a 16-bit side-scrolling mobile shooter (iOS). The game features weapon attachments that auto-fire continuously at enemies, destructible environments (walls, rocks, terrain), and weapons that evolve across 10 eras of human civilization. This spec covers 15 gameplay SFX and 5 UI SFX. Each sound is defined with waveform type, frequency range, duration, volume level, ADSR synthesis parameters, and descriptive character. The specification also covers the priority/layering system, haptic feedback pairing, volume mixing, cooldown timers, and Unity integration details.
+Complete sound effects library specification for a retro side-scrolling mobile shooter (iOS). The game features weapon attachments that auto-fire continuously at enemies, destructible environments (walls, rocks, terrain), and weapons that evolve across 10 eras of human civilization. This spec covers 15 gameplay SFX and 5 UI SFX. Each sound is defined with waveform type, frequency range, duration, volume level, ADSR synthesis parameters, and descriptive character. The specification also covers the priority/layering system, haptic feedback pairing, volume mixing, cooldown timers, and Unity integration details.
 
 **Key Design Principle:** Because weapons auto-fire continuously, the weapon_fire SFX must function as a pleasant rhythmic texture rather than a discrete event. Multiple simultaneous weapon attachments should layer into a pleasing polyrhythmic backdrop, not a wall of noise. Weapon-related sounds are designed to be quieter, shorter, and more tonal than typical shooter SFX.
 
@@ -17,7 +17,7 @@ Complete sound effects library specification for a 16-bit side-scrolling mobile 
 | Effects Prohibited | Reverb, delay, chorus, flanger, compression, EQ, modern FX processing |
 | Max Simultaneous SFX | 4 channels |
 | Sample Rate | 44.1 kHz |
-| Bit Depth | 16-bit |
+| Bit Depth | retro |
 | Working Format | .wav (uncompressed) |
 | Game Format | .ogg (Vorbis, quality 6) or .wav (for very short clips <50ms) |
 | Loudness Reference | All volumes specified relative to music level (music = 0 dB reference) |
@@ -598,7 +598,7 @@ Reward Ducking:   weapon_fire at -15 dB (200ms duration, 20ms transition)
 | Error | sfx_error.wav | 200ms | 17 KB | 5 KB |
 | **TOTAL** | -- | -- | **~1,034 KB** | **~269 KB** |
 
-All .wav files: 44.1 kHz, 16-bit, mono.
+All .wav files: 44.1 kHz, retro, mono.
 All .ogg files: Vorbis, quality 6, mono.
 
 ---
@@ -687,7 +687,7 @@ All .ogg files: Vorbis, quality 6, mono.
 2. Fine-tune in Audacity (trim silence, normalize, verify duration)
 3. **Weapon fire repetition test**: loop sfx_weapon_fire at 100ms intervals for 60 seconds. If it becomes annoying, reduce volume, shorten duration, or soften the attack further
 4. **Multi-weapon layering test**: trigger sfx_weapon_fire at staggered intervals (3 sources at 80ms, 110ms, 150ms offsets) and verify the composite rhythm is pleasant
-5. Export as .wav (44.1 kHz, 16-bit, mono)
+5. Export as .wav (44.1 kHz, retro, mono)
 6. Convert to .ogg: `ffmpeg -i sfx_name.wav -codec:a libvorbis -qscale:a 6 -ac 1 sfx_name.ogg`
 7. Import into Unity, configure AudioSource settings per the tables above
 8. Test all 22 SFX in-game with music playing to verify mix balance
@@ -701,4 +701,4 @@ All .ogg files: Vorbis, quality 6, mono.
 **Last Updated**: 2026-02-04
 **Status**: Active
 **Assessment**: 6.4 - Sound Effects Design
-**Game**: 16-Bit Side-Scrolling Mobile Shooter (iOS)
+**Game**: retro Side-Scrolling Mobile Shooter (iOS)

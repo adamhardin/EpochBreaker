@@ -144,7 +144,7 @@ All positions in this document use the following convention:
 
 **Purpose**: Primary entry point. Game logo, navigation to play, settings, and level sharing.
 
-**Background**: Animated 16-bit pixel art scene (parallax, 3 layers). Character idle animation centered.
+**Background**: Animated retro pixel art scene (parallax, 3 layers). Character idle animation centered.
 
 **Layout** (all positions relative to safe area):
 
@@ -216,7 +216,7 @@ All positions in this document use the following convention:
 
 | Element | Position (from safe area) | Size (pt) | Touch Target (pt) | Notes |
 |---------|--------------------------|-----------|-------------------|-------|
-| Health Bar | left + 24, top - 24 | 140 x 20 | Non-interactive | 16-bit heart icons (max 5) |
+| Health Bar | left + 24, top - 24 | 140 x 20 | Non-interactive | retro heart icons (max 5) |
 | Score Display | left + 180, top - 24 | 120 x 20 | Non-interactive | "00000" monospaced, right-aligned |
 | Power-Up Slot | right - 80, top - 24 | 36 x 36 | Non-interactive | Shows active power-up icon, empty when none |
 | Pause Button | right - 24, top - 24 | 36 x 36 | 48 x 48 | Two vertical bars "||" icon |

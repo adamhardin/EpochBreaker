@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies the complete camera system for the 16-bit side-scrolling platformer. The camera is the player's window into the game world and directly impacts gameplay feel, readability, and comfort. The system must handle horizontal scrolling, vertical transitions, boss arena locks, and screen effects -- all at 60 fps on iPhone 11.
+This document specifies the complete camera system for the retro side-scrolling platformer. The camera is the player's window into the game world and directly impacts gameplay feel, readability, and comfort. The system must handle horizontal scrolling, vertical transitions, boss arena locks, and screen effects -- all at 60 fps on iPhone 11.
 
 **Engine**: Unity 2022 LTS, using `Cinemachine` Virtual Camera or custom camera script on the main `Camera` component.
 

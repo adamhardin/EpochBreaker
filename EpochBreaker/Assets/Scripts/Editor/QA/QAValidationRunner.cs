@@ -5,7 +5,7 @@ using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 
-namespace SixteenBit.Editor.QA
+namespace EpochBreaker.Editor.QA
 {
     public static class QAValidationRunner
     {
@@ -24,9 +24,9 @@ namespace SixteenBit.Editor.QA
             messages.Add($"Run at: {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
             messages.Add("================================================");
 
-            RunSuite("XORShift64 Tests", "SixteenBit.Tests.XORShift64Tests", ref totalPassed, ref totalFailed, messages);
-            RunSuite("LevelID Tests", "SixteenBit.Tests.LevelIDTests", ref totalPassed, ref totalFailed, messages);
-            RunSuite("Level Generator Tests", "SixteenBit.Tests.LevelGeneratorTests", ref totalPassed, ref totalFailed, messages);
+            RunSuite("XORShift64 Tests", "EpochBreaker.Tests.XORShift64Tests", ref totalPassed, ref totalFailed, messages);
+            RunSuite("LevelID Tests", "EpochBreaker.Tests.LevelIDTests", ref totalPassed, ref totalFailed, messages);
+            RunSuite("Level Generator Tests", "EpochBreaker.Tests.LevelGeneratorTests", ref totalPassed, ref totalFailed, messages);
 
             messages.Add("================================================");
             messages.Add($"TOTAL: {totalPassed} passed, {totalFailed} failed");

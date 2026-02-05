@@ -1,7 +1,7 @@
 using UnityEngine;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Projectile movement and collision. Used by both player weapons

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document specifies the weapon attachment system, auto-fire mechanics, weapon catalog (30 weapons across 10 eras), special attack system, and damage calculations for a 16-bit side-scrolling mobile shooter (iOS). All timing values are in frames at 60 fps. The weapon system integrates with the procedural level generation pipeline for deterministic weapon drop placement and destructible terrain gating.
+This document specifies the weapon attachment system, auto-fire mechanics, weapon catalog (30 weapons across 10 eras), special attack system, and damage calculations for a retro side-scrolling mobile shooter (iOS). All timing values are in frames at 60 fps. The weapon system integrates with the procedural level generation pipeline for deterministic weapon drop placement and destructible terrain gating.
 
 **Design Goal**: The player is a small character who collects weapon attachments that physically mount onto their body sprite. Weapons auto-fire continuously toward the nearest enemy. As the player accumulates attachments, their visual silhouette grows into a bristling arsenal of firepower. The player focuses on movement, positioning, and target cycling while their weapons handle the shooting. Progression is expressed through increasingly powerful and visually spectacular weapons across 10 eras of human civilization.
 

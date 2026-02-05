@@ -1,16 +1,16 @@
-# Module 1: 16-Bit Design Fundamentals - Assessment Criteria
+# Module 1: retro Design Fundamentals - Assessment Criteria
 
 ## Module Overview
-This module trains deep expertise in 16-bit era game design, pixel art theory, classic side-scroller mechanics, and authentic audio design. Learners must develop competency in recognizing and applying 16-bit design constraints and patterns.
+This module trains deep expertise in retro era game design, pixel art theory, classic side-scroller mechanics, and authentic audio design. Learners must develop competency in recognizing and applying retro design constraints and patterns.
 
 ---
 
 ## Learning Objectives
 
 By completion, learners will be able to:
-1. Identify authentic 16-bit design patterns vs. modern imitations
+1. Identify authentic retro design patterns vs. modern imitations
 2. Analyze and critique level design for flow, pacing, and difficulty curves
-3. Design sprite sheets and animations within 16-bit technical constraints
+3. Design sprite sheets and animations within retro technical constraints
 4. Compose and critique chiptune audio and sound effects
 5. Understand palette limitations and color theory applications
 
@@ -19,11 +19,11 @@ By completion, learners will be able to:
 ## Assessment 1.1: Sprite Sheet Design
 
 ### Objective
-Create an authentic 16-bit sprite sheet for the player character that adheres to era-appropriate constraints.
+Create an authentic retro sprite sheet for the player character that adheres to era-appropriate constraints.
 
 ### Requirements
 **Technical Constraints:**
-- Maximum 256-color palette (16-bit standard)
+- Maximum 256-color palette (retro standard)
 - Sprite size: 32x32 pixels (typical for side-scrollers)
 - Animation frames: 6-8 per action (walk, jump, fall, attack, hurt)
 - Tile-based design (8x8 pixel tiles)
@@ -40,7 +40,7 @@ Create an authentic 16-bit sprite sheet for the player character that adheres to
 - ✅ Animation loops smoothly with no pops
 - ✅ Palette usage optimized (< 16 colors per pose)
 - ✅ Clear silhouette readable at small scale
-- ✅ Authentic 16-bit visual style (no anti-aliasing, clean pixels)
+- ✅ Authentic retro visual style (no anti-aliasing, clean pixels)
 - ✅ Frame-by-frame documentation with timing notes
 
 ### Deliverables
@@ -55,7 +55,7 @@ design_notes.md                  (design rationale and constraints met)
 |----------|--------------|---------|----------------|----------------|---------|
 | Technical Compliance | All constraints met perfectly | 1 minor constraint violation | 2 violations | 3+ violations | Major violations |
 | Animation Quality | Smooth, natural flow | Minor hitch | Acceptable movement | Stiff or unnatural | Poor quality |
-| Aesthetic Authenticity | Perfectly 16-bit | Very authentic | Mostly authentic | Some modern artifacts | Doesn't match era |
+| Aesthetic Authenticity | Perfectly retro | Very authentic | Mostly authentic | Some modern artifacts | Doesn't match era |
 | Color Optimization | Excellent use of 16 colors | Good optimization | Adequate use | Wasteful palette | Poor management |
 | Documentation | Comprehensive notes | Clear documentation | Basic notes | Minimal notes | Missing |
 
@@ -66,7 +66,7 @@ design_notes.md                  (design rationale and constraints met)
 ## Assessment 1.2: Level Design Critique & Reconstruction
 
 ### Objective
-Analyze three classic 16-bit side-scroller levels and reconstruct one based on your analysis.
+Analyze three classic retro side-scroller levels and reconstruct one based on your analysis.
 
 ### Part A: Analysis (40 minutes)
 Select one level from each game:
@@ -135,11 +135,11 @@ Choose one of the three analyzed levels and recreate it:
 ## Assessment 1.3: Palette Theory & Color Constraint Challenge
 
 ### Objective
-Demonstrate mastery of 16-bit palette constraints and color theory by designing a cohesive tileset within strict limits.
+Demonstrate mastery of retro palette constraints and color theory by designing a cohesive tileset within strict limits.
 
 ### Challenge Parameters
 **Constraints:**
-- Maximum 32 colors (16-bit era standard for tileset)
+- Maximum 32 colors (retro era standard for tileset)
 - Tileset size: 8x8 pixels per tile
 - Minimum 16 unique tiles (terrain types)
 - Must support parallax background layer
@@ -174,7 +174,7 @@ tileset_guide.md             (which tile is which, design notes)
 | Palette Optimization | Perfect use of all 32 colors | Excellent use, 1-2 unused | Good use, 3-4 unused | Wasteful or over-palette |
 | Visual Coherence | Stunning, unified style | Very cohesive | Acceptable cohesion | Inconsistent style |
 | Tile Variety | Rich, reusable set | Good variety | Adequate variety | Limited options |
-| Authenticity | Perfectly 16-bit | Very authentic | Mostly authentic | Some modern look |
+| Authenticity | Perfectly retro | Very authentic | Mostly authentic | Some modern look |
 | Documentation | Comprehensive | Clear | Adequate | Minimal |
 
 **Pass Threshold**: Average >= 4.0/5.0
@@ -213,7 +213,7 @@ Design sound effects for 10 game actions:
 10. Game over
 
 **Constraints:**
-- 8-bit or 16-bit chip sounds only
+- 8-bit or retro chip sounds only
 - 2-4 second maximum per effect
 - Must be immediately identifiable
 - Non-intrusive (don't mask other sounds)
@@ -235,7 +235,7 @@ Design sound effects for 10 game actions:
 |----------|-------|-------|
 | Chiptune Analysis | /25 | Identifies composition techniques |
 | SFX Design Quality | /40 | Sound quality and creativity |
-| Authenticity | /20 | Sounds genuinely 16-bit |
+| Authenticity | /20 | Sounds genuinely retro |
 | Documentation | /15 | Technical specs and rationale |
 
 **Pass Threshold**: >= 80/100
@@ -245,11 +245,11 @@ Design sound effects for 10 game actions:
 ## Assessment 1.5: Design Pattern Recognition Challenge
 
 ### Objective
-Demonstrate ability to identify and apply 16-bit design patterns across multiple classic games.
+Demonstrate ability to identify and apply retro design patterns across multiple classic games.
 
 ### Challenge
 **Part 1: Pattern Identification (30 minutes)**
-Given screenshots and level data from 5 different 16-bit side-scrollers:
+Given screenshots and level data from 5 different retro side-scrollers:
 - Identify the design pattern (e.g., "tutorial ramp," "skill gate," "environmental challenge")
 - Explain the mechanical intent
 - Estimate skill level requirement
@@ -309,7 +309,7 @@ Synthesize all Module 1 learnings into a complete mini-game level.
 - 60-90 seconds of gameplay
 - Minimum 2 enemy types
 - Minimum 1 boss encounter
-- Authentic 16-bit aesthetic
+- Authentic retro aesthetic
 - Smooth difficulty progression
 
 ### Success Criteria

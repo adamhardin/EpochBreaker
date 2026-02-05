@@ -285,7 +285,7 @@ When the player's head collides with a ceiling tile:
 
 ### 5.4 Landing on Slopes
 
-The game does not use slopes (16-bit tile aesthetic uses staircase terrain). All surfaces are axis-aligned. If future updates add slopes:
+The game does not use slopes (retro tile aesthetic uses staircase terrain). All surfaces are axis-aligned. If future updates add slopes:
 - Walking on slopes adjusts speed by cos(angle) factor.
 - Jumping from slopes uses the slope normal for launch angle.
 

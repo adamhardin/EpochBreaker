@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     public enum GameState
     {
@@ -578,34 +578,34 @@ namespace SixteenBit.Gameplay
         private void CreateTitleScreen()
         {
             _titleScreenObj = new GameObject("TitleScreenUI");
-            AddUI(_titleScreenObj, "SixteenBit.UI.TitleScreenUI");
+            AddUI(_titleScreenObj, "EpochBreaker.UI.TitleScreenUI");
         }
 
         private void CreateHUD()
         {
             _hudObj = new GameObject("GameplayHUD");
-            AddUI(_hudObj, "SixteenBit.UI.GameplayHUD");
+            AddUI(_hudObj, "EpochBreaker.UI.GameplayHUD");
 
             _touchControlsObj = new GameObject("TouchControls");
-            AddUI(_touchControlsObj, "SixteenBit.UI.TouchControlsUI");
+            AddUI(_touchControlsObj, "EpochBreaker.UI.TouchControlsUI");
         }
 
         private void CreatePauseMenu()
         {
             _pauseMenuObj = new GameObject("PauseMenuUI");
-            AddUI(_pauseMenuObj, "SixteenBit.UI.PauseMenuUI");
+            AddUI(_pauseMenuObj, "EpochBreaker.UI.PauseMenuUI");
         }
 
         private void CreateLevelComplete()
         {
             _levelCompleteObj = new GameObject("LevelCompleteUI");
-            AddUI(_levelCompleteObj, "SixteenBit.UI.LevelCompleteUI");
+            AddUI(_levelCompleteObj, "EpochBreaker.UI.LevelCompleteUI");
         }
 
         private void CreateGameOverUI()
         {
             _gameOverObj = new GameObject("GameOverUI");
-            AddUI(_gameOverObj, "SixteenBit.UI.GameOverUI");
+            AddUI(_gameOverObj, "EpochBreaker.UI.GameOverUI");
         }
 
         /// <summary>

@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Placed at the level goal. Triggers level completion on player contact.

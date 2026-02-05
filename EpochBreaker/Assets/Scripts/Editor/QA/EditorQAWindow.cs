@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace SixteenBit.Editor.QA
+namespace EpochBreaker.Editor.QA
 {
     public class EditorQAWindow : EditorWindow
     {

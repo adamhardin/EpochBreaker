@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SixteenBit.Generative
+namespace EpochBreaker.Generative
 {
     /// <summary>
     /// Core level generation pipeline. Produces a deterministic LevelData from a LevelID.

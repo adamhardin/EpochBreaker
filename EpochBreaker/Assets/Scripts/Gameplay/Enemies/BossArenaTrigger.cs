@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace SixteenBit.Gameplay
+namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Invisible trigger that activates the boss when the player enters the arena.

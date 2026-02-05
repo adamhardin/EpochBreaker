@@ -38,12 +38,12 @@
 
 | Document | Topic | Status |
 |----------|-------|--------|
-| [docs/Module-1-Assessment-Criteria.md](docs/Module-1-Assessment-Criteria.md) | 16-Bit Design Fundamentals | Complete |
+| [docs/Module-1-Assessment-Criteria.md](docs/Module-1-Assessment-Criteria.md) | retro Design Fundamentals | Complete |
 | [docs/Module-2-Assessment-Criteria.md](docs/Module-2-Assessment-Criteria.md) | Mobile Game Development (iOS) | Complete |
 | [docs/Module-3-Assessment-Criteria.md](docs/Module-3-Assessment-Criteria.md) | Game Design & Gamification | Complete |
 | [docs/Module-4-Assessment-Criteria.md](docs/Module-4-Assessment-Criteria.md) | Side-Scrolling Mechanics | Complete |
 | [docs/Module-5-Assessment-Criteria.md](docs/Module-5-Assessment-Criteria.md) | Mobile UX & Accessibility | Complete |
-| [docs/Module-6-Assessment-Criteria.md](docs/Module-6-Assessment-Criteria.md) | 16-Bit Audio & Aesthetics | Complete |
+| [docs/Module-6-Assessment-Criteria.md](docs/Module-6-Assessment-Criteria.md) | retro Audio & Aesthetics | Complete |
 
 ---
 

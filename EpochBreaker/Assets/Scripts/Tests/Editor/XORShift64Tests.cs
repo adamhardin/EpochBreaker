@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using SixteenBit.Generative;
+using EpochBreaker.Generative;
 
-namespace SixteenBit.Tests
+namespace EpochBreaker.Tests
 {
     /// <summary>
     /// Test suite for the XORShift64 PRNG.

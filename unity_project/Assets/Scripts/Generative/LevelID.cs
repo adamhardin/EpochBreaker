@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 
-namespace SixteenBit.Generative
+namespace EpochBreaker.Generative
 {
     /// <summary>
     /// Encodes and decodes Level IDs as shareable codes.

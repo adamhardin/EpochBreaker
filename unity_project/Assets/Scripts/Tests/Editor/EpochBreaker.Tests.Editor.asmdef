@@ -1,8 +1,8 @@
 {
-    "name": "SixteenBit.Tests.Editor",
-    "rootNamespace": "SixteenBit.Tests",
+    "name": "EpochBreaker.Tests.Editor",
+    "rootNamespace": "EpochBreaker.Tests",
     "references": [
-        "SixteenBit.Generative"
+        "EpochBreaker.Generative"
     ],
     "includePlatforms": [
         "Editor"

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete reward system specification for the 16-bit side-scrolling shooter mobile game (iOS). This document defines three reward timescales (immediate, level, meta), specifies exact visual/audio/haptic feedback for every player action, details the score formula, defines the star/grade system, lists 20 achievements with tiers, and provides a comprehensive reward feedback matrix. All feedback is designed for the 16-bit pixel art aesthetic running at 60fps on iPhone 11+.
+Complete reward system specification for the retro side-scrolling shooter mobile game (iOS). This document defines three reward timescales (immediate, level, meta), specifies exact visual/audio/haptic feedback for every player action, details the score formula, defines the star/grade system, lists 20 achievements with tiers, and provides a comprehensive reward feedback matrix. All feedback is designed for the retro pixel art aesthetic running at 60fps on iPhone 11+.
 
 ---
 
@@ -475,7 +475,7 @@ Reward Density
 |--------|----------|-----------------|
 | Hit-stop | P0 | `Time.timeScale = 0` for 2 frames, use `WaitForSecondsRealtime` |
 | Screen shake | P0 | Camera offset via `Cinemachine` impulse source |
-| Particle effects | P0 | `ParticleSystem` with 16-bit sprite sheet |
+| Particle effects | P0 | `ParticleSystem` with retro sprite sheet |
 | Score popups | P0 | `TextMeshPro` world-space text with DOTween animation |
 | Haptic feedback | P0 | `CoreHaptics` via native iOS plugin (`CHHapticEngine`) |
 | Destruction debris | P0 | Physics-enabled 2D sprite fragments with gravity |

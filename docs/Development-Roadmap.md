@@ -35,7 +35,7 @@ Phase 5: Launch & Iteration (Weeks 17+)
 
 ### Milestone 1: Training Completion (End of Week 4)
 **Deliverables:**
-- [ ] Module 1 (16-Bit Design): Capstone approved
+- [ ] Module 1 (retro Design): Capstone approved
 - [ ] Module 2 (iOS Development): Capstone approved
 - [ ] Module 3 (Game Design): Capstone approved
 - [ ] Technical decisions documented:
@@ -215,12 +215,12 @@ Phase 5: Launch & Iteration (Weeks 17+)
 - [x] Engine-Selection-Rubric.md (Unity selected)
 - [x] Level-Generation-Technical-Spec.md (complete)
 - [x] Validation-QA-Suite.md (comprehensive)
-- [x] Module-1-Assessment-Criteria.md (16-bit design)
+- [x] Module-1-Assessment-Criteria.md (retro design)
 - [x] Module-2-Assessment-Criteria.md (iOS development)
 - [x] Module-3-Assessment-Criteria.md (Game design & gamification)
 - [x] Module-4-Assessment-Criteria.md (Side-scrolling mechanics)
 - [x] Module-5-Assessment-Criteria.md (Mobile UX & accessibility)
-- [x] Module-6-Assessment-Criteria.md (16-bit audio & aesthetics)
+- [x] Module-6-Assessment-Criteria.md (retro audio & aesthetics)
 - [ ] Implementation-Guide.md (step-by-step code)
 - [ ] Architecture-Overview.md (system design)
 - [ ] Performance-Optimization-Guide.md (profiling & tuning)
@@ -303,4 +303,4 @@ Phase 5: Launch & Iteration (Weeks 17+)
 4. **Performance is a feature** - 60 fps is non-negotiable
 5. **Plan for iOS constraints** - Memory, battery, screen sizes
 6. **Embrace the generative system** - It's the unique value proposition
-7. **Stay authentic to 16-bit** - Research and reference classic games constantly
+7. **Stay authentic to retro** - Research and reference classic games constantly

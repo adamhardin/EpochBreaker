@@ -1,6 +1,6 @@
 using System;
 
-namespace SixteenBit.Generative
+namespace EpochBreaker.Generative
 {
     /// <summary>
     /// Deterministic pseudo-random number generator using the xorshift64* algorithm.

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete composition specifications for a 16-bit side-scrolling mobile shooter spanning 10 eras of human civilization. The soundtrack must evolve authentically across eras -- from primitive percussion in the Stone Age to transcendent harmonics in the final era -- while strictly adhering to 16-bit audio constraints (8 channels maximum, chip waveforms only). This document provides two fully detailed track specs (Era 1 level theme and Era 7 boss theme), era-by-era musical guidelines for all 10 eras, a dynamic music system for in-level transitions, and all technical requirements a composer needs to produce authentic, era-evolving chiptune tracks for iOS delivery.
+Complete composition specifications for a retro side-scrolling mobile shooter spanning 10 eras of human civilization. The soundtrack must evolve authentically across eras -- from primitive percussion in the Stone Age to transcendent harmonics in the final era -- while strictly adhering to retro audio constraints (8 channels maximum, chip waveforms only). This document provides two fully detailed track specs (Era 1 level theme and Era 7 boss theme), era-by-era musical guidelines for all 10 eras, a dynamic music system for in-level transitions, and all technical requirements a composer needs to produce authentic, era-evolving chiptune tracks for iOS delivery.
 
 ---
 
@@ -13,7 +13,7 @@ Complete composition specifications for a 16-bit side-scrolling mobile shooter s
 | Maximum Channels | 8 simultaneous |
 | Waveform Types Allowed | Square (12.5%, 25%, 50% duty), Sawtooth, Triangle, Noise |
 | Sample Rate Reference | 32 kHz (SNES BRR standard) |
-| Bit Depth Reference | 16-bit (SNES SPC700) |
+| Bit Depth Reference | retro (SNES SPC700) |
 | Effects Allowed | Vibrato (pitch wobble), Pitch bend/slide, Volume envelope (ADSR), Echo/delay (SNES-style, max 3 taps) |
 | Effects Prohibited | Reverb, chorus, flanger, phaser, compression, EQ, modern synth pads, FM synthesis |
 | Final Delivery Format | .ogg (Vorbis, quality 6, ~128kbps) |
@@ -638,7 +638,7 @@ Beats 6-7 (1.5-2.5s): CH1 E6 sustains with tight vibrato. CH3 E1 sustains.
 | Game | Track | What to Study |
 |------|-------|---------------|
 | Ecco the Dolphin (Genesis) | "The Undercaves" | Primal atmosphere within chip constraints. Use of sparse arrangement and echo to create vastness. How silence and space create mystery. |
-| ActRaiser (SNES) | "Filmore (Act 1)" | Ancient-world mood in 16-bit. Simple melodic fragments that suggest early civilization. Warm triangle bass tones. |
+| ActRaiser (SNES) | "Filmore (Act 1)" | Ancient-world mood in retro. Simple melodic fragments that suggest early civilization. Warm triangle bass tones. |
 | Secret of Mana (SNES) | "Into the Thick of It" | Organic, earthy soundscape. Percussion-forward arrangement. How limited channels create an immersive natural environment. |
 | Shovel Knight | "The Apparition" (Lich Yard) | Sparse, atmospheric chiptune. Long rests between melodic phrases. Restraint as a compositional tool. |
 
@@ -673,7 +673,7 @@ Beats 6-7 (1.5-2.5s): CH1 E6 sustains with tight vibrato. CH3 E1 sustains.
 | Duration | 48-72 seconds (varies by era) | 60-80 seconds (varies by era) | 2-3 seconds |
 | Sample Rate | 44.1 kHz (export) | 44.1 kHz (export) | 44.1 kHz |
 | Channels | Stereo | Stereo | Stereo |
-| Format (working) | .wav 16-bit | .wav 16-bit | .wav 16-bit |
+| Format (working) | .wav retro | .wav retro | .wav retro |
 | Format (game) | .ogg Vorbis q6 | .ogg Vorbis q6 | .ogg Vorbis q6 |
 | Est. File Size | 250-450 KB | 350-500 KB | 15-30 KB |
 | Loop Start Sample | Varies (see per-track spec) | Varies (see per-track spec) | N/A (no loop) |

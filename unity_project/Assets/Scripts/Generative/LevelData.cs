@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace SixteenBit.Generative
+namespace EpochBreaker.Generative
 {
     /// <summary>
     /// Complete data representation of a generated level.

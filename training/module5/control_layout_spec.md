@@ -8,7 +8,7 @@
 **Orientation**: Landscape only (locked)
 **Minimum Device**: iPhone 11
 **Target**: 60fps
-**Genre**: 16-bit side-scrolling mobile shooter
+**Genre**: retro side-scrolling mobile shooter
 
 ---
 
@@ -1107,7 +1107,7 @@ Since the player does not press a fire button, audio cues are critical for commu
 | Fire rate layering | Multiple weapons create a layered soundscape; each weapon's sound is mixed to avoid mud | Each additional weapon at -3dB relative to first |
 | Targeting "lock" chime | Subtle chime when weapons acquire a new auto-target | 40% |
 | Target cycle "click" | Mechanical click sound on B button press | 50% |
-| Weapon attach jingle | Short 16-bit jingle when new weapon attaches to player | 80% |
+| Weapon attach jingle | Short retro jingle when new weapon attaches to player | 80% |
 | Dry fire / idle hum | When weapons have no target, a quiet idle hum from weapon attachments | 20% (ambient) |
 
 ### 8.6 HUD Indicators

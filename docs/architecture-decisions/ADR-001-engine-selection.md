@@ -5,7 +5,7 @@
 
 ## Context
 
-We are building a 16-bit aesthetic side-scrolling game targeting iOS. The engine must provide:
+We are building a retro aesthetic side-scrolling game targeting iOS. The engine must provide:
 
 - A mature 2D rendering pipeline with tilemap support, sprite atlasing, and pixel-perfect camera control.
 - Reliable iOS build tooling (code signing, App Store submission, TestFlight).
@@ -36,7 +36,7 @@ All gameplay code will be written in C#. We will use the **Universal Render Pipe
 ### Positive
 
 - The team can leverage existing Unity expertise, reducing ramp-up time to near zero.
-- URP's 2D Renderer provides built-in 2D lighting, shadow casters, and sprite sorting that accelerate the 16-bit visual style.
+- URP's 2D Renderer provides built-in 2D lighting, shadow casters, and sprite sorting that accelerate the retro visual style.
 - Unity's iOS build pipeline is well-documented and widely used in production mobile titles.
 - The Asset Store provides fallback options for audio, UI, and tooling if custom solutions hit roadblocks.
 - LTS guarantees critical bug fixes and security patches without feature churn.

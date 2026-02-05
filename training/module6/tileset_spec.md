@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete tileset specifications for a 16-bit side-scrolling mobile shooter set across 10 eras of human civilization. Each era defines 28+ unique 8x8 pixel tiles with collision data, destructible environment support, auto-tiling bitmask rules, and a dedicated 32-color palette. All tiles conform to 16-bit era constraints: no anti-aliasing, hard pixel edges, and seamless tiling in all valid configurations. Destructible environments are a core gameplay mechanic -- walls, rocks, terrain, and structures can be blasted apart by player weapons.
+Complete tileset specifications for a retro side-scrolling mobile shooter set across 10 eras of human civilization. Each era defines 28+ unique 8x8 pixel tiles with collision data, destructible environment support, auto-tiling bitmask rules, and a dedicated 32-color palette. All tiles conform to retro era constraints: no anti-aliasing, hard pixel edges, and seamless tiling in all valid configurations. Destructible environments are a core gameplay mechanic -- walls, rocks, terrain, and structures can be blasted apart by player weapons.
 
 Four representative eras are defined in full detail: Stone Age (Era 1), Medieval (Era 4), Modern (Era 7), and Transcendent (Era 10). The remaining six eras include palette guidelines and destructible material descriptions.
 
