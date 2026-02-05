@@ -121,14 +121,17 @@ namespace EpochBreaker.Gameplay
 
         private void Update()
         {
-            // Read keyboard input every frame (runs first due to DefaultExecutionOrder)
-            InputManager.UpdateKeyboard();
+            // Read input every frame (runs first due to DefaultExecutionOrder)
+            InputManager.UpdateInput();
 
             switch (CurrentState)
             {
                 case GameState.TitleScreen:
-                    if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)
-                        || Input.GetKeyDown(KeyCode.Space))
+                    // Start game with Enter, Space, or Jump action
+                    if (UnityEngine.InputSystem.Keyboard.current != null &&
+                        (UnityEngine.InputSystem.Keyboard.current.enterKey.wasPressedThisFrame ||
+                         UnityEngine.InputSystem.Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
+                         UnityEngine.InputSystem.Keyboard.current.spaceKey.wasPressedThisFrame))
                         StartGame();
                     break;
                 case GameState.Playing:

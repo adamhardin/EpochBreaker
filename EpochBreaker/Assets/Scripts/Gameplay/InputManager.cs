@@ -1,9 +1,11 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace EpochBreaker.Gameplay
 {
     /// <summary>
-    /// Centralized input state. Supports keyboard (editor) and touch (mobile).
+    /// Centralized input state using the new Input System.
+    /// Supports keyboard, gamepad, and touch (via on-screen controls).
     /// Touch controls feed into these values via TouchControlsUI.
     /// Poll these values from PlayerController and other systems.
     /// </summary>
@@ -27,38 +29,149 @@ namespace EpochBreaker.Gameplay
         /// <summary>True on the frame pause was pressed</summary>
         public static bool PausePressed { get; set; }
 
+        // Input actions loaded from asset
+        private static InputActionAsset _inputAsset;
+        private static InputAction _moveAction;
+        private static InputAction _jumpAction;
+        private static InputAction _attackAction;
+        private static InputAction _stompAction;
+        private static InputAction _pauseAction;
+
+        private static bool _initialized;
+
         /// <summary>
-        /// Call once per frame from GameManager.Update() to read keyboard input.
+        /// Initialize the Input System. Called automatically on first use.
+        /// </summary>
+        public static void Initialize()
+        {
+            if (_initialized) return;
+
+            // Load the input action asset from Resources or Settings folder
+            _inputAsset = Resources.Load<InputActionAsset>("EpochBreakerInput");
+
+            if (_inputAsset == null)
+            {
+                // Fallback: try loading from Settings folder (requires moving to Resources)
+                Debug.LogWarning("InputManager: Could not load EpochBreakerInput asset from Resources. Using fallback keyboard input.");
+                _initialized = true;
+                return;
+            }
+
+            var gameplay = _inputAsset.FindActionMap("Gameplay");
+            if (gameplay == null)
+            {
+                Debug.LogError("InputManager: Could not find Gameplay action map!");
+                _initialized = true;
+                return;
+            }
+
+            _moveAction = gameplay.FindAction("Move");
+            _jumpAction = gameplay.FindAction("Jump");
+            _attackAction = gameplay.FindAction("Attack");
+            _stompAction = gameplay.FindAction("Stomp");
+            _pauseAction = gameplay.FindAction("Pause");
+
+            // Enable all actions
+            gameplay.Enable();
+
+            _initialized = true;
+        }
+
+        /// <summary>
+        /// Call once per frame from GameManager.Update() to read input.
         /// Touch input is set directly by TouchControlsUI.
         /// </summary>
-        public static void UpdateKeyboard()
+        public static void UpdateInput()
+        {
+            if (!_initialized)
+                Initialize();
+
+            // If using Input System actions
+            if (_moveAction != null)
+            {
+                // Read move value (touch controls can override via direct assignment)
+                float actionMove = _moveAction.ReadValue<float>();
+                // Only use action value if touch isn't actively controlling
+                if (Mathf.Abs(MoveX) < 0.01f)
+                    MoveX = actionMove;
+
+                // Jump (button)
+                if (_jumpAction.WasPressedThisFrame())
+                    JumpPressed = true;
+                JumpHeld = _jumpAction.IsPressed();
+
+                // Attack
+                if (_attackAction.WasPressedThisFrame())
+                    AttackPressed = true;
+
+                // Stomp
+                if (_stompAction.WasPressedThisFrame())
+                    StompPressed = true;
+
+                // Pause
+                if (_pauseAction.WasPressedThisFrame())
+                    PausePressed = true;
+            }
+            else
+            {
+                // Fallback to legacy Input (in case asset failed to load)
+                UpdateLegacyKeyboard();
+            }
+        }
+
+        /// <summary>
+        /// Fallback keyboard input using legacy Input class.
+        /// Used only if InputActionAsset fails to load.
+        /// </summary>
+        private static void UpdateLegacyKeyboard()
         {
             // Horizontal
             float kb = 0f;
-            if (Input.GetKey(KeyCode.LeftArrow) || Input.GetKey(KeyCode.A))
-                kb -= 1f;
-            if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D))
-                kb += 1f;
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed)
+                    kb -= 1f;
+                if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed)
+                    kb += 1f;
+            }
 
-            // Keyboard always sets MoveX (touch overrides via direct assignment)
             MoveX = kb;
 
             // Jump
-            if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
-                JumpPressed = true;
-            JumpHeld = Input.GetKey(KeyCode.Space) || Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow);
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.spaceKey.wasPressedThisFrame ||
+                    Keyboard.current.wKey.wasPressedThisFrame ||
+                    Keyboard.current.upArrowKey.wasPressedThisFrame)
+                    JumpPressed = true;
+                JumpHeld = Keyboard.current.spaceKey.isPressed ||
+                           Keyboard.current.wKey.isPressed ||
+                           Keyboard.current.upArrowKey.isPressed;
+            }
 
-            // Attack / target cycle
-            if (Input.GetKeyDown(KeyCode.X) || Input.GetKeyDown(KeyCode.J))
-                AttackPressed = true;
+            // Attack
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.xKey.wasPressedThisFrame ||
+                    Keyboard.current.jKey.wasPressedThisFrame)
+                    AttackPressed = true;
+            }
 
-            // Stomp / ground pound (down while airborne)
-            if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
-                StompPressed = true;
+            // Stomp
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.sKey.wasPressedThisFrame ||
+                    Keyboard.current.downArrowKey.wasPressedThisFrame)
+                    StompPressed = true;
+            }
 
             // Pause
-            if (Input.GetKeyDown(KeyCode.Escape) || Input.GetKeyDown(KeyCode.P))
-                PausePressed = true;
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.escapeKey.wasPressedThisFrame ||
+                    Keyboard.current.pKey.wasPressedThisFrame)
+                    PausePressed = true;
+            }
         }
 
         /// <summary>
@@ -84,6 +197,18 @@ namespace EpochBreaker.Gameplay
             AttackPressed = false;
             StompPressed = false;
             PausePressed = false;
+        }
+
+        /// <summary>
+        /// Clean up when the game ends.
+        /// </summary>
+        public static void Dispose()
+        {
+            if (_inputAsset != null)
+            {
+                _inputAsset.Disable();
+            }
+            _initialized = false;
         }
     }
 }

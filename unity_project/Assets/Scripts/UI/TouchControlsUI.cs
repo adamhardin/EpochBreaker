@@ -5,12 +5,14 @@ using UnityEngine.EventSystems;
 namespace EpochBreaker.UI
 {
     /// <summary>
-    /// On-screen touch controls for mobile: D-pad (left/right), Jump button, and Attack button.
+    /// On-screen touch controls for mobile: D-pad (left/right), Jump, Stomp, and Attack buttons.
     /// Only visible on touch-capable devices. Also creates the EventSystem if missing.
     /// </summary>
     public class TouchControlsUI : MonoBehaviour
     {
         private Canvas _canvas;
+
+        private enum ActionType { Jump, Attack, Stomp }
 
         private void Start()
         {
@@ -45,13 +47,17 @@ namespace EpochBreaker.UI
             CreateDirectionButton(canvasGO.transform, "Right", new Vector2(240, 120),
                 ">", 1f);
 
-            // Jump button (bottom-right)
+            // Jump button (bottom-right, main action)
             CreateActionButton(canvasGO.transform, "Jump", new Vector2(-120, 140),
-                "A", true);
+                "A", ActionType.Jump);
+
+            // Stomp button (bottom-right, left of jump)
+            CreateActionButton(canvasGO.transform, "Stomp", new Vector2(-250, 140),
+                "↓", ActionType.Stomp);
 
             // Attack/target cycle button (bottom-right, above jump)
-            CreateActionButton(canvasGO.transform, "Attack", new Vector2(-220, 280),
-                "B", false);
+            CreateActionButton(canvasGO.transform, "Attack", new Vector2(-185, 280),
+                "B", ActionType.Attack);
         }
 
         private void CreateDirectionButton(Transform parent, string name, Vector2 position,
@@ -101,7 +107,7 @@ namespace EpochBreaker.UI
         }
 
         private void CreateActionButton(Transform parent, string name, Vector2 position,
-            string label, bool isJump)
+            string label, ActionType actionType)
         {
             var go = new GameObject(name);
             go.transform.SetParent(parent, false);
@@ -134,21 +140,25 @@ namespace EpochBreaker.UI
 
             var pointerDown = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
             pointerDown.callback.AddListener((_) => {
-                if (isJump)
+                switch (actionType)
                 {
-                    Gameplay.InputManager.JumpPressed = true;
-                    Gameplay.InputManager.JumpHeld = true;
-                }
-                else
-                {
-                    Gameplay.InputManager.AttackPressed = true;
+                    case ActionType.Jump:
+                        Gameplay.InputManager.JumpPressed = true;
+                        Gameplay.InputManager.JumpHeld = true;
+                        break;
+                    case ActionType.Attack:
+                        Gameplay.InputManager.AttackPressed = true;
+                        break;
+                    case ActionType.Stomp:
+                        Gameplay.InputManager.StompPressed = true;
+                        break;
                 }
             });
             trigger.triggers.Add(pointerDown);
 
             var pointerUp = new EventTrigger.Entry { eventID = EventTriggerType.PointerUp };
             pointerUp.callback.AddListener((_) => {
-                if (isJump)
+                if (actionType == ActionType.Jump)
                     Gameplay.InputManager.JumpHeld = false;
             });
             trigger.triggers.Add(pointerUp);
