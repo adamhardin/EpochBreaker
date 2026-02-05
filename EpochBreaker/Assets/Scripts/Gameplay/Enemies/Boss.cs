@@ -408,20 +408,61 @@ namespace EpochBreaker.Gameplay
                     GameManager.Instance.RecordEnemyKill();
             }
 
-            AudioManager.PlaySFX(PlaceholderAudio.GetEnemyDieSFX());
+            // Epic boss death sound
+            AudioManager.PlaySFX(PlaceholderAudio.GetBossDeathSFX());
 
-            // Boss death animation
+            // Stop movement
             if (_rb != null)
             {
                 _rb.linearVelocity = Vector2.zero;
                 _rb.gravityScale = 0f;
             }
 
-            if (_sr != null)
-                _sr.color = new Color(1f, 1f, 1f, 0.5f);
+            // Start dramatic death animation
+            StartCoroutine(DeathAnimation());
+        }
 
-            // Longer delay before destroying boss
-            Destroy(gameObject, 1.0f);
+        private System.Collections.IEnumerator DeathAnimation()
+        {
+            if (_sr == null)
+            {
+                Destroy(gameObject, 0.1f);
+                yield break;
+            }
+
+            float duration = 1.5f;
+            float elapsed = 0f;
+            Vector3 originalScale = transform.localScale;
+            Vector3 originalPos = transform.position;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+
+                // Shake violently
+                float shake = (1f - t) * 0.3f;
+                transform.position = originalPos + new Vector3(
+                    Random.Range(-shake, shake),
+                    Random.Range(-shake, shake),
+                    0f
+                );
+
+                // Flash between white and red
+                float flash = Mathf.PingPong(elapsed * 15f, 1f);
+                _sr.color = Color.Lerp(Color.white, new Color(1f, 0.2f, 0.2f), flash);
+
+                // Grow slightly then shrink
+                float scaleT = t < 0.3f ? 1f + t * 0.5f : Mathf.Lerp(1.15f, 0f, (t - 0.3f) / 0.7f);
+                transform.localScale = originalScale * scaleT;
+
+                // Spin faster as it dies
+                transform.Rotate(0f, 0f, 360f * t * 2f * Time.deltaTime);
+
+                yield return null;
+            }
+
+            Destroy(gameObject);
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

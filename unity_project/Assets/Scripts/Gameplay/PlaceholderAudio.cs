@@ -279,6 +279,30 @@ namespace EpochBreaker.Gameplay
             return clip;
         }
 
+        /// <summary>Epic boss death explosion — massive multi-layered impact.</summary>
+        public static AudioClip GetBossDeathSFX()
+        {
+            if (_cache.TryGetValue("sfx_boss_death", out var c)) return c;
+            var buf = MakeBuffer(1.5f);
+            // Initial massive impact
+            AddTone(buf, 0f, 0.3f, 100f, 30f, Wave.Triangle, 0.4f, 0.001f, 0.1f);
+            AddTone(buf, 0f, 0.4f, 400f, 50f, Wave.Noise, 0.35f, 0.001f, 0.15f);
+            // Explosion rumble
+            AddTone(buf, 0.1f, 0.5f, 80f, 20f, Wave.Square, 0.3f, 0.02f, 0.2f);
+            // Rising pitch - energy release
+            AddTone(buf, 0.2f, 0.4f, 200f, 800f, Wave.Sawtooth, 0.2f, 0.05f, 0.1f);
+            // Secondary explosions
+            AddTone(buf, 0.4f, 0.3f, 150f, 40f, Wave.Noise, 0.25f, 0.01f, 0.1f);
+            AddTone(buf, 0.6f, 0.25f, 120f, 35f, Wave.Noise, 0.2f, 0.01f, 0.1f);
+            // Triumphant chime
+            AddTone(buf, 0.8f, 0.4f, 523f, 523f, Wave.Square, 0.15f, 0.02f, 0.2f); // C5
+            AddTone(buf, 0.9f, 0.4f, 659f, 659f, Wave.Square, 0.15f, 0.02f, 0.2f); // E5
+            AddTone(buf, 1.0f, 0.5f, 784f, 784f, Wave.Square, 0.15f, 0.02f, 0.3f); // G5
+            var clip = MakeClip("SFX_BossDeath", buf);
+            _cache["sfx_boss_death"] = clip;
+            return clip;
+        }
+
         // ═══════════════════════════════════════════════════════════════
         //  MUSIC
         // ═══════════════════════════════════════════════════════════════

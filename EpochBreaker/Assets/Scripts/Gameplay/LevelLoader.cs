@@ -435,9 +435,11 @@ namespace EpochBreaker.Gameplay
             // Boss component
             CurrentBoss = _bossObj.AddComponent<Boss>();
 
-            // Calculate arena bounds in world coordinates
-            float arenaMinX = zone.StartX + 2f;
-            float arenaMaxX = zone.EndX - 2f;
+            // Calculate arena bounds in world coordinates (convert from tile to world)
+            Vector3 minPos = _tilemapRenderer.LevelToWorld(zone.StartX + 2, 0);
+            Vector3 maxPos = _tilemapRenderer.LevelToWorld(zone.EndX - 2, 0);
+            float arenaMinX = minPos.x;
+            float arenaMaxX = maxPos.x;
 
             CurrentBoss.Initialize(bossType, _tilemapRenderer, arenaMinX, arenaMaxX);
 
