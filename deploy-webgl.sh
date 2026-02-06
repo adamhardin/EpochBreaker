@@ -4,7 +4,7 @@ set -e
 # ── Configuration ──────────────────────────────────────────────
 UNITY="/Applications/Unity/Hub/Editor/6000.3.6f1/Unity.app/Contents/MacOS/Unity"
 PROJECT_DIR="$(cd "$(dirname "$0")/EpochBreaker" && pwd)"
-BUILD_DIR="$(cd "$(dirname "$0")" && pwd)/build/WebGL/WebGL"
+BUILD_DIR="$(cd "$(dirname "$0")" && pwd)/EpochBreaker/build/WebGL/WebGL"
 BUILD_METHOD="EpochBreaker.Editor.WebGLBuildScript.Build"
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
