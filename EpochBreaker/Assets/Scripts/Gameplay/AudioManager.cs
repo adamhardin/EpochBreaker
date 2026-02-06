@@ -23,8 +23,8 @@ namespace EpochBreaker.Gameplay
         private float _sfxVolume = 1f;
         private float _weaponVolume = 1f;
 
-        private const float BASE_MUSIC_VOLUME = 0.5f;
-        private const float BASE_SFX_VOLUME = 0.7f;
+        private const float BASE_MUSIC_VOLUME = 0.15f;
+        private const float BASE_SFX_VOLUME = 0.25f;
 
         private const string PREF_MUSIC_VOL = "EpochBreaker_MusicVolume";
         private const string PREF_SFX_VOL = "EpochBreaker_SFXVolume";

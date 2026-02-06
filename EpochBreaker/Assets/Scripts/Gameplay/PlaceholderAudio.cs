@@ -94,7 +94,7 @@ namespace EpochBreaker.Gameplay
             }
             if (peak > 0.001f)
             {
-                float gain = 0.8f / peak;
+                float gain = 0.4f / peak;
                 for (int i = 0; i < data.Length; i++)
                     data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
             }
