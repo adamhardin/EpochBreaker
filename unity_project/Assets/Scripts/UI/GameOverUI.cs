@@ -5,7 +5,10 @@ using UnityEngine.UI;
 namespace EpochBreaker.UI
 {
     /// <summary>
-    /// Game Over screen shown when player runs out of lives.
+    /// Game Over screen. Shows mode-specific info:
+    /// - Campaign: epoch reached
+    /// - Streak: streak count (auto-saved to legends)
+    /// - FreePlay: simple retry
     /// </summary>
     public class GameOverUI : MonoBehaviour
     {
@@ -39,42 +42,76 @@ namespace EpochBreaker.UI
             overlayRect.anchorMax = Vector2.one;
             overlayRect.sizeDelta = Vector2.zero;
 
+            var gm = Gameplay.GameManager.Instance;
+            var mode = gm?.CurrentGameMode ?? Gameplay.GameMode.FreePlay;
+
             // GAME OVER title
             CreateText(canvasGO.transform, "GAME OVER", 72,
-                new Color(0.9f, 0.2f, 0.2f), new Vector2(0, 100));
+                new Color(0.9f, 0.2f, 0.2f), new Vector2(0, 140));
 
-            // Subtitle
-            CreateText(canvasGO.transform, "Out of lives!", 28,
-                new Color(0.8f, 0.6f, 0.6f), new Vector2(0, 20));
+            // Mode-specific info
+            float yPos = 60f;
+
+            switch (mode)
+            {
+                case Gameplay.GameMode.Campaign:
+                    int epoch = gm?.CampaignEpoch ?? 0;
+                    string epochName = gm != null ? gm.CurrentLevelID.EpochName : "Unknown";
+                    CreateText(canvasGO.transform,
+                        $"Campaign ended at Epoch {epoch}: {epochName}", 28,
+                        new Color(0.8f, 0.6f, 0.6f), new Vector2(0, yPos));
+                    yPos -= 40f;
+                    int totalScore = gm?.TotalScore ?? 0;
+                    CreateText(canvasGO.transform,
+                        $"Total Score: {totalScore:N0}", 24,
+                        new Color(0.7f, 0.7f, 0.5f), new Vector2(0, yPos));
+                    break;
+
+                case Gameplay.GameMode.Streak:
+                    int streak = gm?.StreakCount ?? 0;
+                    CreateText(canvasGO.transform,
+                        $"Streak: {streak} level{(streak != 1 ? "s" : "")} completed", 32,
+                        new Color(1f, 0.85f, 0.2f), new Vector2(0, yPos));
+                    yPos -= 40f;
+                    CreateText(canvasGO.transform,
+                        "Saved to Legends!", 22,
+                        new Color(0.7f, 0.6f, 0.4f), new Vector2(0, yPos));
+                    break;
+
+                default: // FreePlay
+                    CreateText(canvasGO.transform, "Out of lives!", 28,
+                        new Color(0.8f, 0.6f, 0.6f), new Vector2(0, yPos));
+                    break;
+            }
 
             // Retry button
-            CreateButton(canvasGO.transform, "RETRY LEVEL", new Vector2(0, -80),
+            CreateButton(canvasGO.transform, "RETRY", new Vector2(0, -60),
                 new Color(0.3f, 0.5f, 0.3f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
-                    Gameplay.GameManager.Instance?.RestartLevel();
+                    Gameplay.GameManager.Instance?.StartGame();
                 });
 
             // Menu button
-            CreateButton(canvasGO.transform, "MAIN MENU", new Vector2(0, -160),
+            CreateButton(canvasGO.transform, "MAIN MENU", new Vector2(0, -140),
                 new Color(0.4f, 0.3f, 0.3f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.ReturnToTitle();
                 });
 
             // Keyboard hints
-            CreateText(canvasGO.transform, "R: Retry | Esc: Menu", 16,
-                new Color(0.5f, 0.4f, 0.4f), new Vector2(0, -260));
+            CreateText(canvasGO.transform, "Enter: Retry | Esc: Menu", 16,
+                new Color(0.5f, 0.4f, 0.4f), new Vector2(0, -230));
         }
 
         private void Update()
         {
-            // Keyboard shortcuts
             if (Keyboard.current == null) return;
 
-            if (Keyboard.current.rKey.wasPressedThisFrame || Keyboard.current.enterKey.wasPressedThisFrame)
+            if (Keyboard.current.enterKey.wasPressedThisFrame ||
+                Keyboard.current.numpadEnterKey.wasPressedThisFrame)
             {
                 Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
-                Gameplay.GameManager.Instance?.RestartLevel();
+                Gameplay.GameManager.Instance?.StartGame();
             }
             else if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
@@ -98,7 +135,7 @@ namespace EpochBreaker.UI
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(600, fontSize + 20);
+            rect.sizeDelta = new Vector2(700, fontSize + 20);
             rect.anchoredPosition = position;
         }
 

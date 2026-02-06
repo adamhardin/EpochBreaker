@@ -13,6 +13,8 @@ namespace EpochBreaker.UI
         private Text _timerText;
         private Text _weaponText;
         private Text _eraText;
+        private Text _livesText;
+        private Text _modeInfoText;
         private Gameplay.HealthSystem _healthSystem;
 
         private const int MAX_HEARTS = 5;
@@ -27,6 +29,7 @@ namespace EpochBreaker.UI
         {
             UpdateTimer();
             UpdateWeaponDisplay();
+            UpdateModeInfo();
         }
 
         private void FindPlayerHealth()
@@ -119,6 +122,34 @@ namespace EpochBreaker.UI
 
             // Pause button (top-right corner)
             CreatePauseButton(canvasGO.transform);
+
+            // Lives counter (below timer, for Campaign/Streak)
+            if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.FreePlay)
+            {
+                var livesGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperLeft);
+                _livesText = livesGO.GetComponent<Text>();
+                _livesText.fontSize = 22;
+                _livesText.color = new Color(1f, 0.85f, 0.2f);
+                var livesRect = livesGO.GetComponent<RectTransform>();
+                livesRect.anchorMin = new Vector2(0, 1);
+                livesRect.anchorMax = new Vector2(0, 1);
+                livesRect.pivot = new Vector2(0, 1);
+                livesRect.anchoredPosition = new Vector2(20, -100);
+            }
+
+            // Mode info (top-center: epoch or streak)
+            if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.FreePlay)
+            {
+                var modeGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperCenter);
+                _modeInfoText = modeGO.GetComponent<Text>();
+                _modeInfoText.fontSize = 22;
+                _modeInfoText.color = new Color(0.9f, 0.85f, 0.7f);
+                var modeRect = modeGO.GetComponent<RectTransform>();
+                modeRect.anchorMin = new Vector2(0.5f, 1);
+                modeRect.anchorMax = new Vector2(0.5f, 1);
+                modeRect.pivot = new Vector2(0.5f, 1);
+                modeRect.anchoredPosition = new Vector2(0, -20);
+            }
         }
 
         private void UpdateHearts(int current, int max)
@@ -150,6 +181,30 @@ namespace EpochBreaker.UI
             var ws = player.GetComponent<Gameplay.WeaponSystem>();
             if (ws != null)
                 _weaponText.text = $"Weapon: {ws.CurrentTier}";
+        }
+
+        private void UpdateModeInfo()
+        {
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            if (_livesText != null)
+            {
+                _livesText.text = $"Lives: {gm.GlobalLives}";
+            }
+
+            if (_modeInfoText != null)
+            {
+                switch (gm.CurrentGameMode)
+                {
+                    case Gameplay.GameMode.Campaign:
+                        _modeInfoText.text = $"Campaign - Epoch {gm.CampaignEpoch + 1}/10";
+                        break;
+                    case Gameplay.GameMode.Streak:
+                        _modeInfoText.text = $"Streak: {gm.StreakCount}";
+                        break;
+                }
+            }
         }
 
         private GameObject CreateHUDText(Transform parent, string text, TextAnchor alignment)

@@ -127,13 +127,26 @@ namespace EpochBreaker.Gameplay
             // Start death animation
             StartCoroutine(DeathAnimation());
 
-            // Check if player has lives remaining
-            bool canRespawn = GameManager.Instance?.LoseLife() ?? true;
-            if (canRespawn)
+            // Check death result
+            var result = GameManager.Instance?.LoseLife() ?? DeathResult.Respawn;
+            switch (result)
             {
-                // Respawn after short delay (longer to show death animation)
-                Invoke(nameof(Respawn), 1.5f);
+                case DeathResult.Respawn:
+                    Invoke(nameof(Respawn), 1.5f);
+                    break;
+                case DeathResult.LevelFailed:
+                    // Level failed — advance to next level after a delay
+                    Invoke(nameof(HandleLevelFailed), 2f);
+                    break;
+                case DeathResult.GameOver:
+                    // Game over — already handled by GameManager.LoseLife() transitioning state
+                    break;
             }
+        }
+
+        private void HandleLevelFailed()
+        {
+            GameManager.Instance?.AdvanceAfterFail();
         }
 
         private System.Collections.IEnumerator DeathAnimation()

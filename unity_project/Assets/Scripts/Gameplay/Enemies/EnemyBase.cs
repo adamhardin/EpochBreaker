@@ -69,7 +69,11 @@ namespace EpochBreaker.Gameplay
 
         private void FixedUpdate()
         {
-            if (IsDead || GameManager.Instance.CurrentState != GameState.Playing)
+            // Lazy re-find player if reference was lost (e.g., level reload)
+            if (_playerTransform == null)
+                _playerTransform = GameObject.FindWithTag("Player")?.transform;
+
+            if (IsDead || GameManager.Instance == null || GameManager.Instance.CurrentState != GameState.Playing)
             {
                 if (_rb != null) _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
                 return;

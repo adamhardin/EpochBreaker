@@ -2161,6 +2161,78 @@ namespace EpochBreaker.Gameplay
             SetRect(px, s, 54, 38, 2, 8, edge);
         }
 
+        /// <summary>
+        /// 64x64 golden player silhouette at PPU=64 (1 unit). Extra life pickup icon.
+        /// </summary>
+        public static Sprite GetExtraLifeSprite()
+        {
+            string key = "extra_life";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+
+            Color gold     = new Color(1.00f, 0.85f, 0.20f);
+            Color goldHi   = Lighten(gold, 0.40f);
+            Color goldDk   = Darken(gold, 0.65f);
+            Color goldMid  = Darken(gold, 0.80f);
+            Color outline  = Darken(gold, 0.40f);
+
+            // Outline silhouette of armored figure (scaled down from 192 to 64)
+            // Boots (y=0..8)
+            SetRect(px, size, 14, 0, 14, 8, outline);   // left boot
+            SetRect(px, size, 36, 0, 14, 8, outline);   // right boot
+            // Inner boots
+            SetRect(px, size, 16, 1, 10, 6, goldDk);
+            SetRect(px, size, 38, 1, 10, 6, goldDk);
+
+            // Legs (y=8..18)
+            SetRect(px, size, 18, 8, 10, 10, outline);  // left leg
+            SetRect(px, size, 36, 8, 10, 10, outline);  // right leg
+            SetRect(px, size, 20, 9, 6, 8, goldMid);
+            SetRect(px, size, 38, 9, 6, 8, goldMid);
+
+            // Torso (y=18..40)
+            SetRect(px, size, 14, 18, 36, 22, outline);
+            SetRect(px, size, 16, 20, 32, 18, gold);
+            // Chest plate highlight
+            SetRect(px, size, 22, 28, 20, 6, goldHi);
+            // Belt
+            SetRect(px, size, 16, 18, 32, 4, goldDk);
+            SetRect(px, size, 18, 19, 28, 2, goldMid);
+
+            // Arms (extending from torso)
+            SetRect(px, size, 6, 22, 10, 14, outline);  // left arm
+            SetRect(px, size, 48, 22, 10, 14, outline); // right arm
+            SetRect(px, size, 8, 24, 6, 10, goldMid);
+            SetRect(px, size, 50, 24, 6, 10, goldMid);
+
+            // Head (y=40..58)
+            SetRect(px, size, 18, 40, 28, 18, outline);
+            SetRect(px, size, 20, 42, 24, 14, gold);
+            // Visor
+            SetRect(px, size, 22, 46, 20, 6, goldHi);
+            SetRect(px, size, 24, 48, 16, 2, Lighten(goldHi, 0.30f));
+            // Helmet crest
+            SetRect(px, size, 28, 56, 8, 6, goldHi);
+            SetRect(px, size, 30, 60, 4, 4, Lighten(goldHi, 0.50f));
+
+            // "1UP" indicator sparkles
+            Px(px, size, 4, 50, goldHi);
+            Px(px, size, 58, 52, goldHi);
+            Px(px, size, 10, 4, goldHi);
+            Px(px, size, 52, 6, goldHi);
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
         #endregion
 
         #region Checkpoints

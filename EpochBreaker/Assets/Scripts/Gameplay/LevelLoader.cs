@@ -47,6 +47,7 @@ namespace EpochBreaker.Gameplay
             SpawnEnemies(data);
             SpawnWeaponPickups(data);
             SpawnRewards(data);
+            SpawnExtraLives(data);
             SpawnCheckpoints(data);
             SpawnGoal(data);
             SpawnBoss(data);
@@ -65,7 +66,10 @@ namespace EpochBreaker.Gameplay
             if (_levelRoot != null)
                 Destroy(_levelRoot);
             if (_playerObj != null)
+            {
+                _playerObj.tag = "Untagged"; // Prevent stale FindWithTag references
                 Destroy(_playerObj);
+            }
             if (_mainCamera != null)
                 Destroy(_mainCamera);
             if (_bossObj != null)
@@ -205,7 +209,8 @@ namespace EpochBreaker.Gameplay
                 var drop = data.WeaponDrops[i];
                 if (drop.Hidden) continue; // Skip hidden for now
 
-                Vector3 pos = _tilemapRenderer.LevelToWorld(drop.TileX, drop.TileY);
+                int clampedY = ClampAboveGround(data, drop.TileX, drop.TileY);
+                Vector3 pos = _tilemapRenderer.LevelToWorld(drop.TileX, clampedY);
 
                 var go = new GameObject($"Weapon_{drop.Tier}_{i}");
                 go.transform.SetParent(weaponParent.transform);
@@ -236,7 +241,8 @@ namespace EpochBreaker.Gameplay
                 var reward = data.Rewards[i];
                 if (reward.Hidden) continue;
 
-                Vector3 pos = _tilemapRenderer.LevelToWorld(reward.TileX, reward.TileY);
+                int clampedY = ClampAboveGround(data, reward.TileX, reward.TileY);
+                Vector3 pos = _tilemapRenderer.LevelToWorld(reward.TileX, clampedY);
 
                 var go = new GameObject($"Reward_{reward.Type}_{i}");
                 go.transform.SetParent(rewardParent.transform);
@@ -253,6 +259,76 @@ namespace EpochBreaker.Gameplay
                 var rewardPickup = go.AddComponent<RewardPickup>();
                 rewardPickup.Type = reward.Type;
                 rewardPickup.Value = reward.Value;
+            }
+        }
+
+        /// <summary>
+        /// Spawn extra life pickups in Campaign mode only. Max 2 per level.
+        /// Places them among the reward positions (reusing existing reward locations that are far enough apart).
+        /// </summary>
+        private void SpawnExtraLives(LevelData data)
+        {
+            // Only spawn in Campaign mode
+            if (GameManager.Instance == null || GameManager.Instance.CurrentGameMode != GameMode.Campaign)
+                return;
+
+            if (data.Rewards == null || data.Rewards.Count < 3) return;
+
+            var extraLifeParent = new GameObject("ExtraLives");
+            extraLifeParent.transform.SetParent(_levelRoot.transform);
+
+            // Use the level's seed to deterministically pick positions
+            var rng = new XORShift64(data.ID.Seed + 12345UL);
+            int maxLives = 2;
+            int placed = 0;
+
+            // Place extra lives at roughly 1/3 and 2/3 through the level
+            int levelWidth = data.Layout.WidthTiles;
+            int[] targetXPositions = new int[]
+            {
+                levelWidth / 3,
+                (levelWidth * 2) / 3
+            };
+
+            for (int t = 0; t < targetXPositions.Length && placed < maxLives; t++)
+            {
+                int targetX = targetXPositions[t];
+
+                // Find the nearest reward position to use as placement reference
+                int bestIdx = -1;
+                int bestDist = int.MaxValue;
+                for (int i = 0; i < data.Rewards.Count; i++)
+                {
+                    if (data.Rewards[i].Hidden) continue;
+                    int dist = Mathf.Abs(data.Rewards[i].TileX - targetX);
+                    if (dist < bestDist)
+                    {
+                        bestDist = dist;
+                        bestIdx = i;
+                    }
+                }
+
+                if (bestIdx < 0) continue;
+
+                var reward = data.Rewards[bestIdx];
+                int extraLifeX = Mathf.Min(reward.TileX + 2, data.Layout.WidthTiles - 1);
+                int clampedY = ClampAboveGround(data, extraLifeX, reward.TileY);
+                Vector3 pos = _tilemapRenderer.LevelToWorld(extraLifeX, clampedY);
+
+                var go = new GameObject($"ExtraLife_{placed}");
+                go.transform.SetParent(extraLifeParent.transform);
+                go.transform.position = pos;
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetExtraLifeSprite();
+                sr.sortingOrder = 7;
+
+                var col = go.AddComponent<BoxCollider2D>();
+                col.isTrigger = true;
+                col.size = new Vector2(0.8f, 0.8f);
+
+                go.AddComponent<ExtraLifePickup>();
+                placed++;
             }
         }
 
@@ -345,6 +421,26 @@ namespace EpochBreaker.Gameplay
             _checkpointPlatformSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 64f);
             _checkpointPlatformSprite.name = "checkpoint_platform";
             return _checkpointPlatformSprite;
+        }
+
+        /// <summary>
+        /// Ensure a spawn tile Y is above any solid ground. Scans upward in level-data
+        /// coordinates (lower Y = higher in world) until finding an empty tile.
+        /// Returns the adjusted tileY.
+        /// </summary>
+        private int ClampAboveGround(LevelData data, int tileX, int tileY)
+        {
+            int width = data.Layout.WidthTiles;
+            int y = tileY;
+            while (y > 0)
+            {
+                int idx = y * width + tileX;
+                if (idx >= 0 && idx < data.Layout.Collision.Length &&
+                    data.Layout.Collision[idx] != (byte)CollisionType.Solid)
+                    break;
+                y--;
+            }
+            return y;
         }
 
         private void SpawnGoal(LevelData data)

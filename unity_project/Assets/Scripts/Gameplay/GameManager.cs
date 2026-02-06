@@ -15,7 +15,22 @@ namespace EpochBreaker.Gameplay
         Playing,
         Paused,
         LevelComplete,
-        GameOver
+        GameOver,
+        Celebration
+    }
+
+    public enum GameMode
+    {
+        FreePlay,   // Single level from code entry or randomize on
+        Campaign,   // 10 epochs in order, limited lives, extra life pickups
+        Streak      // Unlimited random levels, 10 lives, no extra life pickups
+    }
+
+    public enum DeathResult
+    {
+        Respawn,     // Still have deaths left this level
+        LevelFailed, // Used all deaths this level, advance to next
+        GameOver     // No lives remaining
     }
 
     /// <summary>
@@ -42,6 +57,40 @@ namespace EpochBreaker.Gameplay
     }
 
     /// <summary>
+    /// Saved session data for Continue functionality.
+    /// Persisted to PlayerPrefs so the player can resume after quitting.
+    /// </summary>
+    [Serializable]
+    public class SavedSession
+    {
+        public string LevelCode;
+        public int Mode; // 0=FreePlay, 1=Campaign, 2=Streak
+        public int CampaignEpoch;
+        public int StreakCount;
+        public int GlobalLives;
+        public int TotalScore;
+    }
+
+    /// <summary>
+    /// A single entry in the Legends leaderboard (best streak runs).
+    /// </summary>
+    [Serializable]
+    public class LegendsEntry
+    {
+        public int StreakCount;
+        public long Timestamp;
+    }
+
+    /// <summary>
+    /// Container for serializing Legends data to JSON.
+    /// </summary>
+    [Serializable]
+    public class LegendsData
+    {
+        public List<LegendsEntry> Entries = new List<LegendsEntry>();
+    }
+
+    /// <summary>
     /// Singleton game manager. Controls game state, level progression, and
     /// coordinates all major systems. Auto-creates itself via RuntimeInitializeOnLoadMethod.
     /// Runs before other scripts to ensure input flags are set before consumption.
@@ -53,8 +102,8 @@ namespace EpochBreaker.Gameplay
 
         public GameState CurrentState { get; private set; } = GameState.TitleScreen;
         public int CurrentEpoch { get; set; } = 0;
-        public const int MAX_LIVES_PER_LEVEL = 2;
-        public int LivesRemaining { get; private set; } = MAX_LIVES_PER_LEVEL;
+        public const int DEATHS_PER_LEVEL = 2;
+        public int LivesRemaining { get; private set; } = DEATHS_PER_LEVEL;
         public int Score { get; set; }
         public int TotalScore { get; set; }
         public int TimeScore { get; private set; }
@@ -67,6 +116,117 @@ namespace EpochBreaker.Gameplay
         public int WeaponsCollected { get; set; }
         public LevelData CurrentLevel { get; set; }
         public LevelID CurrentLevelID { get; set; }
+
+        // Game mode tracking
+        public GameMode CurrentGameMode { get; private set; } = GameMode.FreePlay;
+        public int CampaignEpoch { get; private set; } = 0;  // 0-9, which epoch in campaign
+        public int StreakCount { get; private set; } = 0;     // Levels completed in streak mode
+        public int DeathsThisLevel { get; private set; } = 0; // Deaths in current level
+        public int GlobalLives { get; private set; } = 2;     // Persistent lives across levels
+
+        // Settings
+        private const string PREF_RANDOMIZE = "EpochBreaker_Randomize";
+        private const string PREF_LEGENDS_UNLOCKED = "EpochBreaker_LegendsUnlocked";
+        private const string LEGENDS_PREFS_KEY = "EpochBreaker_Legends";
+        private const int MAX_LEGENDS_ENTRIES = 20;
+
+        public bool RandomizeEnabled
+        {
+            get => PlayerPrefs.GetInt(PREF_RANDOMIZE, 0) == 1;
+            set { PlayerPrefs.SetInt(PREF_RANDOMIZE, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        public bool LegendsUnlocked
+        {
+            get => PlayerPrefs.GetInt(PREF_LEGENDS_UNLOCKED, 0) == 1;
+            set { PlayerPrefs.SetInt(PREF_LEGENDS_UNLOCKED, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        // Session save/load
+        private const string SESSION_PREFS_KEY = "EpochBreaker_Session";
+
+        /// <summary>
+        /// Check if a saved session exists that the player can continue.
+        /// </summary>
+        public static bool HasSavedSession()
+        {
+            return !string.IsNullOrEmpty(PlayerPrefs.GetString(SESSION_PREFS_KEY, ""));
+        }
+
+        /// <summary>
+        /// Load saved session data. Returns null if no session exists.
+        /// </summary>
+        public static SavedSession LoadSession()
+        {
+            string json = PlayerPrefs.GetString(SESSION_PREFS_KEY, "");
+            if (string.IsNullOrEmpty(json)) return null;
+            try
+            {
+                return JsonUtility.FromJson<SavedSession>(json);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Save the current game session so the player can continue later.
+        /// </summary>
+        public void SaveSession()
+        {
+            var session = new SavedSession
+            {
+                LevelCode = CurrentLevelID.ToCode(),
+                Mode = (int)CurrentGameMode,
+                CampaignEpoch = CampaignEpoch,
+                StreakCount = StreakCount,
+                GlobalLives = GlobalLives,
+                TotalScore = TotalScore
+            };
+            string json = JsonUtility.ToJson(session);
+            PlayerPrefs.SetString(SESSION_PREFS_KEY, json);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Clear the saved session (called on Game Over, campaign completion, or new game).
+        /// </summary>
+        public static void ClearSession()
+        {
+            PlayerPrefs.DeleteKey(SESSION_PREFS_KEY);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Continue from a saved session.
+        /// </summary>
+        public void ContinueSession()
+        {
+            var session = LoadSession();
+            if (session == null) return;
+
+            if (!LevelID.TryParse(session.LevelCode, out LevelID levelID))
+            {
+                ClearSession();
+                return;
+            }
+
+            CurrentLevelID = levelID;
+            CurrentEpoch = levelID.Epoch;
+            CurrentGameMode = (GameMode)session.Mode;
+            CampaignEpoch = session.CampaignEpoch;
+            StreakCount = session.StreakCount;
+            GlobalLives = session.GlobalLives;
+            TotalScore = session.TotalScore;
+            Score = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
+            DeathsThisLevel = 0;
+
+            TransitionTo(GameState.Loading);
+        }
 
         // Per-type collection counts for multiplier bonuses (exposed for UI display)
         public Dictionary<RewardType, int> RewardCounts => _rewardCounts;
@@ -85,6 +245,7 @@ namespace EpochBreaker.Gameplay
         private const float LevelCompleteMinDelay = 5f;
         private GameObject _gameOverObj;
         private GameObject _touchControlsObj;
+        private GameObject _celebrationObj;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void AutoCreate()
@@ -139,7 +300,12 @@ namespace EpochBreaker.Gameplay
                         (Keyboard.current.enterKey.wasPressedThisFrame ||
                          Keyboard.current.numpadEnterKey.wasPressedThisFrame ||
                          Keyboard.current.spaceKey.wasPressedThisFrame))
-                        StartGame();
+                    {
+                        if (HasSavedSession())
+                            ContinueSession();
+                        else
+                            StartGame();
+                    }
                     break;
                 case GameState.Playing:
                     if (_timerRunning)
@@ -198,6 +364,7 @@ namespace EpochBreaker.Gameplay
                     _timerRunning = true;
                     AudioManager.PlayMusic(PlaceholderAudio.GetGameplayMusic());
                     CreateHUD();
+                    SaveSession(); // Persist so player can continue later
                     break;
                 case GameState.Paused:
                     Time.timeScale = 0f;
@@ -225,20 +392,52 @@ namespace EpochBreaker.Gameplay
                 case GameState.GameOver:
                     Time.timeScale = 1f;
                     _timerRunning = false;
+                    ClearSession(); // No continue after game over
                     AudioManager.StopMusic();
                     AudioManager.PlaySFX(PlaceholderAudio.GetPlayerHurtSFX());
                     CreateGameOverUI();
+                    break;
+
+                case GameState.Celebration:
+                    Time.timeScale = 1f;
+                    _timerRunning = false;
+                    _levelLoader.CleanupLevel();
+                    ClearSession(); // Campaign completed
+                    AudioManager.StopMusic();
+                    AudioManager.PlaySFX(PlaceholderAudio.GetLevelCompleteSFX());
+                    LegendsUnlocked = true;
+                    CreateCelebrationUI();
                     break;
             }
         }
 
         public void StartGame()
         {
+            ClearSession(); // Starting fresh — clear any saved session
             Score = 0;
             TotalScore = 0;
             LevelNumber = 0;
             LevelElapsedTime = 0f;
             _timerRunning = false;
+            StreakCount = 0;
+            DeathsThisLevel = 0;
+
+            if (RandomizeEnabled)
+            {
+                // FreePlay: random epoch, random seed, single levels
+                CurrentGameMode = GameMode.FreePlay;
+                GlobalLives = DEATHS_PER_LEVEL; // Not used in FreePlay, but set for safety
+            }
+            else
+            {
+                // Campaign: 10 epochs in order, start with 2 lives
+                CurrentGameMode = GameMode.Campaign;
+                CampaignEpoch = 0;
+                CurrentEpoch = 0;
+                GlobalLives = 2;
+                CurrentLevelID = LevelID.GenerateRandom(0);
+            }
+
             TransitionTo(GameState.Loading);
         }
 
@@ -278,9 +477,31 @@ namespace EpochBreaker.Gameplay
 
         public void NextLevel()
         {
-            // Derive next level from current (deterministic sequence, advances epoch)
-            CurrentLevelID = CurrentLevelID.Next();
-            CurrentEpoch = CurrentLevelID.Epoch;
+            if (CurrentGameMode == GameMode.Campaign)
+            {
+                CampaignEpoch++;
+                if (CampaignEpoch > LevelID.MAX_EPOCH)
+                {
+                    // Completed all 10 epochs — show celebration!
+                    TransitionTo(GameState.Celebration);
+                    return;
+                }
+                CurrentLevelID = LevelID.GenerateRandom(CampaignEpoch);
+                CurrentEpoch = CampaignEpoch;
+            }
+            else if (CurrentGameMode == GameMode.Streak)
+            {
+                StreakCount++;
+                CurrentLevelID = LevelID.GenerateRandom(UnityEngine.Random.Range(0, LevelID.MAX_EPOCH + 1));
+                CurrentEpoch = CurrentLevelID.Epoch;
+            }
+            else
+            {
+                // FreePlay: deterministic next from current
+                CurrentLevelID = CurrentLevelID.Next();
+                CurrentEpoch = CurrentLevelID.Epoch;
+            }
+
             TransitionTo(GameState.Loading);
         }
 
@@ -291,16 +512,20 @@ namespace EpochBreaker.Gameplay
         {
             CurrentEpoch = Mathf.Clamp(epoch, 0, LevelID.MAX_EPOCH);
             CurrentLevelID = LevelID.GenerateRandom(CurrentEpoch);
+            CurrentGameMode = GameMode.FreePlay;
             Score = 0;
             TotalScore = 0;
             LevelNumber = 0;
             LevelElapsedTime = 0f;
             _timerRunning = false;
+            DeathsThisLevel = 0;
+            GlobalLives = DEATHS_PER_LEVEL;
             TransitionTo(GameState.Loading);
         }
 
         /// <summary>
         /// Start a level from a specific level code (e.g., "3-K7XM2P9A").
+        /// Always FreePlay mode regardless of Randomize setting.
         /// </summary>
         public void StartLevelFromCode(string code)
         {
@@ -311,24 +536,35 @@ namespace EpochBreaker.Gameplay
             }
             CurrentLevelID = levelID;
             CurrentEpoch = levelID.Epoch;
+            CurrentGameMode = GameMode.FreePlay;
             Score = 0;
             TotalScore = 0;
             LevelNumber = 0;
             LevelElapsedTime = 0f;
             _timerRunning = false;
+            DeathsThisLevel = 0;
+            GlobalLives = DEATHS_PER_LEVEL;
             TransitionTo(GameState.Loading);
         }
 
         private void StartLevel()
         {
             LevelNumber++;
-            // Reset lives at the start of each level
-            LivesRemaining = MAX_LIVES_PER_LEVEL;
-            // If no level ID set yet (first level), generate a random one for current epoch
+            DeathsThisLevel = 0;
+            // Per-level lives: in FreePlay, reset each level; in Campaign/Streak, use GlobalLives
+            LivesRemaining = (CurrentGameMode == GameMode.FreePlay) ? DEATHS_PER_LEVEL : DEATHS_PER_LEVEL;
+
+            // Generate level ID based on game mode
             if (CurrentLevelID.Seed == 0)
             {
-                CurrentLevelID = LevelID.GenerateRandom(CurrentEpoch);
+                if (CurrentGameMode == GameMode.Campaign)
+                    CurrentLevelID = LevelID.GenerateRandom(CampaignEpoch);
+                else
+                    CurrentLevelID = LevelID.GenerateRandom(CurrentEpoch);
             }
+
+            CurrentEpoch = CurrentLevelID.Epoch;
+
             LevelElapsedTime = 0f;
             EnemiesKilled = 0;
             RewardsCollected = 0;
@@ -601,6 +837,7 @@ namespace EpochBreaker.Gameplay
             if (_levelCompleteObj) Destroy(_levelCompleteObj);
             if (_touchControlsObj) Destroy(_touchControlsObj);
             if (_gameOverObj) Destroy(_gameOverObj);
+            if (_celebrationObj) Destroy(_celebrationObj);
         }
 
         private void CreateTitleScreen()
@@ -636,18 +873,154 @@ namespace EpochBreaker.Gameplay
             AddUI(_gameOverObj, "EpochBreaker.UI.GameOverUI");
         }
 
-        /// <summary>
-        /// Called when the player dies. Returns true if respawn allowed, false if game over.
-        /// </summary>
-        public bool LoseLife()
+        private void CreateCelebrationUI()
         {
-            LivesRemaining--;
-            if (LivesRemaining <= 0)
+            _celebrationObj = new GameObject("CelebrationUI");
+            AddUI(_celebrationObj, "EpochBreaker.UI.CelebrationUI");
+        }
+
+        // =====================================================================
+        // Legends Persistence
+        // =====================================================================
+
+        /// <summary>
+        /// Save the current streak run to the Legends leaderboard.
+        /// </summary>
+        public void SaveStreakToLegends()
+        {
+            if (StreakCount <= 0) return;
+
+            var legends = LoadLegendsData();
+            legends.Entries.Add(new LegendsEntry
             {
-                TransitionTo(GameState.GameOver);
-                return false;
+                StreakCount = StreakCount,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            });
+
+            // Sort descending by streak count
+            legends.Entries.Sort((a, b) => b.StreakCount.CompareTo(a.StreakCount));
+
+            // Trim to max
+            while (legends.Entries.Count > MAX_LEGENDS_ENTRIES)
+                legends.Entries.RemoveAt(legends.Entries.Count - 1);
+
+            string json = JsonUtility.ToJson(legends);
+            PlayerPrefs.SetString(LEGENDS_PREFS_KEY, json);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Load Legends leaderboard data from PlayerPrefs.
+        /// </summary>
+        public static LegendsData LoadLegendsData()
+        {
+            string json = PlayerPrefs.GetString(LEGENDS_PREFS_KEY, "");
+            if (string.IsNullOrEmpty(json))
+                return new LegendsData();
+            try
+            {
+                return JsonUtility.FromJson<LegendsData>(json) ?? new LegendsData();
             }
-            return true;
+            catch
+            {
+                return new LegendsData();
+            }
+        }
+
+        /// <summary>
+        /// Called when the player dies. Returns the result determining what happens next.
+        /// FreePlay: 2 deaths per level, then game over.
+        /// Campaign/Streak: each death costs 1 global life. 2 deaths in one level = level failed (advance).
+        ///                   0 global lives = game over.
+        /// </summary>
+        public DeathResult LoseLife()
+        {
+            DeathsThisLevel++;
+
+            if (CurrentGameMode == GameMode.FreePlay)
+            {
+                LivesRemaining--;
+                if (LivesRemaining <= 0)
+                {
+                    TransitionTo(GameState.GameOver);
+                    return DeathResult.GameOver;
+                }
+                return DeathResult.Respawn;
+            }
+
+            // Campaign or Streak: deduct a global life
+            GlobalLives--;
+
+            if (GlobalLives <= 0)
+            {
+                // No lives left at all — game over
+                if (CurrentGameMode == GameMode.Streak)
+                    SaveStreakToLegends();
+                TransitionTo(GameState.GameOver);
+                return DeathResult.GameOver;
+            }
+
+            if (DeathsThisLevel >= DEATHS_PER_LEVEL)
+            {
+                // Used up deaths for this level — level failed, advance
+                return DeathResult.LevelFailed;
+            }
+
+            return DeathResult.Respawn;
+        }
+
+        /// <summary>
+        /// Advance past a failed level (player died DEATHS_PER_LEVEL times but still has global lives).
+        /// </summary>
+        public void AdvanceAfterFail()
+        {
+            if (CurrentGameMode == GameMode.Campaign)
+            {
+                CampaignEpoch++;
+                if (CampaignEpoch > LevelID.MAX_EPOCH)
+                {
+                    TransitionTo(GameState.Celebration);
+                    return;
+                }
+                CurrentLevelID = LevelID.GenerateRandom(CampaignEpoch);
+                CurrentEpoch = CampaignEpoch;
+            }
+            else if (CurrentGameMode == GameMode.Streak)
+            {
+                // Failed level doesn't count toward streak, just move on
+                CurrentLevelID = LevelID.GenerateRandom(UnityEngine.Random.Range(0, LevelID.MAX_EPOCH + 1));
+                CurrentEpoch = CurrentLevelID.Epoch;
+            }
+
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Transition from celebration to streak mode.
+        /// </summary>
+        public void StartStreakMode()
+        {
+            CurrentGameMode = GameMode.Streak;
+            GlobalLives = 10;
+            StreakCount = 0;
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            DeathsThisLevel = 0;
+            LegendsUnlocked = true;
+            CurrentLevelID = LevelID.GenerateRandom(UnityEngine.Random.Range(0, LevelID.MAX_EPOCH + 1));
+            CurrentEpoch = CurrentLevelID.Epoch;
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Collect an extra life pickup (campaign mode only).
+        /// </summary>
+        public void CollectExtraLife()
+        {
+            if (CurrentGameMode != GameMode.Campaign) return;
+            GlobalLives++;
+            AudioManager.PlaySFX(PlaceholderAudio.GetRewardPickupSFX());
         }
 
         /// <summary>
