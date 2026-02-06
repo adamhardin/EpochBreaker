@@ -169,8 +169,8 @@ namespace EpochBreaker.UI
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
 
-            // Version
-            var verGO = CreateText(canvasGO.transform, "v0.1.0 - Debug Build", 14,
+            // Build ID
+            var verGO = CreateText(canvasGO.transform, BuildInfo.FullBuildID, 14,
                 new Color(0.4f, 0.4f, 0.5f));
             var verRect = verGO.GetComponent<RectTransform>();
             verRect.anchorMin = new Vector2(0, 0);

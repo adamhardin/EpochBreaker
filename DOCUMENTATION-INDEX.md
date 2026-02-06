@@ -62,6 +62,14 @@ The deployment process is documented in [README.md](README.md#play-in-browser). 
 
 ---
 
+## Build Tracking
+
+| Document | Purpose |
+|----------|---------|
+| [BUILD-LOG.md](BUILD-LOG.md) | Sequential build log with version, date, and change notes for each WebGL deployment |
+
+---
+
 ## Documents To Be Created During Development
 
 | Document | Purpose | When |
