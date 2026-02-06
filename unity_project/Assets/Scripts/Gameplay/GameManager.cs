@@ -82,7 +82,7 @@ namespace EpochBreaker.Gameplay
         private GameObject _pauseMenuObj;
         private GameObject _levelCompleteObj;
         private float _levelCompleteTime;
-        private const float LevelCompleteMinDelay = 10f;
+        private const float LevelCompleteMinDelay = 5f;
         private GameObject _gameOverObj;
         private GameObject _touchControlsObj;
 

@@ -23,8 +23,8 @@
         }
         #unity-canvas {
             background: #0a0a1a;
-            max-width: 100vw;
-            max-height: 100vh;
+            max-width: 77vw;
+            max-height: 77vh;
         }
         #unity-loading-bar {
             position: absolute;
@@ -72,10 +72,10 @@
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
         var loadingText = document.querySelector("#unity-loading-text");
 
-        // Landscape sizing: fit 16:9 ratio in viewport
+        // Landscape sizing: fit 16:9 ratio in viewport at 85% max size
         function resizeCanvas() {
-            var vw = window.innerWidth;
-            var vh = window.innerHeight;
+            var vw = window.innerWidth * 0.77;
+            var vh = window.innerHeight * 0.77;
             var targetRatio = 16 / 9;
             var w, h;
 
@@ -89,6 +89,10 @@
 
             canvas.style.width = Math.floor(w) + "px";
             canvas.style.height = Math.floor(h) + "px";
+
+            // Set higher internal resolution for sharper rendering
+            canvas.width = 1920;
+            canvas.height = 1080;
         }
         window.addEventListener("resize", resizeCanvas);
         resizeCanvas();

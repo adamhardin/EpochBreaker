@@ -476,6 +476,12 @@ namespace EpochBreaker.Gameplay
                     health.TakeDamage(2, transform.position); // Boss does 2 damage on contact
                 }
             }
+            // Reverse direction when hitting a wall/obstacle (prevents getting stuck)
+            else if (!collision.gameObject.CompareTag("Player"))
+            {
+                _direction = -_direction;
+                if (_isCharging) EndCharge();
+            }
         }
     }
 }

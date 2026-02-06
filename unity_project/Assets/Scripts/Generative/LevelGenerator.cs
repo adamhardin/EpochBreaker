@@ -1701,6 +1701,8 @@ namespace EpochBreaker.Generative
             }
 
             // Place destructible pillars: 2 + (intensity * 8)
+            // Pillars are suspended above the ground, leaving a clear 4-tile corridor
+            // at ground level so the boss can move freely without getting stuck.
             int pillarCount = 2 + (int)(intensity * 8);
             float[] epochMaterials = ERA_MATERIAL_DISTRIBUTIONS[epoch];
 
@@ -1711,7 +1713,8 @@ namespace EpochBreaker.Generative
                 px = ClampInt(px, arenaStartX + 3, arenaEndX - 3);
 
                 int pillarHeight = bossRng.Range(3, 6);
-                int pillarBottom = arenaGroundY - 1;
+                // Leave a 4-tile gap above the ground so the boss (3 units tall) can walk under
+                int pillarBottom = arenaGroundY - 5;
                 int pillarTop = Math.Max(2, pillarBottom - pillarHeight);
 
                 // Select pillar material (use epoch distribution but bias toward harder materials)

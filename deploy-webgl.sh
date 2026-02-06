@@ -91,6 +91,7 @@ git commit -m "Deploy WebGL build $(date '+%Y-%m-%d %H:%M:%S')"
 # Get the remote URL from the main repo
 REMOTE_URL=$(git -C "$REPO_ROOT" remote get-url origin)
 git remote add origin "$REMOTE_URL"
+git config http.postBuffer 52428800
 git push -f origin gh-pages
 
 cd "$REPO_ROOT"

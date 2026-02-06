@@ -129,7 +129,7 @@ namespace EpochBreaker.Gameplay
             proj.Initialize(dir, _projectileSpeed, _damage, false);
             proj.WeaponTier = CurrentTier;
 
-            AudioManager.PlaySFX(PlaceholderAudio.GetShootSFX(), 0.1f);
+            AudioManager.PlayWeaponSFX(PlaceholderAudio.GetShootSFX(), 0.1f);
         }
     }
 }

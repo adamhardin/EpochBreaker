@@ -25,6 +25,10 @@ namespace EpochBreaker.Editor
 
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
 
+            // Set default resolution to 1920x1080 for sharper rendering
+            PlayerSettings.defaultWebScreenWidth = 1920;
+            PlayerSettings.defaultWebScreenHeight = 1080;
+
             BuildPlayerOptions options = new BuildPlayerOptions
             {
                 scenes = scenes,

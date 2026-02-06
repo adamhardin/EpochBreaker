@@ -7,6 +7,7 @@ namespace EpochBreaker.Gameplay
     /// Manages audio playback. Lives on the GameManager GameObject (DontDestroyOnLoad).
     /// One looping AudioSource for music, pooled AudioSources for SFX.
     /// Uses PlayOneShot to prevent sounds cutting each other off.
+    /// Volume settings persisted to PlayerPrefs.
     /// </summary>
     public class AudioManager : MonoBehaviour
     {
@@ -16,6 +17,49 @@ namespace EpochBreaker.Gameplay
         private AudioSource[] _sfxSources;
         private int _sfxIndex;
         private const int SFX_POOL_SIZE = 8;
+
+        // Volume settings (0-1 range)
+        private float _musicVolume = 1f;
+        private float _sfxVolume = 1f;
+        private float _weaponVolume = 1f;
+
+        private const float BASE_MUSIC_VOLUME = 0.5f;
+        private const float BASE_SFX_VOLUME = 0.7f;
+
+        private const string PREF_MUSIC_VOL = "EpochBreaker_MusicVolume";
+        private const string PREF_SFX_VOL = "EpochBreaker_SFXVolume";
+        private const string PREF_WEAPON_VOL = "EpochBreaker_WeaponVolume";
+
+        public float MusicVolume
+        {
+            get => _musicVolume;
+            set
+            {
+                _musicVolume = Mathf.Clamp01(value);
+                _musicSource.volume = BASE_MUSIC_VOLUME * _musicVolume;
+                PlayerPrefs.SetFloat(PREF_MUSIC_VOL, _musicVolume);
+            }
+        }
+
+        public float SFXVolume
+        {
+            get => _sfxVolume;
+            set
+            {
+                _sfxVolume = Mathf.Clamp01(value);
+                PlayerPrefs.SetFloat(PREF_SFX_VOL, _sfxVolume);
+            }
+        }
+
+        public float WeaponVolume
+        {
+            get => _weaponVolume;
+            set
+            {
+                _weaponVolume = Mathf.Clamp01(value);
+                PlayerPrefs.SetFloat(PREF_WEAPON_VOL, _weaponVolume);
+            }
+        }
 
         // Prevent same clip from rapid-fire stacking
         private Dictionary<int, float> _lastPlayTime = new Dictionary<int, float>();
@@ -30,16 +74,21 @@ namespace EpochBreaker.Gameplay
             }
             Instance = this;
 
+            // Load saved volume settings
+            _musicVolume = PlayerPrefs.GetFloat(PREF_MUSIC_VOL, 1f);
+            _sfxVolume = PlayerPrefs.GetFloat(PREF_SFX_VOL, 1f);
+            _weaponVolume = PlayerPrefs.GetFloat(PREF_WEAPON_VOL, 1f);
+
             _musicSource = gameObject.AddComponent<AudioSource>();
             _musicSource.loop = true;
-            _musicSource.volume = 0.5f;
+            _musicSource.volume = BASE_MUSIC_VOLUME * _musicVolume;
             _musicSource.playOnAwake = false;
 
             _sfxSources = new AudioSource[SFX_POOL_SIZE];
             for (int i = 0; i < SFX_POOL_SIZE; i++)
             {
                 _sfxSources[i] = gameObject.AddComponent<AudioSource>();
-                _sfxSources[i].volume = 0.7f;
+                _sfxSources[i].volume = BASE_SFX_VOLUME;
                 _sfxSources[i].playOnAwake = false;
             }
         }
@@ -56,10 +105,25 @@ namespace EpochBreaker.Gameplay
                 return;
             Instance._lastPlayTime[clipId] = now;
 
-            // PlayOneShot doesn't interrupt other sounds on the same source
             var src = Instance._sfxSources[Instance._sfxIndex];
             Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
-            src.PlayOneShot(clip, volume);
+            src.PlayOneShot(clip, volume * Instance._sfxVolume);
+        }
+
+        public static void PlayWeaponSFX(AudioClip clip, float volume = 1f)
+        {
+            if (Instance == null || clip == null) return;
+
+            int clipId = clip.GetInstanceID();
+            float now = Time.unscaledTime;
+            if (Instance._lastPlayTime.TryGetValue(clipId, out float last) &&
+                now - last < MIN_REPEAT_INTERVAL)
+                return;
+            Instance._lastPlayTime[clipId] = now;
+
+            var src = Instance._sfxSources[Instance._sfxIndex];
+            Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
+            src.PlayOneShot(clip, volume * Instance._weaponVolume);
         }
 
         public static void PlayMusic(AudioClip clip)
