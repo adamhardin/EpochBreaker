@@ -72,11 +72,11 @@
         var progressBarFull = document.querySelector("#unity-progress-bar-full");
         var loadingText = document.querySelector("#unity-loading-text");
 
-        // Portrait-first sizing: fit 9:16 ratio in viewport
+        // Landscape sizing: fit 16:9 ratio in viewport
         function resizeCanvas() {
             var vw = window.innerWidth;
             var vh = window.innerHeight;
-            var targetRatio = 9 / 16;
+            var targetRatio = 16 / 9;
             var w, h;
 
             if (vw / vh < targetRatio) {
