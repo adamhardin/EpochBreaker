@@ -147,7 +147,7 @@ namespace EpochBreaker.UI
 
             // Controls hint
             var hintGO = CreateText(canvasGO.transform,
-                "A/D: Move | Space: Jump | Down: Ground Pound | Esc: Pause", 16,
+                "Move: Arrow Pad | Jump: Spacebar | Ground Pound: Down Arrow while Airborn | Esc: Pause", 16,
                 new Color(0.5f, 0.5f, 0.6f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
