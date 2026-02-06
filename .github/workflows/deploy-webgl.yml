@@ -1,9 +1,8 @@
-name: Build & Deploy WebGL to GitHub Pages
+name: Deploy WebGL to GitHub Pages
 
 on:
   push:
-    branches: [master]
-  workflow_dispatch:
+    branches: [gh-pages]
 
 permissions:
   contents: read
@@ -12,51 +11,29 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build WebGL
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Cache Unity Library
-        uses: actions/cache@v4
-        with:
-          path: EpochBreaker/Library
-          key: Library-WebGL-${{ hashFiles('EpochBreaker/Assets/**', 'EpochBreaker/Packages/**', 'EpochBreaker/ProjectSettings/**') }}
-          restore-keys: |
-            Library-WebGL-
-
-      - name: Build WebGL
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-        with:
-          unityVersion: 6000.3.6f1
-          targetPlatform: WebGL
-          projectPath: EpochBreaker
-          buildMethod: EpochBreaker.Editor.WebGLBuildScript.Build
-
-      - name: Upload build artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: EpochBreaker/build/WebGL/WebGL
-
   deploy:
     name: Deploy to GitHub Pages
-    needs: build
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
