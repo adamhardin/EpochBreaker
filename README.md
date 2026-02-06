@@ -170,7 +170,52 @@ Full specification: [Level-Generation-Technical-Spec.md](docs/Level-Generation-T
 
 ---
 
+## Play in Browser
+
+**Live demo:** [https://adamhardin.github.io/EpochBreaker/](https://adamhardin.github.io/EpochBreaker/)
+
+The game runs as a WebGL build hosted on GitHub Pages. Keyboard controls: WASD/arrows to move, Space to jump, Z to stomp, X to attack, Escape to pause.
+
+### How the browser build works
+
+1. The Unity project is built for WebGL locally using a custom build script ([WebGLBuildScript.cs](EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs))
+2. The build output is pushed to the `gh-pages` branch
+3. A GitHub Actions workflow ([deploy-webgl.yml](.github/workflows/deploy-webgl.yml)) deploys the `gh-pages` branch to GitHub Pages
+
+### Deploying an update
+
+```bash
+# 1. Build WebGL from command line (or use Unity > File > Build)
+/Applications/Unity/Hub/Editor/6000.3.6f1/Unity.app/Contents/MacOS/Unity \
+  -batchmode -nographics -quit \
+  -projectPath EpochBreaker \
+  -executeMethod EpochBreaker.Editor.WebGLBuildScript.Build \
+  -logFile -
+
+# 2. Push build output to gh-pages
+git checkout gh-pages
+cp -r EpochBreaker/build/WebGL/WebGL/* .
+git add -A
+git commit -m "Update WebGL build"
+git push origin gh-pages
+git checkout master
+```
+
+The GitHub Actions workflow automatically deploys whenever the `gh-pages` branch is updated.
+
+### WebGL-specific adaptations
+
+- **Clipboard:** Uses a JavaScript bridge plugin ([ClipboardPlugin.jslib](EpochBreaker/Assets/Plugins/WebGL/ClipboardPlugin.jslib)) since `GUIUtility.systemCopyBuffer` isn't available on WebGL
+- **Paste disabled:** Browser security prevents synchronous clipboard reads, so the paste button is hidden on WebGL
+- **Custom template:** A landscape 16:9 template ([index.html](EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html)) with dark background, loading bar, and responsive sizing
+- **Compression:** Brotli with decompression fallback (GitHub Pages doesn't serve `.br` content-encoding headers)
+- **Memory:** 64 MB initial, 512 MB max, geometric growth
+- **Audio:** All audio is generated at runtime via `AudioClip.Create()` — no imported audio files to load
+- **Persistence:** PlayerPrefs (achievements, level history, saved sessions) are backed by IndexedDB on WebGL
+
+---
+
 ## Status
 
-**Current phase:** Design (replacing core design documents)
-**Last updated:** 2026-02-04
+**Current phase:** Playable prototype with 10 eras, 3 game modes, procedural levels
+**Last updated:** 2026-02-05

@@ -47,6 +47,21 @@
 
 ---
 
+## Browser Build & Deployment
+
+The game is playable at **[https://adamhardin.github.io/EpochBreaker/](https://adamhardin.github.io/EpochBreaker/)**
+
+The deployment process is documented in [README.md](README.md#play-in-browser). Key files:
+
+| File | Purpose |
+|------|---------|
+| [.github/workflows/deploy-webgl.yml](.github/workflows/deploy-webgl.yml) | GitHub Actions workflow — deploys `gh-pages` branch to GitHub Pages |
+| [EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs](EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs) | Custom build script for headless WebGL builds |
+| [EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html](EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html) | Custom HTML template (landscape 16:9, dark theme, loading bar) |
+| [EpochBreaker/Assets/Plugins/WebGL/ClipboardPlugin.jslib](EpochBreaker/Assets/Plugins/WebGL/ClipboardPlugin.jslib) | JavaScript bridge for clipboard access on WebGL |
+
+---
+
 ## Documents To Be Created During Development
 
 | Document | Purpose | When |
