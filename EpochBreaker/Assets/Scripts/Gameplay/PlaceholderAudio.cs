@@ -86,21 +86,20 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakeClip(string name, float[] data)
         {
-            // 2-pass single-pole low-pass filter (-12 dB/octave effective rolloff)
-            // Cutoff ~3 kHz at 44100 Hz sample rate (alpha ≈ 0.35, applied twice)
-            const float lpAlpha = 0.35f;
-            float prev = data[0];
-            for (int i = 1; i < data.Length; i++)
+            // 3-pass single-pole low-pass filter (-18 dB/octave effective rolloff)
+            // Cutoff ~2 kHz at 44100 Hz sample rate (alpha ≈ 0.22, applied 3x)
+            // Tighter than previous 0.35/2-pass to eliminate high-frequency squeals
+            // from sawtooth/square harmonics, especially on WebGL where the runtime
+            // AudioLowPassFilter is unavailable.
+            const float lpAlpha = 0.22f;
+            for (int pass = 0; pass < 3; pass++)
             {
-                data[i] = prev + lpAlpha * (data[i] - prev);
-                prev = data[i];
-            }
-            // Second pass for steeper rolloff
-            prev = data[0];
-            for (int i = 1; i < data.Length; i++)
-            {
-                data[i] = prev + lpAlpha * (data[i] - prev);
-                prev = data[i];
+                float prev = data[0];
+                for (int i = 1; i < data.Length; i++)
+                {
+                    data[i] = prev + lpAlpha * (data[i] - prev);
+                    prev = data[i];
+                }
             }
 
             // Normalize to consistent peak level so all clips have equal loudness
@@ -301,10 +300,10 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakePiercerSFX()
         {
-            // Sharp, high-pitched whistle — piercing bolt
+            // Sharp whistle — piercing bolt (capped at 1500 Hz to avoid harmonic squeals)
             var buf = MakeBuffer(0.10f);
-            AddTone(buf, 0f, 0.10f, 1800f, 600f, Wave.Sawtooth, 0.02f, 0.001f, 0.02f);
-            AddTone(buf, 0f, 0.05f, 2400f, 1200f, Wave.Square, 0.01f, 0.001f, 0.01f);
+            AddTone(buf, 0f, 0.10f, 1500f, 500f, Wave.Sawtooth, 0.02f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.05f, 1400f, 800f, Wave.Square, 0.01f, 0.001f, 0.01f);
             return MakeClip("SFX_Fire_Piercer", buf);
         }
 
@@ -319,10 +318,10 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakeChainerSFX()
         {
-            // Electric zap — chain lightning
+            // Electric zap — chain lightning (capped frequencies to avoid squeals)
             var buf = MakeBuffer(0.12f);
-            AddTone(buf, 0f, 0.08f, 1500f, 800f, Wave.Square, 0.02f, 0.001f, 0.015f);
-            AddTone(buf, 0.02f, 0.06f, 2000f, 1000f, Wave.Noise, 0.06f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.08f, 1200f, 600f, Wave.Square, 0.02f, 0.001f, 0.015f);
+            AddTone(buf, 0.02f, 0.06f, 1400f, 800f, Wave.Noise, 0.06f, 0.001f, 0.02f);
             AddTone(buf, 0.06f, 0.06f, 600f, 400f, Wave.Triangle, 0.04f, 0.001f, 0.02f);
             return MakeClip("SFX_Fire_Chainer", buf);
         }
@@ -365,8 +364,8 @@ namespace EpochBreaker.Gameplay
         {
             if (_cache.TryGetValue("sfx_chain_arc", out var c)) return c;
             var buf = MakeBuffer(0.08f);
-            AddTone(buf, 0f, 0.06f, 2000f, 800f, Wave.Noise, 0.08f, 0.001f, 0.02f);
-            AddTone(buf, 0.01f, 0.05f, 1200f, 600f, Wave.Square, 0.04f, 0.001f, 0.015f);
+            AddTone(buf, 0f, 0.06f, 1400f, 600f, Wave.Noise, 0.08f, 0.001f, 0.02f);
+            AddTone(buf, 0.01f, 0.05f, 1000f, 500f, Wave.Square, 0.04f, 0.001f, 0.015f);
             var clip = MakeClip("SFX_ChainArc", buf);
             _cache["sfx_chain_arc"] = clip;
             return clip;
@@ -414,7 +413,7 @@ namespace EpochBreaker.Gameplay
         {
             if (_cache.TryGetValue("sfx_spike", out var c)) return c;
             var buf = MakeBuffer(0.2f);
-            AddTone(buf, 0f, 0.1f, 1500f, 800f, Wave.Sawtooth, 0.08f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.1f, 1200f, 600f, Wave.Sawtooth, 0.08f, 0.001f, 0.02f);
             AddTone(buf, 0.03f, 0.15f, 400f, 200f, Wave.Noise, 0.10f, 0.005f, 0.04f);
             var clip = MakeClip("SFX_Spike", buf);
             _cache["sfx_spike"] = clip;

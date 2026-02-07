@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace EpochBreaker.UI
 {
     /// <summary>
-    /// Inter-level summary screen showing level stats, collected items with sprites, and continue button.
+    /// Inter-level summary screen showing full score breakdown, collected items with sprites, and continue button.
     /// </summary>
     public class LevelCompleteUI : MonoBehaviour
     {
@@ -15,11 +15,6 @@ namespace EpochBreaker.UI
         private Button _menuBtn;
         private Text _continueBtnLabel;
         private Text _hintText;
-        private GameObject _detailsPanel;
-        private Text _detailsBtnText;
-        private bool _detailsExpanded;
-        private List<GameObject> _summaryStatRows = new List<GameObject>();
-        private RectTransform _bottomSectionRect;
 
         // Sprint 8: Share and ghost replay
         private Text _copiedFeedbackText;
@@ -104,34 +99,57 @@ namespace EpochBreaker.UI
             string epochName = gm != null ? gm.CurrentLevelID.EpochName : "";
             string levelCode = gm != null ? gm.CurrentLevelID.ToCode() : "";
 
-            // Level header
+            // Capture for closures
+            int capturedScore = score;
+            int capturedStars = stars;
+            string capturedCode = levelCode;
+
+            // === HEADER SECTION ===
+
             CreateText(canvasGO.transform, $"LEVEL {levelNum} COMPLETE", 48,
-                new Color(1f, 0.85f, 0.1f), new Vector2(0, 420));
+                new Color(1f, 0.85f, 0.1f), new Vector2(0, 460));
 
-            // Epoch name subtitle
-            CreateText(canvasGO.transform, epochName, 24,
-                new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 375));
+            CreateText(canvasGO.transform, epochName, 22,
+                new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 418));
 
-            // Level code (shareable)
+            // Level code + inline COPY button
             CreateText(canvasGO.transform, $"Level Code: {levelCode}", 18,
-                new Color(0.5f, 0.8f, 1f), new Vector2(0, 345));
+                new Color(0.5f, 0.8f, 1f), new Vector2(-40, 390));
+
+            var copyBtn = CreateButton(canvasGO.transform, "COPY", new Vector2(160, 390),
+                new Color(0.25f, 0.5f, 0.7f), () => {
+                    string shareText = Gameplay.LevelShareManager.GenerateChallengeShareText(
+                        capturedScore, capturedStars, capturedCode);
+                    Gameplay.GameManager.CopyToClipboard(shareText);
+                    Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
+                    ShowCopiedFeedback();
+                });
+            var copyRect = copyBtn.GetComponent<RectTransform>();
+            copyRect.sizeDelta = new Vector2(80, 30);
+            var copyLabel = copyBtn.GetComponentInChildren<Text>();
+            if (copyLabel != null) copyLabel.fontSize = 16;
+
+            // "Copied!" feedback (near the COPY button, hidden until triggered)
+            var copiedGO = CreateText(canvasGO.transform, "Copied to clipboard!", 16,
+                new Color(0.4f, 1f, 0.4f, 0f), new Vector2(0, 365));
+            _copiedFeedbackText = copiedGO.GetComponent<Text>();
 
             // Stars
             string starDisplay = new string('*', stars) + new string('-', 3 - stars);
             CreateText(canvasGO.transform, starDisplay, 44,
-                new Color(1f, 0.85f, 0.1f), new Vector2(0, 320));
+                new Color(1f, 0.85f, 0.1f), new Vector2(0, 340));
 
             // Personal best comparison
             int bestScore = GetBestScoreForLevel(levelCode);
             if (score > bestScore && bestScore > 0)
             {
                 CreateText(canvasGO.transform, $"NEW RECORD! +{score - bestScore}", 22,
-                    new Color(1f, 0.5f, 0.2f), new Vector2(0, 290));
+                    new Color(1f, 0.5f, 0.2f), new Vector2(0, 305));
             }
             else if (bestScore > 0)
             {
                 CreateText(canvasGO.transform, $"Best: {bestScore}", 18,
-                    new Color(0.6f, 0.6f, 0.7f), new Vector2(0, 290));
+                    new Color(0.6f, 0.6f, 0.7f), new Vector2(0, 305));
             }
 
             // Star threshold hint
@@ -140,8 +158,10 @@ namespace EpochBreaker.UI
                 int nextThreshold = stars == 1 ? 7800 : 13500;
                 int needed = nextThreshold - score;
                 CreateText(canvasGO.transform, $"Next star: {nextThreshold} (need {needed} more)", 16,
-                    new Color(0.5f, 0.5f, 0.6f), new Vector2(0, 268));
+                    new Color(0.5f, 0.5f, 0.6f), new Vector2(0, 280));
             }
+
+            // === SCORE PANEL (left, full details always shown) ===
 
             Color statColor = new Color(0.75f, 0.75f, 0.85f);
             Color greenColor = new Color(0.4f, 0.9f, 0.4f);
@@ -149,92 +169,56 @@ namespace EpochBreaker.UI
             Color blueColor = new Color(0.5f, 0.6f, 1f);
             Color goldColor = new Color(1f, 0.85f, 0.1f);
 
-            // Stats panel (left side) — collapsed by default, shows top 2 + totals
-            var panelGO = new GameObject("StatsPanel");
+            var panelGO = new GameObject("ScorePanel");
             panelGO.transform.SetParent(canvasGO.transform, false);
             var panelImg = panelGO.AddComponent<Image>();
             panelImg.color = new Color(0.08f, 0.06f, 0.14f, 0.95f);
             var panelRect = panelGO.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(420, 220);
-            panelRect.anchoredPosition = new Vector2(-230, 100);
+            panelRect.sizeDelta = new Vector2(420, 430);
+            panelRect.anchoredPosition = new Vector2(-230, 20);
 
-            float rowY = 70f;
-            float rowSpacing = 34f;
+            float rowY = 185f;
+            float rowSpacing = 30f;
 
-            // Find top 2 scoring components for collapsed view
-            var components = new (string name, int value, Color color)[]
-            {
-                ($"Speed ({(int)(elapsed / 60f)}:{elapsed % 60f:00.0})", timeScore, new Color(1f, 0.9f, 0.4f)),
-                ("Items & Enemies", itemBonus + enemyBonus, greenColor),
-                ("Combat Mastery", combatMastery, cyanColor),
-                ("Exploration", exploration, blueColor),
-                ("Archaeology", preservation, goldColor),
-            };
-            // Sort descending by value to find top 2
-            System.Array.Sort(components, (a, b) => b.value.CompareTo(a.value));
+            // Panel header "SCORE"
+            var scoreHeaderGO = new GameObject("ScoreHeader");
+            scoreHeaderGO.transform.SetParent(panelGO.transform, false);
+            var scoreHeaderText = scoreHeaderGO.AddComponent<Text>();
+            scoreHeaderText.text = "SCORE";
+            scoreHeaderText.fontSize = 24;
+            scoreHeaderText.color = new Color(0.9f, 0.9f, 1f);
+            scoreHeaderText.alignment = TextAnchor.MiddleCenter;
+            scoreHeaderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var scoreHeaderRect = scoreHeaderGO.GetComponent<RectTransform>();
+            scoreHeaderRect.anchorMin = new Vector2(0.5f, 0.5f);
+            scoreHeaderRect.anchorMax = new Vector2(0.5f, 0.5f);
+            scoreHeaderRect.sizeDelta = new Vector2(380, 30);
+            scoreHeaderRect.anchoredPosition = new Vector2(0, rowY);
+            rowY -= 38f;
 
-            // Show top 2 components (tracked for hide/show when details toggled)
-            int childBefore = panelGO.transform.childCount;
-            for (int i = 0; i < 2 && i < components.Length; i++)
-            {
-                string valStr = components[i].value > 0 ? $"+{components[i].value}" : "0";
-                CreateStatRow(panelGO.transform, components[i].name, valStr, rowY,
-                    components[i].value > 0 ? components[i].color : statColor);
-                rowY -= rowSpacing;
-            }
-            for (int c = childBefore; c < panelGO.transform.childCount; c++)
-                _summaryStatRows.Add(panelGO.transform.GetChild(c).gameObject);
-
-            rowY -= 6f;
-
-            // Level score
-            CreateStatRow(panelGO.transform, "Level Score", $"{score}", rowY, Color.white);
-            rowY -= rowSpacing;
-
-            // Total score
-            CreateStatRow(panelGO.transform, "Total Score", $"{totalScore}", rowY, goldColor);
-
-            // "DETAILS" toggle button
-            var detailsBtn = CreateButton(canvasGO.transform, "DETAILS", new Vector2(-230, -30),
-                new Color(0.15f, 0.13f, 0.25f), () => ToggleDetails());
-            var detailsBtnRect = detailsBtn.GetComponent<RectTransform>();
-            detailsBtnRect.sizeDelta = new Vector2(140, 35);
-            _detailsBtnText = detailsBtn.GetComponentInChildren<Text>();
-            if (_detailsBtnText != null) _detailsBtnText.fontSize = 18;
-
-            // Details panel (hidden by default)
-            _detailsPanel = new GameObject("DetailsPanel");
-            _detailsPanel.transform.SetParent(canvasGO.transform, false);
-            var detPanelImg = _detailsPanel.AddComponent<Image>();
-            detPanelImg.color = new Color(0.08f, 0.06f, 0.14f, 0.95f);
-            var detPanelRect = _detailsPanel.GetComponent<RectTransform>();
-            detPanelRect.anchorMin = new Vector2(0.5f, 0.5f);
-            detPanelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            detPanelRect.sizeDelta = new Vector2(420, 340);
-            detPanelRect.anchoredPosition = new Vector2(-230, -170);
-
-            float dRowY = 130f;
-
-            // All 5 components with sub-breakdowns
+            // Speed
             int minutes = (int)(elapsed / 60f);
             float secs = elapsed % 60f;
-            CreateStatRow(_detailsPanel.transform, $"Speed ({minutes}:{secs:00.0})", $"{timeScore}", dRowY,
+            CreateStatRow(panelGO.transform, $"Speed ({minutes}:{secs:00.0})", $"{timeScore}", rowY,
                 new Color(1f, 0.9f, 0.4f));
-            dRowY -= rowSpacing;
+            rowY -= rowSpacing;
 
+            // Items & Enemies
             int itemEnemyTotal = itemBonus + enemyBonus;
-            CreateStatRow(_detailsPanel.transform, "Items & Enemies",
-                itemEnemyTotal > 0 ? $"+{itemEnemyTotal}" : "0", dRowY,
+            CreateStatRow(panelGO.transform, "Items & Enemies",
+                itemEnemyTotal > 0 ? $"+{itemEnemyTotal}" : "0", rowY,
                 itemEnemyTotal > 0 ? greenColor : statColor);
-            dRowY -= rowSpacing;
+            rowY -= rowSpacing;
 
-            // Combat Mastery with sub-breakdown
-            CreateStatRow(_detailsPanel.transform, "Combat Mastery",
-                combatMastery > 0 ? $"+{combatMastery}" : "0", dRowY,
+            // Combat Mastery
+            CreateStatRow(panelGO.transform, "Combat Mastery",
+                combatMastery > 0 ? $"+{combatMastery}" : "0", rowY,
                 combatMastery > 0 ? cyanColor : statColor);
-            dRowY -= 22f;
+            rowY -= 20f;
+
+            // Combat sub-breakdown
             int shotsFired = gm?.ShotsFired ?? 0;
             int bestStreak = gm?.BestNoDamageStreak ?? 0;
             bool bossWon = gm?.BossDefeated ?? false;
@@ -246,56 +230,69 @@ namespace EpochBreaker.UI
             string subText = (effStr + (streakStr.Length > 0 ? "\n" + streakStr : "")
                 + (bossStr.Length > 0 ? "\n" + bossStr : "")).Trim();
             if (subText.Length > 0)
-                CreateSmallText(_detailsPanel.transform, subText, dRowY, new Color(0.6f, 0.6f, 0.7f));
-            dRowY -= (subText.Split('\n').Length * 16f) + 10f;
+            {
+                CreateSmallText(panelGO.transform, subText, rowY, new Color(0.6f, 0.6f, 0.7f));
+                rowY -= (subText.Split('\n').Length * 14f) + 8f;
+            }
+            else
+            {
+                rowY -= 10f;
+            }
 
             // Exploration
-            CreateStatRow(_detailsPanel.transform, "Exploration",
-                exploration > 0 ? $"+{exploration}" : "0", dRowY,
+            CreateStatRow(panelGO.transform, "Exploration",
+                exploration > 0 ? $"+{exploration}" : "0", rowY,
                 exploration > 0 ? blueColor : statColor);
-            dRowY -= rowSpacing;
+            rowY -= rowSpacing;
 
             // Archaeology
             string preserveStr = preservation > 0 ? $"+{preservation}" : "0";
             if (totalRelics > 0)
-                preserveStr += $" ({relicsPreserved}/{totalRelics} recovered)";
-            CreateStatRow(_detailsPanel.transform, "Archaeology", preserveStr, dRowY,
+                preserveStr += $" ({relicsPreserved}/{totalRelics})";
+            CreateStatRow(panelGO.transform, "Archaeology", preserveStr, rowY,
                 preservation > 0 ? goldColor : statColor);
-            dRowY -= rowSpacing;
+            rowY -= rowSpacing;
 
             // Enemies
             string enemyStr = enemies > 0 ? $"{enemies} defeated" : "None";
-            CreateStatRow(_detailsPanel.transform, "Enemies", enemyStr, dRowY,
+            CreateStatRow(panelGO.transform, "Enemies", enemyStr, rowY,
                 enemies > 0 ? statColor : new Color(0.5f, 0.5f, 0.6f));
+            rowY -= 18f;
+
+            // Separator line
+            var sepGO = new GameObject("Separator");
+            sepGO.transform.SetParent(panelGO.transform, false);
+            var sepImg = sepGO.AddComponent<Image>();
+            sepImg.color = new Color(0.3f, 0.3f, 0.4f, 0.6f);
+            var sepRect = sepGO.GetComponent<RectTransform>();
+            sepRect.anchorMin = new Vector2(0.5f, 0.5f);
+            sepRect.anchorMax = new Vector2(0.5f, 0.5f);
+            sepRect.sizeDelta = new Vector2(360, 1);
+            sepRect.anchoredPosition = new Vector2(0, rowY);
+            rowY -= 18f;
+
+            // Level Score
+            CreateStatRow(panelGO.transform, "Level Score", $"{score}", rowY, Color.white);
+            rowY -= rowSpacing;
+
+            // Total Score
+            CreateStatRow(panelGO.transform, "Total Score", $"{totalScore}", rowY, goldColor);
+            rowY -= rowSpacing;
 
             // Tip based on lowest scoring component
             string tip = GetTipForLowestComponent(timeScore, itemBonus + enemyBonus,
                 combatMastery, exploration, preservation);
             if (!string.IsNullOrEmpty(tip))
             {
-                CreateSmallText(_detailsPanel.transform, $"Tip: {tip}", dRowY - 30f,
+                CreateSmallText(panelGO.transform, $"Tip: {tip}", rowY,
                     new Color(0.6f, 0.8f, 0.5f));
             }
 
-            // First completion: auto-expand details
-            bool isFirst = gm?.IsFirstCompletion ?? false;
-            _detailsExpanded = isFirst;
-            _detailsPanel.SetActive(isFirst);
-
-            // Items panel (right side)
+            // === ITEMS PANEL (right, aligned with score panel) ===
             CreateItemsPanel(canvasGO.transform, gm);
 
-            // Bottom section container — shifts down when details panel is expanded
-            var bottomGO = new GameObject("BottomSection");
-            bottomGO.transform.SetParent(canvasGO.transform, false);
-            var bottomImg = bottomGO.AddComponent<Image>();
-            bottomImg.color = Color.clear;
-            bottomImg.raycastTarget = false;
-            _bottomSectionRect = bottomGO.GetComponent<RectTransform>();
-            _bottomSectionRect.anchorMin = Vector2.zero;
-            _bottomSectionRect.anchorMax = Vector2.one;
-            _bottomSectionRect.sizeDelta = Vector2.zero;
-            _bottomSectionRect.anchoredPosition = Vector2.zero;
+            // === BOTTOM SECTION ===
+            float btnY = -210f;
 
             // Challenge result (if friend challenge active)
             int friendTarget = gm?.FriendChallengeScore ?? 0;
@@ -303,7 +300,6 @@ namespace EpochBreaker.UI
             {
                 bool beaten = score >= friendTarget;
                 int diff = score - friendTarget;
-
                 string resultLabel = beaten ? "CHALLENGE BEATEN!" : "CHALLENGE FAILED";
                 Color resultColor = beaten
                     ? new Color(0.4f, 1f, 0.4f)
@@ -312,110 +308,83 @@ namespace EpochBreaker.UI
                     ? $"Your: {score:N0} vs Target: {friendTarget:N0}  (+{diff:N0})"
                     : $"Your: {score:N0} vs Target: {friendTarget:N0}  ({diff:N0})";
 
-                CreateSmallText(bottomGO.transform, resultLabel, -240f, resultColor);
-                CreateSmallText(bottomGO.transform, comparison, -260f,
-                    new Color(0.7f, 0.7f, 0.8f));
+                CreateText(canvasGO.transform, resultLabel, 20, resultColor, new Vector2(0, btnY));
+                btnY -= 22f;
+                CreateText(canvasGO.transform, comparison, 16,
+                    new Color(0.7f, 0.7f, 0.8f), new Vector2(0, btnY));
+                btnY -= 35f;
             }
 
             // Continue button (primary action)
-            _continueBtn = CreateButton(bottomGO.transform, "CONTINUE", new Vector2(0, -280),
+            _continueBtn = CreateButton(canvasGO.transform, "CONTINUE", new Vector2(0, btnY),
                 new Color(0.2f, 0.6f, 0.3f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.NextLevel();
                 });
+            var continueBtnRect = _continueBtn.GetComponent<RectTransform>();
+            continueBtnRect.sizeDelta = new Vector2(280, 55);
             _continueBtnLabel = _continueBtn.GetComponentInChildren<Text>();
+            btnY -= 65f;
 
-            // Replay button
-            _replayBtn = CreateButton(bottomGO.transform, "REPLAY", new Vector2(-140, -355),
+            // Replay / Menu buttons
+            _replayBtn = CreateButton(canvasGO.transform, "REPLAY", new Vector2(-145, btnY),
                 new Color(0.3f, 0.4f, 0.6f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.RestartLevel();
                 });
-
-            // Menu button
-            _menuBtn = CreateButton(bottomGO.transform, "MENU", new Vector2(140, -355),
+            _menuBtn = CreateButton(canvasGO.transform, "MENU", new Vector2(145, btnY),
                 new Color(0.4f, 0.3f, 0.3f), () => {
                     Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.GameManager.Instance?.ReturnToTitle();
                 });
+            btnY -= 60f;
 
-            // Sprint 8: Share and ghost buttons
-            float shareRowY = -395f;
+            // Contextual buttons (Watch Replay, Share Daily/Weekly)
+            if (Gameplay.GhostReplaySystem.HasGhost(capturedCode))
             {
-                int capturedScore = score;
-                int capturedStars = stars;
-                string capturedCode = levelCode;
+                CreateButton(canvasGO.transform, "WATCH REPLAY", new Vector2(0, btnY),
+                    new Color(0.5f, 0.4f, 0.6f), () => {
+                        Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
+                        Gameplay.GameManager.Instance?.StartGhostReplay(capturedCode);
+                    });
+                btnY -= 55f;
+            }
 
-                // Share button (always available — copies level share text)
-                CreateButton(bottomGO.transform, "SHARE", new Vector2(-140, shareRowY),
-                    new Color(0.3f, 0.6f, 0.8f), () => {
-                        string shareText = Gameplay.LevelShareManager.GenerateChallengeShareText(
-                            capturedScore, capturedStars, capturedCode);
+            var todayID = Gameplay.DailyChallengeManager.GetTodayLevelID();
+            var currentID = gm?.CurrentLevelID ?? default;
+            if (currentID.Seed == todayID.Seed && currentID.Epoch == todayID.Epoch)
+            {
+                CreateButton(canvasGO.transform, "SHARE DAILY", new Vector2(0, btnY),
+                    new Color(0.3f, 0.5f, 0.7f), () => {
+                        string shareText = Gameplay.DailyChallengeManager.GetShareText(capturedScore, capturedStars);
                         Gameplay.GameManager.CopyToClipboard(shareText);
                         Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                         ShowCopiedFeedback();
                     });
-
-                // Watch Replay button (only if ghost data exists)
-                if (Gameplay.GhostReplaySystem.HasGhost(capturedCode))
-                {
-                    CreateButton(bottomGO.transform, "WATCH REPLAY", new Vector2(140, shareRowY),
-                        new Color(0.5f, 0.4f, 0.6f), () => {
-                            Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
-                            Gameplay.GameManager.Instance?.StartGhostReplay(capturedCode);
-                        });
-                }
-
-                // Share DAILY button (if this is a daily challenge)
-                var todayID = Gameplay.DailyChallengeManager.GetTodayLevelID();
-                var currentID = gm?.CurrentLevelID ?? default;
-                if (currentID.Seed == todayID.Seed && currentID.Epoch == todayID.Epoch)
-                {
-                    CreateButton(bottomGO.transform, "SHARE DAILY", new Vector2(0, shareRowY - 55),
-                        new Color(0.3f, 0.5f, 0.7f), () => {
-                            string shareText = Gameplay.DailyChallengeManager.GetShareText(capturedScore, capturedStars);
-                            Gameplay.GameManager.CopyToClipboard(shareText);
-                            Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
-                            ShowCopiedFeedback();
-                        });
-                }
-
-                // Share WEEKLY button (if this is a weekly challenge)
-                var weeklyID = Gameplay.DailyChallengeManager.GetWeeklyLevelID();
-                if (currentID.Seed == weeklyID.Seed && currentID.Epoch == weeklyID.Epoch)
-                {
-                    CreateButton(bottomGO.transform, "SHARE WEEKLY", new Vector2(0, shareRowY - 55),
-                        new Color(0.3f, 0.55f, 0.5f), () => {
-                            string shareText = Gameplay.DailyChallengeManager.GetWeeklyShareText(capturedScore, capturedStars);
-                            Gameplay.GameManager.CopyToClipboard(shareText);
-                            Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
-                            ShowCopiedFeedback();
-                        });
-                }
+                btnY -= 55f;
             }
 
-            // "Copied!" feedback text (hidden, shown briefly on share)
-            var copiedGO = CreateText(bottomGO.transform, "Copied to clipboard!", 18,
-                new Color(0.4f, 1f, 0.4f, 0f), new Vector2(0, shareRowY + 25));
-            _copiedFeedbackText = copiedGO.GetComponent<Text>();
+            var weeklyID = Gameplay.DailyChallengeManager.GetWeeklyLevelID();
+            if (currentID.Seed == weeklyID.Seed && currentID.Epoch == weeklyID.Epoch)
+            {
+                CreateButton(canvasGO.transform, "SHARE WEEKLY", new Vector2(0, btnY),
+                    new Color(0.3f, 0.55f, 0.5f), () => {
+                        string shareText = Gameplay.DailyChallengeManager.GetWeeklyShareText(capturedScore, capturedStars);
+                        Gameplay.GameManager.CopyToClipboard(shareText);
+                        Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
+                        ShowCopiedFeedback();
+                    });
+                btnY -= 55f;
+            }
 
             // Keyboard hint
-            var hintGO = CreateText(bottomGO.transform, "Enter: Continue | R: Replay | Esc/`: Menu", 14,
-                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -460));
+            var hintGO = CreateText(canvasGO.transform, "Enter: Continue | R: Replay | Esc/`: Menu", 14,
+                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, btnY - 10f));
             _hintText = hintGO.GetComponent<Text>();
-
-            // If details auto-expanded on first completion, shift bottom section and hide summary rows
-            if (_detailsExpanded)
-            {
-                _bottomSectionRect.anchoredPosition = new Vector2(0, -130);
-                foreach (var row in _summaryStatRows)
-                    if (row != null) row.SetActive(false);
-            }
         }
 
         private void CreateItemsPanel(Transform parent, Gameplay.GameManager gm)
         {
-            // Items collected panel (right side) - 95% opacity for readability
             var itemsPanelGO = new GameObject("ItemsPanel");
             itemsPanelGO.transform.SetParent(parent, false);
             var itemsPanelImg = itemsPanelGO.AddComponent<Image>();
@@ -423,15 +392,15 @@ namespace EpochBreaker.UI
             var itemsPanelRect = itemsPanelGO.GetComponent<RectTransform>();
             itemsPanelRect.anchorMin = new Vector2(0.5f, 0.5f);
             itemsPanelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            itemsPanelRect.sizeDelta = new Vector2(420, 400);
-            itemsPanelRect.anchoredPosition = new Vector2(230, 40);
+            itemsPanelRect.sizeDelta = new Vector2(420, 430);
+            itemsPanelRect.anchoredPosition = new Vector2(230, 20);
 
             // Panel header
             var headerGO = new GameObject("Header");
             headerGO.transform.SetParent(itemsPanelGO.transform, false);
             var headerText = headerGO.AddComponent<Text>();
             headerText.text = "ITEMS COLLECTED";
-            headerText.fontSize = 22;
+            headerText.fontSize = 24;
             headerText.color = new Color(0.9f, 0.9f, 1f);
             headerText.alignment = TextAnchor.MiddleCenter;
             headerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -444,7 +413,6 @@ namespace EpochBreaker.UI
             // Collect all items into a list for display
             var collectedItems = new List<(Sprite sprite, int count, string label)>();
 
-            // Add rewards
             if (gm?.RewardCounts != null)
             {
                 foreach (var kv in gm.RewardCounts)
@@ -457,7 +425,6 @@ namespace EpochBreaker.UI
                 }
             }
 
-            // Add weapons
             if (gm?.WeaponCounts != null)
             {
                 foreach (var kv in gm.WeaponCounts)
@@ -472,7 +439,6 @@ namespace EpochBreaker.UI
 
             if (collectedItems.Count == 0)
             {
-                // No items collected message (centered in panel, below header)
                 var noItemsGO = new GameObject("NoItems");
                 noItemsGO.transform.SetParent(itemsPanelGO.transform, false);
                 var noItemsText = noItemsGO.AddComponent<Text>();
@@ -489,13 +455,12 @@ namespace EpochBreaker.UI
                 return;
             }
 
-            // Layout items in a grid (4 columns max) with proper padding
             int columns = 4;
             float iconSize = 56f;
             float spacingX = 20f;
             float spacingY = 24f;
             float startX = -((columns - 1) * (iconSize + spacingX)) / 2f;
-            float startY = 80f; // Start below header with padding
+            float startY = 80f;
 
             for (int i = 0; i < collectedItems.Count; i++)
             {
@@ -511,7 +476,6 @@ namespace EpochBreaker.UI
 
         private void CreateItemIcon(Transform parent, Sprite sprite, int count, Vector2 position, float size)
         {
-            // Container for icon and count
             var containerGO = new GameObject("ItemIcon");
             containerGO.transform.SetParent(parent, false);
             var containerRect = containerGO.AddComponent<RectTransform>();
@@ -520,7 +484,6 @@ namespace EpochBreaker.UI
             containerRect.sizeDelta = new Vector2(size, size + 24);
             containerRect.anchoredPosition = position;
 
-            // Icon background (slightly lighter for contrast against panel)
             var bgGO = new GameObject("IconBg");
             bgGO.transform.SetParent(containerGO.transform, false);
             var bgImg = bgGO.AddComponent<Image>();
@@ -531,7 +494,6 @@ namespace EpochBreaker.UI
             bgRect.sizeDelta = new Vector2(size, size);
             bgRect.anchoredPosition = new Vector2(0, -size / 2f);
 
-            // Sprite icon
             var iconGO = new GameObject("Icon");
             iconGO.transform.SetParent(bgGO.transform, false);
             var iconImg = iconGO.AddComponent<Image>();
@@ -543,7 +505,6 @@ namespace EpochBreaker.UI
             iconRect.sizeDelta = Vector2.zero;
             iconRect.anchoredPosition = Vector2.zero;
 
-            // Count text below icon
             var countGO = new GameObject("Count");
             countGO.transform.SetParent(containerGO.transform, false);
             var countText = countGO.AddComponent<Text>();
@@ -557,23 +518,6 @@ namespace EpochBreaker.UI
             countRect.anchorMax = new Vector2(0.5f, 0f);
             countRect.sizeDelta = new Vector2(size, 24);
             countRect.anchoredPosition = new Vector2(0, 12);
-        }
-
-        private void ToggleDetails()
-        {
-            _detailsExpanded = !_detailsExpanded;
-            if (_detailsPanel != null)
-                _detailsPanel.SetActive(_detailsExpanded);
-            if (_detailsBtnText != null)
-                _detailsBtnText.text = _detailsExpanded ? "HIDE" : "DETAILS";
-
-            // Hide summary stat rows when details expanded (they duplicate detail rows)
-            foreach (var row in _summaryStatRows)
-                if (row != null) row.SetActive(!_detailsExpanded);
-
-            // Shift bottom section down to clear the details panel
-            if (_bottomSectionRect != null)
-                _bottomSectionRect.anchoredPosition = new Vector2(0, _detailsExpanded ? -130f : 0f);
         }
 
         private void ShowCopiedFeedback()
@@ -608,7 +552,6 @@ namespace EpochBreaker.UI
 
         private void CreateStatRow(Transform parent, string label, string value, float yPos, Color valueColor)
         {
-            // Label (left-aligned with padding)
             var labelGO = new GameObject("StatLabel");
             labelGO.transform.SetParent(parent, false);
             var labelText = labelGO.AddComponent<Text>();
@@ -624,7 +567,6 @@ namespace EpochBreaker.UI
             labelRect.sizeDelta = new Vector2(220, 32);
             labelRect.anchoredPosition = new Vector2(25, yPos);
 
-            // Value (right-aligned with padding)
             var valueGO = new GameObject("StatValue");
             valueGO.transform.SetParent(parent, false);
             var valueText = valueGO.AddComponent<Text>();
@@ -690,7 +632,7 @@ namespace EpochBreaker.UI
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(260, 55);
+            rect.sizeDelta = new Vector2(260, 50);
             rect.anchoredPosition = position;
 
             var textGO = new GameObject("Label");
@@ -705,6 +647,10 @@ namespace EpochBreaker.UI
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
             textRect.sizeDelta = Vector2.zero;
+
+            // Prevent label image from intercepting button clicks
+            var labelImg = textGO.GetComponent<Image>();
+            if (labelImg != null) labelImg.raycastTarget = false;
 
             return btn;
         }
@@ -747,7 +693,6 @@ namespace EpochBreaker.UI
 
         /// <summary>
         /// Draw a colored border around the level complete screen based on selected profile frame.
-        /// Only shown if the frame is unlocked and selected.
         /// </summary>
         private void CreateProfileFrame(Transform parent)
         {
@@ -761,7 +706,6 @@ namespace EpochBreaker.UI
             Color frameColor = Gameplay.CosmeticManager.GetFrameColor(frame);
             float borderWidth = 6f;
 
-            // Top border
             var topGO = new GameObject("FrameTop");
             topGO.transform.SetParent(parent, false);
             var topImg = topGO.AddComponent<Image>();
@@ -773,7 +717,6 @@ namespace EpochBreaker.UI
             topRect.sizeDelta = new Vector2(0, borderWidth);
             topRect.anchoredPosition = Vector2.zero;
 
-            // Bottom border
             var bottomGO = new GameObject("FrameBottom");
             bottomGO.transform.SetParent(parent, false);
             var bottomImg = bottomGO.AddComponent<Image>();
@@ -785,7 +728,6 @@ namespace EpochBreaker.UI
             bottomRect.sizeDelta = new Vector2(0, borderWidth);
             bottomRect.anchoredPosition = Vector2.zero;
 
-            // Left border
             var leftGO = new GameObject("FrameLeft");
             leftGO.transform.SetParent(parent, false);
             var leftImg = leftGO.AddComponent<Image>();
@@ -797,7 +739,6 @@ namespace EpochBreaker.UI
             leftRect.sizeDelta = new Vector2(borderWidth, 0);
             leftRect.anchoredPosition = Vector2.zero;
 
-            // Right border
             var rightGO = new GameObject("FrameRight");
             rightGO.transform.SetParent(parent, false);
             var rightImg = rightGO.AddComponent<Image>();
@@ -809,7 +750,6 @@ namespace EpochBreaker.UI
             rightRect.sizeDelta = new Vector2(borderWidth, 0);
             rightRect.anchoredPosition = Vector2.zero;
 
-            // Inner glow (slightly transparent, slightly larger inset)
             float glowWidth = 3f;
             Color glowColor = new Color(frameColor.r, frameColor.g, frameColor.b, 0.3f);
 
@@ -835,7 +775,6 @@ namespace EpochBreaker.UI
             glowBottomRect.sizeDelta = new Vector2(0, glowWidth);
             glowBottomRect.anchoredPosition = new Vector2(0, borderWidth);
 
-            // Frame label in top-right corner
             string frameName = Gameplay.CosmeticManager.GetFrameName(frame);
             var labelGO = new GameObject("FrameLabel");
             labelGO.transform.SetParent(parent, false);

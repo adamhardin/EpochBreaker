@@ -401,13 +401,13 @@ namespace EpochBreaker.UI
             labelGO.transform.SetParent(containerGO.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(name,
-                unlocked ? new Color(0.85f, 0.85f, 0.9f) : new Color(0.4f, 0.38f, 0.45f), 1);
+                unlocked ? new Color(0.85f, 0.85f, 0.9f) : new Color(0.4f, 0.38f, 0.45f), 2);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0f);
             labelRect.anchorMax = new Vector2(0.5f, 0f);
-            labelRect.sizeDelta = new Vector2(68, 12);
+            labelRect.sizeDelta = new Vector2(68, 18);
             labelRect.anchoredPosition = new Vector2(0, 8);
 
             // Button component on container

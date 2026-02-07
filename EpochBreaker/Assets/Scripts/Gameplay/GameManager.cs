@@ -668,12 +668,6 @@ namespace EpochBreaker.Gameplay
                 CurrentEpoch = 0;
                 GlobalLives = 2;
                 CurrentLevelID = LevelID.GenerateRandom(0);
-
-                // Start tutorial if not yet completed
-                if (!TutorialManager.IsTutorialCompleted() && TutorialManager.Instance != null)
-                {
-                    TutorialManager.Instance.StartTutorial();
-                }
             }
 
             TransitionTo(GameState.Loading);
@@ -808,7 +802,9 @@ namespace EpochBreaker.Gameplay
             Projectile.ClearCachedRefs();
             EnemyBase.ClearRegistry();
 
-            LevelNumber++;
+            // Don't count tutorial levels toward the level counter
+            if (TutorialManager.Instance == null || !TutorialManager.Instance.IsTutorialActive)
+                LevelNumber++;
             DeathsThisLevel = 0;
             // Per-level lives: in FreePlay, reset each level; in Campaign/Streak, deducted from GlobalLives
             // Uses DifficultyManager.MaxDeathsPerLevel for difficulty-aware death limits (Sprint 9)
@@ -1528,7 +1524,8 @@ namespace EpochBreaker.Gameplay
                 CampaignEpoch++;
                 if (CampaignEpoch > LevelID.MAX_EPOCH)
                 {
-                    TransitionTo(GameState.Celebration);
+                    // Failed the last epoch — campaign over (only NextLevel triggers Celebration)
+                    TransitionTo(GameState.GameOver);
                     return;
                 }
                 CurrentLevelID = LevelID.GenerateRandom(CampaignEpoch);

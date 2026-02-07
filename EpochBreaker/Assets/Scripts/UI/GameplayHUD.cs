@@ -435,13 +435,13 @@ namespace EpochBreaker.UI
                 badgeGO.transform.SetParent(canvasGO.transform, false);
                 var badgeImg = badgeGO.AddComponent<Image>();
                 badgeImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(
-                    "CHALLENGE MODE", new Color(1f, 0.85f, 0.2f), 2);
+                    "CHALLENGE MODE", new Color(1f, 0.85f, 0.2f), 3);
                 badgeImg.preserveAspect = true;
                 var badgeRect = badgeGO.GetComponent<RectTransform>();
                 badgeRect.anchorMin = new Vector2(0.5f, 1);
                 badgeRect.anchorMax = new Vector2(0.5f, 1);
                 badgeRect.pivot = new Vector2(0.5f, 1);
-                badgeRect.sizeDelta = new Vector2(200, 18);
+                badgeRect.sizeDelta = new Vector2(280, 24);
                 badgeRect.anchoredPosition = new Vector2(0, -48);
 
                 var targetGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperCenter);

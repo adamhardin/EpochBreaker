@@ -119,7 +119,7 @@ namespace EpochBreaker.UI
             go.transform.SetParent(parent, false);
 
             var img = go.AddComponent<RawImage>();
-            var sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color);
+            var sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, 3);
             img.texture = sprite.texture;
             img.color = Color.white;
 

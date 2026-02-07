@@ -19,6 +19,12 @@ namespace EpochBreaker.Gameplay
         private int _sfxIndex;
         private const int SFX_POOL_SIZE = 8;
 
+        // Dedicated weapon audio sources — separate pool so boss/environment SFX
+        // can't starve weapon fire sounds (fixes perceived fire rate slowdown)
+        private AudioSource[] _weaponSources;
+        private int _weaponIndex;
+        private const int WEAPON_POOL_SIZE = 3;
+
         // Volume settings (0-1 range)
         private float _musicVolume = 1f;
         private float _sfxVolume = 1f;
@@ -107,9 +113,17 @@ namespace EpochBreaker.Gameplay
                 _sfxSources[i].playOnAwake = false;
             }
 
+            _weaponSources = new AudioSource[WEAPON_POOL_SIZE];
+            for (int i = 0; i < WEAPON_POOL_SIZE; i++)
+            {
+                _weaponSources[i] = gameObject.AddComponent<AudioSource>();
+                _weaponSources[i].volume = BASE_SFX_VOLUME;
+                _weaponSources[i].playOnAwake = false;
+            }
+
             // Runtime low-pass filter on the GameObject to tame high-frequency artifacts
             // from overlapping procedural square/sawtooth waves
-            // Note: AudioLowPassFilter is not supported in WebGL — the MakeClip 2-pass
+            // Note: AudioLowPassFilter is not supported in WebGL — the MakeClip 3-pass
             // filter handles it offline instead
             #if !UNITY_WEBGL
             var lpf = gameObject.AddComponent<AudioLowPassFilter>();
@@ -154,16 +168,9 @@ namespace EpochBreaker.Gameplay
                 return;
             Instance._lastPlayTime[clipId] = now;
 
-            // Limit concurrent SFX
-            int playing = 0;
-            for (int i = 0; i < SFX_POOL_SIZE; i++)
-            {
-                if (Instance._sfxSources[i].isPlaying) playing++;
-            }
-            if (playing >= MAX_CONCURRENT_SFX) return;
-
-            var src = Instance._sfxSources[Instance._sfxIndex];
-            Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
+            // Use dedicated weapon pool — never starved by boss/environment SFX
+            var src = Instance._weaponSources[Instance._weaponIndex];
+            Instance._weaponIndex = (Instance._weaponIndex + 1) % WEAPON_POOL_SIZE;
             // ±10% pitch randomization for weapon fire variety
             src.pitch = Random.Range(0.9f, 1.1f);
             src.PlayOneShot(clip, Mathf.Min(volume * Instance._weaponVolume, 0.8f));

@@ -544,13 +544,13 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(go.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(labelText, Color.white, 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(labelText, Color.white, 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            labelRect.sizeDelta = new Vector2(110, 16);
+            labelRect.sizeDelta = new Vector2(160, 24);
             labelRect.anchoredPosition = new Vector2(0, 4);
 
             // Epoch/difficulty sub-label
@@ -578,18 +578,18 @@ namespace EpochBreaker.UI
                 badgeRect.anchorMin = new Vector2(1f, 1f);
                 badgeRect.anchorMax = new Vector2(1f, 1f);
                 badgeRect.pivot = new Vector2(1f, 1f);
-                badgeRect.sizeDelta = new Vector2(40, 20);
+                badgeRect.sizeDelta = new Vector2(50, 24);
                 badgeRect.anchoredPosition = new Vector2(4, 4);
 
                 var badgeLabelGO = new GameObject("BadgeLabel");
                 badgeLabelGO.transform.SetParent(badgeGO.transform, false);
                 var badgeLabelImg = badgeLabelGO.AddComponent<Image>();
-                badgeLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW", Color.white, 1);
+                badgeLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW", Color.white, 2);
                 badgeLabelImg.preserveAspect = true;
                 var badgeLabelRect = badgeLabelGO.GetComponent<RectTransform>();
                 badgeLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 badgeLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
-                badgeLabelRect.sizeDelta = new Vector2(32, 12);
+                badgeLabelRect.sizeDelta = new Vector2(42, 16);
                 badgeLabelRect.anchoredPosition = Vector2.zero;
             }
         }
@@ -642,13 +642,13 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(go.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("WEEKLY", Color.white, 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("WEEKLY", Color.white, 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            labelRect.sizeDelta = new Vector2(110, 16);
+            labelRect.sizeDelta = new Vector2(160, 24);
             labelRect.anchoredPosition = new Vector2(0, 4);
 
             // Epoch sub-label
@@ -676,18 +676,18 @@ namespace EpochBreaker.UI
                 badgeRect.anchorMin = new Vector2(1f, 1f);
                 badgeRect.anchorMax = new Vector2(1f, 1f);
                 badgeRect.pivot = new Vector2(1f, 1f);
-                badgeRect.sizeDelta = new Vector2(40, 20);
+                badgeRect.sizeDelta = new Vector2(50, 24);
                 badgeRect.anchoredPosition = new Vector2(4, 4);
 
                 var badgeLabelGO = new GameObject("BadgeLabel");
                 badgeLabelGO.transform.SetParent(badgeGO.transform, false);
                 var badgeLabelImg = badgeLabelGO.AddComponent<Image>();
-                badgeLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW", Color.white, 1);
+                badgeLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW", Color.white, 2);
                 badgeLabelImg.preserveAspect = true;
                 var badgeLabelRect = badgeLabelGO.GetComponent<RectTransform>();
                 badgeLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 badgeLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
-                badgeLabelRect.sizeDelta = new Vector2(32, 12);
+                badgeLabelRect.sizeDelta = new Vector2(42, 16);
                 badgeLabelRect.anchoredPosition = Vector2.zero;
             }
         }
@@ -796,12 +796,12 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(parent, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text.Replace(":", ""), new Color(0.8f, 0.8f, 0.9f), 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text.Replace(":", ""), new Color(0.8f, 0.8f, 0.9f), 3);
             labelImg.preserveAspect = true;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            labelRect.sizeDelta = new Vector2(100, 24);
+            labelRect.sizeDelta = new Vector2(140, 30);
             labelRect.anchoredPosition = position;
         }
 
@@ -832,12 +832,12 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(containerGO.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.75f, 0.75f, 0.85f), 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.75f, 0.75f, 0.85f), 3);
             labelImg.preserveAspect = true;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0f);
             labelRect.anchorMax = new Vector2(0.5f, 0f);
-            labelRect.sizeDelta = new Vector2(80, 20);
+            labelRect.sizeDelta = new Vector2(110, 24);
             labelRect.anchoredPosition = new Vector2(0, 5);
         }
 
@@ -1458,13 +1458,13 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(containerGO.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0f, 0.5f);
             labelRect.anchorMax = new Vector2(0f, 0.5f);
-            labelRect.sizeDelta = new Vector2(label.Length * 12 + 12, 22);
+            labelRect.sizeDelta = new Vector2(label.Length * 18 + 12, 28);
             labelRect.pivot = new Vector2(0f, 0.5f);
             labelRect.anchoredPosition = new Vector2(8, 12);
 
@@ -1960,7 +1960,7 @@ namespace EpochBreaker.UI
             rect.anchoredPosition = position;
 
             // Pixel text label (raycastTarget off so clicks pass through to button)
-            int scale = size.y > 55 ? 3 : 2;
+            int scale = 3;
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(go.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
@@ -2009,7 +2009,7 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(go.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
@@ -2019,7 +2019,7 @@ namespace EpochBreaker.UI
             labelRect.anchoredPosition = Vector2.zero;
         }
 
-        private void CreatePixelLabel(Transform parent, string text, Vector2 position, Color color, int scale = 2)
+        private void CreatePixelLabel(Transform parent, string text, Vector2 position, Color color, int scale = 3)
         {
             var go = new GameObject("PixelLabel");
             go.transform.SetParent(parent, false);
@@ -2090,14 +2090,14 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(containerGO.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0, 0.5f);
             labelRect.anchorMax = new Vector2(0, 0.5f);
             labelRect.pivot = new Vector2(0, 0.5f);
-            labelRect.sizeDelta = new Vector2(label.Length * 12 + 12, 22);
+            labelRect.sizeDelta = new Vector2(label.Length * 18 + 12, 28);
             labelRect.anchoredPosition = new Vector2(8, 0);
         }
 
@@ -2160,14 +2160,14 @@ namespace EpochBreaker.UI
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(containerGO.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
-            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("RANDOMIZE", new Color(0.85f, 0.85f, 0.95f), 2);
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("RANDOMIZE", new Color(0.85f, 0.85f, 0.95f), 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0, 0.5f);
             labelRect.anchorMax = new Vector2(0, 0.5f);
             labelRect.pivot = new Vector2(0, 0.5f);
-            labelRect.sizeDelta = new Vector2(140, 22);
+            labelRect.sizeDelta = new Vector2(200, 28);
             labelRect.anchoredPosition = new Vector2(42, 0);
 
             // Description
@@ -2252,7 +2252,7 @@ namespace EpochBreaker.UI
             labelGO.transform.SetParent(bgGO.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text,
-                new Color(1f * opacity, 0.85f * opacity, 0.2f * opacity + 0.2f * (1f - opacity)), 2);
+                new Color(1f * opacity, 0.85f * opacity, 0.2f * opacity + 0.2f * (1f - opacity)), 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
