@@ -34,6 +34,7 @@ namespace EpochBreaker.Gameplay
         private float _attackTimer;
         private float _chargeSpeed = 6f;
         private float _baseChargeSpeed = 6f;
+        private float _phaseSpeedMultiplier = 1f;
         private bool _isCharging;
         private float _chargeTimer;
         private const float CHARGE_DURATION = 0.8f;
@@ -57,6 +58,10 @@ namespace EpochBreaker.Gameplay
         private ArenaPillar _currentPillar; // Pillar the boss is sheltering behind
         private float _shelterTimer; // Timer until next shelter attempt
         private const float SHELTER_INTERVAL = 6f; // Seconds between shelter attempts
+
+        // Contact damage cooldown
+        private float _lastContactDamageTime = -1f;
+        private const float CONTACT_DAMAGE_INTERVAL = 0.5f;
 
         public void Initialize(BossType type, LevelRenderer tilemapRenderer, float arenaMinX, float arenaMaxX)
         {
@@ -101,9 +106,11 @@ namespace EpochBreaker.Gameplay
             _shelterTimer = SHELTER_INTERVAL;
             _slowTimer = 0f;
             _slowFactor = 1f;
+            _phaseSpeedMultiplier = 1f;
             _moveSpeed = _baseMoveSpeed;
             _chargeSpeed = _baseChargeSpeed;
             _attackCooldown = _baseAttackCooldown;
+            _lastContactDamageTime = -1f;
             _isCharging = false;
             _chargeTimer = 0f;
             _attackTimer = _baseAttackCooldown; // Full cooldown before first attack
@@ -203,8 +210,10 @@ namespace EpochBreaker.Gameplay
                 _sr.color = new Color(1f, tint, tint);
             }
 
-            // Speed up in later phases
-            _moveSpeed *= 1.2f;
+            // Speed up in later phases — update multiplier so slow recovery is correct
+            _phaseSpeedMultiplier *= 1.2f;
+            _moveSpeed = _baseMoveSpeed * _phaseSpeedMultiplier * _slowFactor;
+            _chargeSpeed = _baseChargeSpeed * _phaseSpeedMultiplier * _slowFactor;
             _attackCooldown *= 0.8f;
         }
 
@@ -557,8 +566,8 @@ namespace EpochBreaker.Gameplay
         {
             _slowFactor = Mathf.Min(_slowFactor, factor);
             _slowTimer = Mathf.Max(_slowTimer, duration);
-            _moveSpeed = _baseMoveSpeed * _slowFactor;
-            _chargeSpeed = _baseChargeSpeed * _slowFactor;
+            _moveSpeed = _baseMoveSpeed * _phaseSpeedMultiplier * _slowFactor;
+            _chargeSpeed = _baseChargeSpeed * _phaseSpeedMultiplier * _slowFactor;
 
             // Blue-purple tint to indicate slowed
             _baseColor = new Color(0.6f, 0.5f, 1f);
@@ -572,8 +581,8 @@ namespace EpochBreaker.Gameplay
             if (_slowTimer <= 0f)
             {
                 _slowFactor = 1f;
-                _moveSpeed = _baseMoveSpeed;
-                _chargeSpeed = _baseChargeSpeed;
+                _moveSpeed = _baseMoveSpeed * _phaseSpeedMultiplier;
+                _chargeSpeed = _baseChargeSpeed * _phaseSpeedMultiplier;
                 _baseColor = Color.white;
             }
         }
@@ -591,7 +600,7 @@ namespace EpochBreaker.Gameplay
             if (_recentDamage >= MAX_DPS)
                 return;
             float remaining = MAX_DPS - _recentDamage;
-            amount = Mathf.Min(amount, (int)remaining);
+            amount = Mathf.Min(amount, Mathf.CeilToInt(remaining));
             if (amount <= 0) return;
             _recentDamage += amount;
 
@@ -701,9 +710,12 @@ namespace EpochBreaker.Gameplay
             // No collision effects when dead or inactive
             if (IsDead || !IsActive) return;
 
-            // Boss damages player on contact
+            // Boss damages player on contact (with cooldown to prevent rapid re-hits)
             if (collision.gameObject.CompareTag("Player"))
             {
+                if (Time.time - _lastContactDamageTime < CONTACT_DAMAGE_INTERVAL) return;
+                _lastContactDamageTime = Time.time;
+
                 var health = collision.gameObject.GetComponent<HealthSystem>();
                 if (health != null)
                 {

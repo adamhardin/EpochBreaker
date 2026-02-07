@@ -14,18 +14,17 @@ namespace EpochBreaker.Gameplay
             if (_triggered) return;
             if (!other.CompareTag("Player")) return;
 
-            _triggered = true;
-
-            // Find and activate the boss
+            // Find and activate the boss — only consume trigger if boss exists
             var levelLoader = FindAnyObjectByType<LevelLoader>();
             if (levelLoader != null && levelLoader.CurrentBoss != null)
             {
                 levelLoader.CurrentBoss.Activate();
-            }
+                _triggered = true;
 
-            // Disable trigger (don't destroy — needed for respawn reactivation)
-            var col = GetComponent<Collider2D>();
-            if (col != null) col.enabled = false;
+                // Disable trigger (don't destroy — needed for respawn reactivation)
+                var col = GetComponent<Collider2D>();
+                if (col != null) col.enabled = false;
+            }
         }
 
         /// <summary>

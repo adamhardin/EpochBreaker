@@ -15,6 +15,7 @@ namespace EpochBreaker.Gameplay
         private const float QUICK_DRAW_RATE_MULT = 0.75f; // 25% faster fire rate
         private const float CORRIDOR_VERTICAL_SPREAD = 2f; // Max Y spread for "in a line"
         private const int CORRIDOR_MIN_ENEMIES = 2;
+        private const float TARGET_DETECTION_RANGE = 15f; // Weapon-independent scan range
 
         private WeaponSlotData[] _slots = new WeaponSlotData[SLOT_COUNT];
         private int _activeSlot;
@@ -189,8 +190,7 @@ namespace EpochBreaker.Gameplay
             _nearbyEnemyCount = 0;
             _bossInRange = false;
             _enemiesInCorridor = false;
-            var stats = WeaponDatabase.GetStats(ActiveWeaponType, ActiveWeaponTier);
-            float range = stats.Range;
+            float range = TARGET_DETECTION_RANGE;
             float closestDist = range;
 
             float minEnemyY = float.MaxValue;
