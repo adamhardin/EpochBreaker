@@ -30,6 +30,14 @@ namespace EpochBreaker.Gameplay
         private const float TRAUMA_DECAY_SPEED = 2.5f; // trauma per second
         private float _shakeTime; // running time for Perlin noise seed
 
+        // Boss arena camera lock
+        private bool _arenaLocked;
+        private float _arenaMinX;
+        private float _arenaMaxX;
+        private const float ARENA_ORTHO_SIZE = 8f;
+        private const float NORMAL_ORTHO_SIZE = 7f;
+        private float _targetOrthoSize = NORMAL_ORTHO_SIZE;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -70,6 +78,45 @@ namespace EpochBreaker.Gameplay
             AddTrauma(intensity * 2f);
         }
 
+        /// <summary>
+        /// Lock camera within boss arena bounds. Slight zoom out for full arena view.
+        /// </summary>
+        public void LockToArena(float minX, float maxX)
+        {
+            _arenaLocked = true;
+            _arenaMinX = minX;
+            _arenaMaxX = maxX;
+            _targetOrthoSize = ARENA_ORTHO_SIZE;
+        }
+
+        /// <summary>
+        /// Release arena camera lock (on boss death).
+        /// </summary>
+        public void UnlockArena()
+        {
+            _arenaLocked = false;
+            _targetOrthoSize = NORMAL_ORTHO_SIZE;
+        }
+
+        /// <summary>
+        /// Temporarily override target for cinematic pans (e.g., boss intro).
+        /// Call with null to restore player tracking.
+        /// </summary>
+        public void SetTemporaryTarget(Transform target)
+        {
+            _target = target ?? _target;
+        }
+
+        /// <summary>
+        /// Restore the original player target after cinematic.
+        /// </summary>
+        public void RestorePlayerTarget()
+        {
+            var player = GameObject.FindWithTag("Player");
+            if (player != null)
+                _target = player.transform;
+        }
+
         private void LateUpdate()
         {
             if (_target == null || _camera == null) return;
@@ -96,7 +143,11 @@ namespace EpochBreaker.Gameplay
                 newY = Mathf.Lerp(currentPos.y, targetY, _smoothSpeedY * Time.deltaTime);
             }
 
-            // Clamp to level bounds
+            // Smooth zoom transition
+            if (Mathf.Abs(_camera.orthographicSize - _targetOrthoSize) > 0.01f)
+                _camera.orthographicSize = Mathf.Lerp(_camera.orthographicSize, _targetOrthoSize, 3f * Time.deltaTime);
+
+            // Clamp to level bounds (or arena bounds if locked)
             if (_tilemapRenderer != null && _tilemapRenderer.LevelWidth > 0)
             {
                 float halfHeight = _camera.orthographicSize;
@@ -106,6 +157,13 @@ namespace EpochBreaker.Gameplay
                 float maxX = _tilemapRenderer.LevelWidth - halfWidth;
                 float minY = halfHeight;
                 float maxY = _tilemapRenderer.LevelHeight - halfHeight;
+
+                // Override X bounds with arena if locked
+                if (_arenaLocked)
+                {
+                    minX = Mathf.Max(minX, _arenaMinX + halfWidth);
+                    maxX = Mathf.Min(maxX, _arenaMaxX - halfWidth);
+                }
 
                 newX = Mathf.Clamp(newX, minX, Mathf.Max(minX, maxX));
                 newY = Mathf.Clamp(newY, minY, Mathf.Max(minY, maxY));

@@ -28,6 +28,10 @@ namespace EpochBreaker.Gameplay
         private float _arenaMinX;
         private float _arenaMaxX;
 
+        public float ArenaMinX => _arenaMinX;
+        public float ArenaMaxX => _arenaMaxX;
+        public int CurrentPhase => _currentPhase;
+
         // Combat
         private float _attackCooldown = 2.0f;
         private float _baseAttackCooldown = 2.0f;
@@ -37,7 +41,8 @@ namespace EpochBreaker.Gameplay
         private float _phaseSpeedMultiplier = 1f;
         private bool _isCharging;
         private float _chargeTimer;
-        private const float CHARGE_DURATION = 0.8f;
+        private const float CHARGE_DURATION = 1.4f;  // 0.6s telegraph + 0.8s charge
+        private const float CHARGE_TELEGRAPH = 0.6f;  // wind-up duration
 
         // Slow effect
         private float _slowFactor = 1f;
@@ -62,6 +67,9 @@ namespace EpochBreaker.Gameplay
         // Contact damage cooldown
         private float _lastContactDamageTime = -1f;
         private const float CONTACT_DAMAGE_INTERVAL = 0.5f;
+
+        // Phase transition invulnerability
+        private float _phaseInvulnTimer;
 
         public void Initialize(BossType type, LevelRenderer tilemapRenderer, float arenaMinX, float arenaMaxX)
         {
@@ -157,6 +165,10 @@ namespace EpochBreaker.Gameplay
 
             UpdateSlow();
 
+            // Phase invulnerability timer
+            if (_phaseInvulnTimer > 0f)
+                _phaseInvulnTimer -= Time.fixedDeltaTime;
+
             // Check for phase transitions
             UpdatePhase();
 
@@ -212,6 +224,14 @@ namespace EpochBreaker.Gameplay
 
             // Hit-stop on boss phase transition (4 frames / ~66ms)
             GameManager.HitStop(0.066f);
+
+            // Screen flash and roar SFX
+            ScreenFlash.Flash(Color.white, 0.3f);
+            AudioManager.PlaySFX(PlaceholderAudio.GetBossRoarSFX());
+            CameraController.Instance?.AddTrauma(0.35f);
+
+            // Brief invulnerability during phase transition (0.5s)
+            _phaseInvulnTimer = 0.5f;
 
             // Speed up in later phases — update multiplier so slow recovery is correct
             _phaseSpeedMultiplier *= 1.2f;
@@ -459,9 +479,12 @@ namespace EpochBreaker.Gameplay
             _chargeTimer = CHARGE_DURATION;
             _direction = _playerTransform.position.x > transform.position.x ? 1 : -1;
 
-            // Visual wind-up
+            // Visual wind-up: orange tint
             if (_sr != null)
                 _sr.color = new Color(1f, 0.8f, 0.5f);
+
+            // Charge wind-up growl SFX
+            AudioManager.PlaySFX(PlaceholderAudio.GetChargeWindupSFX());
         }
 
         private void UpdateCharge()
@@ -470,12 +493,21 @@ namespace EpochBreaker.Gameplay
 
             _chargeTimer -= Time.fixedDeltaTime;
 
-            // First 0.2s: wind-up (slow down)
-            if (_chargeTimer > CHARGE_DURATION - 0.2f)
+            // Telegraph phase (first 0.6s): pull back away from player
+            if (_chargeTimer > CHARGE_DURATION - CHARGE_TELEGRAPH)
             {
-                _rb.linearVelocity = new Vector2(_direction * _moveSpeed * 0.3f, _rb.linearVelocity.y);
+                // Move away from player slowly (pullback telegraph)
+                _rb.linearVelocity = new Vector2(-_direction * _moveSpeed * 0.5f, _rb.linearVelocity.y);
+
+                // Flash intensity builds during telegraph
+                if (_sr != null)
+                {
+                    float telegraphProgress = 1f - (_chargeTimer - (CHARGE_DURATION - CHARGE_TELEGRAPH)) / CHARGE_TELEGRAPH;
+                    float flash = Mathf.PingPong(telegraphProgress * 6f, 1f);
+                    _sr.color = Color.Lerp(new Color(1f, 0.8f, 0.5f), new Color(1f, 0.4f, 0.2f), flash);
+                }
             }
-            // Rest: fast charge
+            // Charge phase: fast dash toward player
             else
             {
                 _rb.linearVelocity = new Vector2(_direction * _chargeSpeed, _rb.linearVelocity.y);
@@ -589,6 +621,9 @@ namespace EpochBreaker.Gameplay
             // Boss is immune to damage until activated
             if (IsDead || !IsActive) return;
 
+            // Phase transition invulnerability
+            if (_phaseInvulnTimer > 0f) return;
+
             // Sheltered behind pillar: immune to damage
             if (_isSheltered && _currentPillar != null && !_currentPillar.IsDestroyed)
                 return;
@@ -648,6 +683,10 @@ namespace EpochBreaker.Gameplay
             AudioManager.PlaySFX(PlaceholderAudio.GetBossDeathSFX());
             CameraController.Instance?.AddTrauma(0.7f);
             GameManager.HitStop(0.133f);
+
+            // Remove arena wall and unlock camera
+            var trigger = FindAnyObjectByType<BossArenaTrigger>();
+            trigger?.RemoveArenaWall();
 
             // Stop movement
             if (_rb != null)

@@ -25,6 +25,14 @@ namespace EpochBreaker.UI
         private Gameplay.HealthSystem _healthSystem;
         private Gameplay.WeaponSystem _cachedWeaponSystem;
 
+        // Boss health bar
+        private GameObject _bossBarRoot;
+        private Image _bossBarBg;
+        private Image _bossBarFill;
+        private Text _bossNameText;
+        private float _bossBarFlashTimer;
+        private int _lastBossHealth = -1;
+
         private const int MAX_HEARTS = 5;
 
         private void Start()
@@ -41,6 +49,7 @@ namespace EpochBreaker.UI
             UpdateRelicCounter();
             UpdateModeInfo();
             UpdateKillStreak();
+            UpdateBossBar();
         }
 
         private void FindPlayerHealth()
@@ -188,6 +197,9 @@ namespace EpochBreaker.UI
                 livesRect.pivot = new Vector2(0, 1);
                 livesRect.anchoredPosition = new Vector2(20, livesY);
             }
+
+            // Boss health bar (hidden by default, shown when boss is active)
+            CreateBossBar(canvasGO.transform);
 
             // Mode info (top-center: epoch or streak)
             if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.FreePlay)
@@ -398,6 +410,124 @@ namespace EpochBreaker.UI
                         break;
                 }
             }
+        }
+
+        private void CreateBossBar(Transform parent)
+        {
+            _bossBarRoot = new GameObject("BossBar");
+            _bossBarRoot.transform.SetParent(parent, false);
+            var rootRect = _bossBarRoot.AddComponent<RectTransform>();
+            rootRect.anchorMin = new Vector2(0.5f, 1);
+            rootRect.anchorMax = new Vector2(0.5f, 1);
+            rootRect.pivot = new Vector2(0.5f, 1);
+            rootRect.sizeDelta = new Vector2(400, 40);
+            rootRect.anchoredPosition = new Vector2(0, -50);
+
+            // Boss name text
+            var nameGO = new GameObject("BossName");
+            nameGO.transform.SetParent(_bossBarRoot.transform, false);
+            _bossNameText = nameGO.AddComponent<Text>();
+            _bossNameText.fontSize = 18;
+            _bossNameText.color = new Color(1f, 0.85f, 0.7f);
+            _bossNameText.alignment = TextAnchor.MiddleCenter;
+            _bossNameText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _bossNameText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var nameRect = nameGO.GetComponent<RectTransform>();
+            nameRect.anchorMin = new Vector2(0, 1);
+            nameRect.anchorMax = new Vector2(1, 1);
+            nameRect.pivot = new Vector2(0.5f, 1);
+            nameRect.sizeDelta = new Vector2(0, 24);
+            nameRect.anchoredPosition = new Vector2(0, 0);
+
+            // Bar background
+            var bgGO = new GameObject("BossBarBg");
+            bgGO.transform.SetParent(_bossBarRoot.transform, false);
+            _bossBarBg = bgGO.AddComponent<Image>();
+            _bossBarBg.color = new Color(0.15f, 0.15f, 0.15f, 0.8f);
+            var bgRect = bgGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = new Vector2(0, 0);
+            bgRect.anchorMax = new Vector2(1, 0);
+            bgRect.pivot = new Vector2(0.5f, 0);
+            bgRect.sizeDelta = new Vector2(0, 14);
+            bgRect.anchoredPosition = new Vector2(0, 0);
+
+            // Bar fill
+            var fillGO = new GameObject("BossBarFill");
+            fillGO.transform.SetParent(bgGO.transform, false);
+            _bossBarFill = fillGO.AddComponent<Image>();
+            _bossBarFill.color = new Color(0.2f, 0.9f, 0.3f);
+            var fillRect = fillGO.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(1, 1);
+            fillRect.pivot = new Vector2(0, 0.5f);
+            fillRect.offsetMin = new Vector2(2, 2);
+            fillRect.offsetMax = new Vector2(-2, -2);
+
+            _bossBarRoot.SetActive(false);
+        }
+
+        private void UpdateBossBar()
+        {
+            if (_bossBarRoot == null) return;
+
+            // Find active boss
+            var loader = FindAnyObjectByType<Gameplay.LevelLoader>();
+            var boss = loader?.CurrentBoss;
+
+            if (boss == null || !boss.IsActive || boss.IsDead)
+            {
+                if (_bossBarRoot.activeSelf)
+                {
+                    _bossBarRoot.SetActive(false);
+                    _lastBossHealth = -1;
+                }
+                return;
+            }
+
+            if (!_bossBarRoot.activeSelf)
+            {
+                _bossBarRoot.SetActive(true);
+                _lastBossHealth = boss.Health;
+
+                // Set boss name (convert PascalCase enum to spaced uppercase)
+                string rawName = boss.Type.ToString();
+                string displayName = System.Text.RegularExpressions.Regex.Replace(rawName, "([a-z])([A-Z])", "$1 $2").ToUpper();
+                _bossNameText.text = displayName;
+            }
+
+            // Detect health drop → trigger flash
+            if (boss.Health < _lastBossHealth)
+                _bossBarFlashTimer = 0.15f;
+            _lastBossHealth = boss.Health;
+
+            // Update fill amount
+            float healthRatio = (float)boss.Health / boss.MaxHealth;
+            if (_bossBarFill != null)
+            {
+                var fillRect = _bossBarFill.GetComponent<RectTransform>();
+                fillRect.anchorMax = new Vector2(healthRatio, 1);
+                fillRect.offsetMax = new Vector2(-2, -2);
+            }
+
+            // Phase-based color: green (phase 1) → yellow (phase 2) → red (phase 3)
+            Color barColor = boss.CurrentPhase switch
+            {
+                1 => new Color(0.2f, 0.9f, 0.3f),
+                2 => new Color(0.95f, 0.85f, 0.15f),
+                3 => new Color(0.95f, 0.2f, 0.15f),
+                _ => Color.white
+            };
+
+            // White flash on hit (brief)
+            if (_bossBarFlashTimer > 0f)
+            {
+                _bossBarFlashTimer -= Time.deltaTime;
+                float flash = Mathf.Clamp01(_bossBarFlashTimer / 0.15f);
+                barColor = Color.Lerp(barColor, Color.white, flash);
+            }
+
+            if (_bossBarFill != null)
+                _bossBarFill.color = barColor;
         }
 
         private GameObject CreateHUDText(Transform parent, string text, TextAnchor alignment)

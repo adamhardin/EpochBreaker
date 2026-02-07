@@ -486,6 +486,35 @@ namespace EpochBreaker.Gameplay
             return clip;
         }
 
+        /// <summary>Deep growl — boss roar on activation and phase change.</summary>
+        public static AudioClip GetBossRoarSFX()
+        {
+            if (_cache.TryGetValue("sfx_boss_roar", out var c)) return c;
+            var buf = MakeBuffer(0.6f);
+            // Low rumbling growl
+            AddTone(buf, 0f, 0.5f, 80f, 50f, Wave.Sawtooth, 0.3f, 0.02f, 0.15f);
+            AddTone(buf, 0.05f, 0.4f, 120f, 60f, Wave.Square, 0.2f, 0.02f, 0.1f);
+            // Noise texture for grit
+            AddTone(buf, 0f, 0.3f, 300f, 100f, Wave.Noise, 0.15f, 0.01f, 0.1f);
+            var clip = MakeClip("SFX_BossRoar", buf);
+            _cache["sfx_boss_roar"] = clip;
+            return clip;
+        }
+
+        /// <summary>Rising growl — charge wind-up telegraph.</summary>
+        public static AudioClip GetChargeWindupSFX()
+        {
+            if (_cache.TryGetValue("sfx_charge_windup", out var c)) return c;
+            var buf = MakeBuffer(0.5f);
+            // Rising threat
+            AddTone(buf, 0f, 0.45f, 60f, 200f, Wave.Sawtooth, 0.25f, 0.03f, 0.05f);
+            AddTone(buf, 0.1f, 0.35f, 100f, 300f, Wave.Noise, 0.12f, 0.02f, 0.05f);
+            AddTone(buf, 0.2f, 0.25f, 80f, 250f, Wave.Square, 0.1f, 0.02f, 0.05f);
+            var clip = MakeClip("SFX_ChargeWindup", buf);
+            _cache["sfx_charge_windup"] = clip;
+            return clip;
+        }
+
         // ═══════════════════════════════════════════════════════════════
         //  MUSIC
         // ═══════════════════════════════════════════════════════════════
