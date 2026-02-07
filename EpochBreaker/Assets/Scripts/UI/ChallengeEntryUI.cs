@@ -35,7 +35,7 @@ namespace EpochBreaker.UI
             {
                 SubmitChallengeCode();
             }
-            else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            else if (InputManager.IsBackPressed())
             {
                 Close();
             }
@@ -183,7 +183,7 @@ namespace EpochBreaker.UI
 #endif
 
             // Escape hint
-            CreateText(_panel.transform, "Press Esc to close", 14,
+            CreateText(_panel.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -155));
 
             // Focus input field

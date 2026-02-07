@@ -35,7 +35,7 @@ namespace EpochBreaker.UI
         private void Update()
         {
             if (Keyboard.current == null) return;
-            if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (InputManager.IsBackPressed())
                 Close();
         }
 
@@ -126,7 +126,7 @@ namespace EpochBreaker.UI
             CreateFrameSection(panelGO.transform, sectionX, frameY);
 
             // Escape hint
-            CreateLabel(panelGO.transform, "Press Esc to close", 14,
+            CreateLabel(panelGO.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -310));
         }
 
@@ -403,6 +403,7 @@ namespace EpochBreaker.UI
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(name,
                 unlocked ? new Color(0.85f, 0.85f, 0.9f) : new Color(0.4f, 0.38f, 0.45f), 1);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0f);
             labelRect.anchorMax = new Vector2(0.5f, 0f);
@@ -508,6 +509,18 @@ namespace EpochBreaker.UI
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
 
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -520,6 +533,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, scale);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);

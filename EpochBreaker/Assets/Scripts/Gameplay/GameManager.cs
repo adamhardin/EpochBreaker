@@ -428,7 +428,7 @@ namespace EpochBreaker.Gameplay
                             NextLevel();
                         else if (Keyboard.current.rKey.wasPressedThisFrame)
                             RestartLevel();
-                        else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+                        else if (InputManager.IsBackPressed())
                             ReturnToTitle();
                     }
                     break;

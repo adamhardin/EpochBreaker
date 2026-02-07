@@ -27,7 +27,7 @@ namespace EpochBreaker.UI
         {
             if (Keyboard.current == null) return;
 
-            if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (InputManager.IsBackPressed())
             {
                 // Navigate back through sub-panel hierarchy
                 if (_accessibilitySubPanel != null && _accessibilitySubPanel.activeSelf)
@@ -192,7 +192,7 @@ namespace EpochBreaker.UI
                 }, new Vector2(300, 48));
 
             // Hint
-            CreateText(_settingsMenuContent.transform, "Press Esc to go back", 14,
+            CreateText(_settingsMenuContent.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             // ── Audio sub-panel ──
@@ -237,7 +237,7 @@ namespace EpochBreaker.UI
             CreateVolumeSlider(_audioSubPanel.transform, "WEAPON FIRE", new Vector2(0, -75), weaponVol,
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.WeaponVolume = val; });
 
-            CreateText(_audioSubPanel.transform, "Press Esc to go back", 14,
+            CreateText(_audioSubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -175));
 
             _audioSubPanel.SetActive(false);
@@ -288,7 +288,7 @@ namespace EpochBreaker.UI
             CreateToggleRow(_accessibilitySubPanel.transform, "HIGH CONTRAST", new Vector2(0, -100), hcInitial,
                 (val) => { if (AccessibilityManager.Instance != null) AccessibilityManager.Instance.HighContrastMode = val; });
 
-            CreateText(_accessibilitySubPanel.transform, "Press Esc to go back", 14,
+            CreateText(_accessibilitySubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             _accessibilitySubPanel.SetActive(false);
@@ -369,7 +369,7 @@ namespace EpochBreaker.UI
             CreateText(_difficultySubPanel.transform, "1 death/level\n1.5x enemies\nNo health", 13,
                 new Color(0.8f, 0.5f, 0.5f), new Vector2(140, -20));
 
-            CreateText(_difficultySubPanel.transform, "Press Esc to go back", 14,
+            CreateText(_difficultySubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             _difficultySubPanel.SetActive(false);
@@ -395,6 +395,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0f, 0.5f);
             labelRect.anchorMax = new Vector2(0f, 0.5f);
@@ -518,6 +519,18 @@ namespace EpochBreaker.UI
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
 
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -558,6 +571,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0f, 0.5f);
             labelRect.anchorMax = new Vector2(0f, 0.5f);

@@ -56,13 +56,13 @@ namespace EpochBreaker.UI
                 if (Keyboard.current.enterKey.wasPressedThisFrame ||
                     Keyboard.current.numpadEnterKey.wasPressedThisFrame)
                     SubmitLevelCode();
-                else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+                else if (InputManager.IsBackPressed())
                     _enterCodePanel.SetActive(false);
                 return;
             }
 
             // Close overlays with Escape
-            if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (InputManager.IsBackPressed())
             {
                 // New game confirmation dialog (highest priority)
                 if (_confirmNewGamePanel != null)
@@ -207,7 +207,7 @@ namespace EpochBreaker.UI
 
             // Controls hint
             var hintGO = CreateText(canvasGO.transform,
-                "Move: Arrow Pad | Jump: Spacebar | Ground Pound: Down Arrow while Airborn | Esc: Pause", 16,
+                "Move: Arrow Pad | Jump: Spacebar | Ground Pound: Down Arrow while Airborn | Esc/`: Pause", 16,
                 new Color(0.65f, 0.65f, 0.75f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
@@ -518,6 +518,18 @@ namespace EpochBreaker.UI
                 GameManager.Instance?.StartDailyChallenge();
             });
 
+            var dailyColors = btn.colors;
+            dailyColors.normalColor = dailyBgColor;
+            dailyColors.highlightedColor = new Color(
+                Mathf.Min(1f, dailyBgColor.r + 0.15f),
+                Mathf.Min(1f, dailyBgColor.g + 0.15f),
+                Mathf.Min(1f, dailyBgColor.b + 0.15f), dailyBgColor.a);
+            dailyColors.pressedColor = new Color(
+                dailyBgColor.r * 0.7f, dailyBgColor.g * 0.7f, dailyBgColor.b * 0.7f, dailyBgColor.a);
+            dailyColors.selectedColor = dailyColors.normalColor;
+            dailyColors.fadeDuration = 0.1f;
+            btn.colors = dailyColors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -534,6 +546,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(labelText, Color.white, 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -607,6 +620,18 @@ namespace EpochBreaker.UI
                 GameManager.Instance?.StartWeeklyChallenge();
             });
 
+            var weeklyColors = btn.colors;
+            weeklyColors.normalColor = weeklyBgColor;
+            weeklyColors.highlightedColor = new Color(
+                Mathf.Min(1f, weeklyBgColor.r + 0.15f),
+                Mathf.Min(1f, weeklyBgColor.g + 0.15f),
+                Mathf.Min(1f, weeklyBgColor.b + 0.15f), weeklyBgColor.a);
+            weeklyColors.pressedColor = new Color(
+                weeklyBgColor.r * 0.7f, weeklyBgColor.g * 0.7f, weeklyBgColor.b * 0.7f, weeklyBgColor.a);
+            weeklyColors.selectedColor = weeklyColors.normalColor;
+            weeklyColors.fadeDuration = 0.1f;
+            btn.colors = weeklyColors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -619,6 +644,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("WEEKLY", Color.white, 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -941,7 +967,7 @@ namespace EpochBreaker.UI
 #endif
 
             // Escape hint
-            var escGO = CreateText(panelGO.transform, "Press Esc to close", 14,
+            var escGO = CreateText(panelGO.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
             escRect.anchoredPosition = new Vector2(0, -130);
@@ -1094,7 +1120,7 @@ namespace EpochBreaker.UI
             }
 
             // Escape hint
-            var escGO = CreateText(_settingsMenuContent.transform, "Press Esc to close", 14,
+            var escGO = CreateText(_settingsMenuContent.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
             escRect.anchoredPosition = new Vector2(0, -258f);
@@ -1158,7 +1184,7 @@ namespace EpochBreaker.UI
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.WeaponVolume = val; });
 
             // Escape hint
-            var audioEscGO = CreateText(_audioSubPanel.transform, "Press Esc to go back", 14,
+            var audioEscGO = CreateText(_audioSubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var audioEscRect = audioEscGO.GetComponent<RectTransform>();
             audioEscRect.anchoredPosition = new Vector2(0, -175);
@@ -1249,7 +1275,7 @@ namespace EpochBreaker.UI
             buildRect.anchoredPosition = new Vector2(0, -170);
 
             // Escape hint
-            var aboutEscGO = CreateText(_aboutSubPanel.transform, "Press Esc to go back", 14,
+            var aboutEscGO = CreateText(_aboutSubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var aboutEscRect = aboutEscGO.GetComponent<RectTransform>();
             aboutEscRect.anchoredPosition = new Vector2(0, -200);
@@ -1311,7 +1337,7 @@ namespace EpochBreaker.UI
             CreateToggleRow(_accessibilitySubPanel.transform, "HIGH CONTRAST", new Vector2(0, -85), hcInitial,
                 (val) => { if (Gameplay.AccessibilityManager.Instance != null) Gameplay.AccessibilityManager.Instance.HighContrastMode = val; });
 
-            var accEscGO = CreateText(_accessibilitySubPanel.transform, "Press Esc to go back", 14,
+            var accEscGO = CreateText(_accessibilitySubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var accEscRect = accEscGO.GetComponent<RectTransform>();
             accEscRect.anchoredPosition = new Vector2(0, -200);
@@ -1407,7 +1433,7 @@ namespace EpochBreaker.UI
             CreateText(_difficultySubPanel.transform, "1 death/level\n1.5x enemies\nNo health", 14,
                 new Color(0.8f, 0.5f, 0.5f)).GetComponent<RectTransform>().anchoredPosition = new Vector2(140, -20);
 
-            var diffEscGO = CreateText(_difficultySubPanel.transform, "Press Esc to go back", 14,
+            var diffEscGO = CreateText(_difficultySubPanel.transform, "Press Esc/` to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var diffEscRect = diffEscGO.GetComponent<RectTransform>();
             diffEscRect.anchoredPosition = new Vector2(0, -200);
@@ -1434,6 +1460,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0f, 0.5f);
             labelRect.anchorMax = new Vector2(0f, 0.5f);
@@ -1590,7 +1617,7 @@ namespace EpochBreaker.UI
                 });
 
             // Hint text
-            var hintGO = CreateText(panelGO.transform, "Press Esc to close", 14,
+            var hintGO = CreateText(panelGO.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -310);
@@ -1680,7 +1707,7 @@ namespace EpochBreaker.UI
                 });
 
             // Hint text
-            var hintGO2 = CreateText(panelGO.transform, "Press Esc to close", 14,
+            var hintGO2 = CreateText(panelGO.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var hintRect2 = hintGO2.GetComponent<RectTransform>();
             hintRect2.anchoredPosition = new Vector2(0, -345);
@@ -1826,6 +1853,18 @@ namespace EpochBreaker.UI
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
 
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1901,19 +1940,33 @@ namespace EpochBreaker.UI
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
 
+            // Hover/press color transitions for visual feedback
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = size;
             rect.anchoredPosition = position;
 
-            // Pixel text label
+            // Pixel text label (raycastTarget off so clicks pass through to button)
             int scale = size.y > 55 ? 3 : 2;
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(go.transform, false);
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, scale);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1934,6 +1987,18 @@ namespace EpochBreaker.UI
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
 
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1946,6 +2011,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0.5f, 0.5f);
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -2026,6 +2092,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0, 0.5f);
             labelRect.anchorMax = new Vector2(0, 0.5f);
@@ -2095,6 +2162,7 @@ namespace EpochBreaker.UI
             var labelImg = labelGO.AddComponent<Image>();
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("RANDOMIZE", new Color(0.85f, 0.85f, 0.95f), 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0, 0.5f);
             labelRect.anchorMax = new Vector2(0, 0.5f);
@@ -2166,6 +2234,19 @@ namespace EpochBreaker.UI
             btn.targetGraphic = bgImg;
             btn.onClick.AddListener(onClick);
 
+            Color ornateBg = bgImg.color;
+            var ornateColors = btn.colors;
+            ornateColors.normalColor = ornateBg;
+            ornateColors.highlightedColor = new Color(
+                Mathf.Min(1f, ornateBg.r + 0.15f),
+                Mathf.Min(1f, ornateBg.g + 0.15f),
+                Mathf.Min(1f, ornateBg.b + 0.15f), ornateBg.a);
+            ornateColors.pressedColor = new Color(
+                ornateBg.r * 0.7f, ornateBg.g * 0.7f, ornateBg.b * 0.7f, ornateBg.a);
+            ornateColors.selectedColor = ornateColors.normalColor;
+            ornateColors.fadeDuration = 0.1f;
+            btn.colors = ornateColors;
+
             // Pixel text label
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(bgGO.transform, false);
@@ -2173,6 +2254,7 @@ namespace EpochBreaker.UI
             labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text,
                 new Color(1f * opacity, 0.85f * opacity, 0.2f * opacity + 0.2f * (1f - opacity)), 2);
             labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;

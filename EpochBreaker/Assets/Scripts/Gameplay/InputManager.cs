@@ -165,7 +165,7 @@ namespace EpochBreaker.Gameplay
             // Pause
             if (Keyboard.current != null)
             {
-                if (Keyboard.current.escapeKey.wasPressedThisFrame ||
+                if (IsBackPressed() ||
                     Keyboard.current.pKey.wasPressedThisFrame)
                     PausePressed = true;
             }
@@ -181,6 +181,18 @@ namespace EpochBreaker.Gameplay
             StompPressed = false;
             PausePressed = false;
             // MoveX and JumpHeld persist until next frame's update
+        }
+
+        /// <summary>
+        /// Returns true on the frame the user presses Escape or Backquote (` key).
+        /// Backquote serves as a WebGL-friendly alternative since browsers intercept Escape
+        /// to exit fullscreen mode. Use this instead of checking escapeKey directly.
+        /// </summary>
+        public static bool IsBackPressed()
+        {
+            if (Keyboard.current == null) return false;
+            return Keyboard.current.escapeKey.wasPressedThisFrame ||
+                   Keyboard.current.backquoteKey.wasPressedThisFrame;
         }
 
         /// <summary>

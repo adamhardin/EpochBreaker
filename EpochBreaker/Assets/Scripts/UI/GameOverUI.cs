@@ -58,7 +58,7 @@ namespace EpochBreaker.UI
                     int epoch = gm?.CampaignEpoch ?? 0;
                     string epochName = gm != null ? gm.CurrentLevelID.EpochName : "Unknown";
                     CreateText(canvasGO.transform,
-                        $"Campaign ended at Epoch {epoch}: {epochName}", 28,
+                        $"Campaign ended at Epoch {epoch + 1}: {epochName}", 28,
                         new Color(0.8f, 0.6f, 0.6f), new Vector2(0, yPos));
                     yPos -= 40f;
                     int totalScore = gm?.TotalScore ?? 0;
@@ -99,7 +99,7 @@ namespace EpochBreaker.UI
                 });
 
             // Keyboard hints
-            CreateText(canvasGO.transform, "Enter: Retry | Esc: Menu", 16,
+            CreateText(canvasGO.transform, "Enter: Retry | Esc/`: Menu", 16,
                 new Color(0.5f, 0.4f, 0.4f), new Vector2(0, -230));
         }
 
@@ -113,7 +113,7 @@ namespace EpochBreaker.UI
                 Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                 Gameplay.GameManager.Instance?.StartGame();
             }
-            else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            else if (Gameplay.InputManager.IsBackPressed())
             {
                 Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                 Gameplay.GameManager.Instance?.ReturnToTitle();
@@ -151,6 +151,18 @@ namespace EpochBreaker.UI
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
+
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);

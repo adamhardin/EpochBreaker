@@ -400,7 +400,7 @@ namespace EpochBreaker.UI
             _copiedFeedbackText = copiedGO.GetComponent<Text>();
 
             // Keyboard hint
-            var hintGO = CreateText(bottomGO.transform, "Enter: Continue | R: Replay | Esc: Menu", 14,
+            var hintGO = CreateText(bottomGO.transform, "Enter: Continue | R: Replay | Esc/`: Menu", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -460));
             _hintText = hintGO.GetComponent<Text>();
 
@@ -674,6 +674,18 @@ namespace EpochBreaker.UI
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
+
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);

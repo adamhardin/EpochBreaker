@@ -23,7 +23,7 @@ namespace EpochBreaker.UI
         private void Update()
         {
             if (Keyboard.current == null) return;
-            if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            if (Gameplay.InputManager.IsBackPressed())
             {
                 Close();
             }
@@ -174,7 +174,7 @@ namespace EpochBreaker.UI
                 new Color(0.3f, 0.25f, 0.35f), Close);
 
             // Hint
-            CreateText(panelGO.transform, "Esc: Close", 14,
+            CreateText(panelGO.transform, "Esc/`: Close", 14,
                 new Color(0.4f, 0.35f, 0.45f), new Vector2(0, -285));
         }
 

@@ -23,7 +23,7 @@ namespace EpochBreaker.UI
             {
                 EnterStreakMode();
             }
-            else if (Keyboard.current.escapeKey.wasPressedThisFrame)
+            else if (Gameplay.InputManager.IsBackPressed())
             {
                 Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
                 Gameplay.GameManager.Instance?.ReturnToTitle();
@@ -109,7 +109,7 @@ namespace EpochBreaker.UI
                 });
 
             // Keyboard hints
-            CreateText(canvasGO.transform, "Enter: Enter the Breach | Esc: Main Menu", 16,
+            CreateText(canvasGO.transform, "Enter: Enter the Breach | Esc/`: Main Menu", 16,
                 new Color(0.4f, 0.35f, 0.25f), new Vector2(0, -380));
         }
 
