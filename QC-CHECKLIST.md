@@ -1,6 +1,6 @@
 # Epoch Breaker -- QC Checklist
 
-**Created**: 2026-02-07 | **Version**: v0.9.7 build 020
+**Created**: 2026-02-07 | **Version**: v1.0.0 build 024
 **Purpose**: Systematic quality check for every screen, button, system, and feature in the game.
 **How to use**: Run through each section after significant changes. Check off items as verified. Note failures with build number and description for tracking.
 
@@ -29,6 +29,12 @@
 > **VIEWPORT BOUNDS**: Reference resolution is 1920x1080 with CanvasScaler matchWidthOrHeight=0.5. All UI elements (including badges, overflow text, expanded panels) must stay within **±540 vertical** and **±960 horizontal** from center. Anything beyond these bounds is off-screen. When repositioning or resizing any UI container, always verify: `top_edge = anchoredPosition.Y + height/2 ≤ 480` (leaving 60px safety margin for badges/overflow).
 >
 > This rule exists because viewport overflow is a recurring issue — it has happened with the challenge cluster (builds 014, 015, 017, 023), level complete screen (build 020), and hint text (build 020).
+
+> **AUTOMATED SMOKE TESTS**: Before every deployment, run the Play Mode smoke test suite in Unity Test Runner (Window > General > Test Runner > Play Mode > Category: Smoke). All 12 tests must pass. These tests exercise multi-level lifecycle, death/respawn, pause/resume, ghost replay, rapid state transitions, and singleton persistence. They catch the class of bugs that manual QC misses (e.g., 2nd-level-load camera null from build 020).
+>
+> **SINGLETON WARNINGS**: All 9 singleton managers log `[Singleton] ... duplicate detected` warnings when a duplicate is created. If you see these warnings in the console, investigate — they indicate a lifecycle issue.
+>
+> **POST-TRANSITION VALIDATION**: In Editor and Development builds, GameManager runs a validation coroutine 2 frames after entering Playing state that checks all critical references (CameraController, CheckpointManager, Player, LevelRenderer). Look for `[QC Validation]` log entries — errors mean something broke during the level load.
 
 ---
 

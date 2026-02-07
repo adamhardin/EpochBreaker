@@ -53,6 +53,7 @@ namespace EpochBreaker.Gameplay
         {
             if (Instance != null && Instance != this)
             {
+                Debug.LogWarning($"[Singleton] CosmeticManager duplicate detected — destroying new instance.");
                 Destroy(gameObject);
                 return;
             }

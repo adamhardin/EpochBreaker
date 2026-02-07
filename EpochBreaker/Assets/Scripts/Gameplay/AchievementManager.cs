@@ -126,6 +126,7 @@ namespace EpochBreaker.Gameplay
         {
             if (Instance != null && Instance != this)
             {
+                Debug.LogWarning($"[Singleton] AchievementManager duplicate detected — destroying new instance.");
                 Destroy(gameObject);
                 return;
             }

@@ -335,6 +335,7 @@ namespace EpochBreaker.Gameplay
         {
             if (Instance != null && Instance != this)
             {
+                Debug.LogWarning($"[Singleton] GameManager duplicate detected — destroying new instance.");
                 Destroy(gameObject);
                 return;
             }
@@ -548,7 +549,95 @@ namespace EpochBreaker.Gameplay
                     CreateCelebrationUI();
                     break;
             }
+
+            // Run post-transition validation in development builds
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            if (newState == GameState.Playing)
+                StartCoroutine(ValidatePlayingState());
+            #endif
         }
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        /// <summary>
+        /// Post-transition validation coroutine. Waits 2 frames (after Destroy
+        /// and physics settle) then asserts critical references are intact.
+        /// Logs errors for any missing singletons or broken references.
+        /// Only runs in Editor and Development builds.
+        /// </summary>
+        private System.Collections.IEnumerator ValidatePlayingState()
+        {
+            // Wait 2 frames: 1 for deferred Destroy, 1 for physics sync
+            yield return null;
+            yield return null;
+
+            bool valid = true;
+
+            // Core singletons
+            if (Instance == null)
+            {
+                Debug.LogError("[QC Validation] GameManager.Instance is null during Playing state!");
+                valid = false;
+            }
+            if (AudioManager.Instance == null)
+            {
+                Debug.LogError("[QC Validation] AudioManager.Instance is null during Playing state!");
+                valid = false;
+            }
+            if (CameraController.Instance == null)
+            {
+                Debug.LogError("[QC Validation] CameraController.Instance is null during Playing state! " +
+                    "This is the bug from build 020 — singleton race condition.");
+                valid = false;
+            }
+            if (CheckpointManager.Instance == null)
+            {
+                Debug.LogError("[QC Validation] CheckpointManager.Instance is null during Playing state!");
+                valid = false;
+            }
+
+            // Level data
+            if (_levelLoader == null)
+            {
+                Debug.LogError("[QC Validation] LevelLoader reference is null!");
+                valid = false;
+            }
+            else
+            {
+                if (_levelLoader.Player == null)
+                {
+                    Debug.LogError("[QC Validation] LevelLoader.Player is null — player not spawned!");
+                    valid = false;
+                }
+                if (_levelLoader.TilemapRenderer == null)
+                {
+                    Debug.LogError("[QC Validation] LevelLoader.TilemapRenderer is null — level not rendered!");
+                    valid = false;
+                }
+            }
+
+            // Camera target
+            if (CameraController.Instance != null)
+            {
+                var cam = CameraController.Instance.GetComponent<Camera>();
+                if (cam == null)
+                {
+                    Debug.LogError("[QC Validation] CameraController has no Camera component!");
+                    valid = false;
+                }
+            }
+
+            // Player tag
+            var player = GameObject.FindWithTag("Player");
+            if (player == null)
+            {
+                Debug.LogError("[QC Validation] No GameObject with 'Player' tag found!");
+                valid = false;
+            }
+
+            if (valid)
+                Debug.Log($"[QC Validation] Playing state validated — all {8} checks passed.");
+        }
+        #endif
 
         public void StartGame()
         {

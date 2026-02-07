@@ -85,6 +85,7 @@ namespace EpochBreaker.Gameplay
         {
             if (Instance != null && Instance != this)
             {
+                Debug.LogWarning($"[Singleton] AccessibilityManager duplicate detected — destroying new instance.");
                 Destroy(this);
                 return;
             }

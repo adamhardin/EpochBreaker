@@ -50,6 +50,7 @@
 |----------|---------|--------|
 | [QC-CHECKLIST.md](QC-CHECKLIST.md) | Full QC checklist: 20 sections, 200+ items covering every screen, button, system, and feature | Active |
 | [docs/Validation-QA-Suite.md](docs/Validation-QA-Suite.md) | Level generation validation: 7 test categories, 22+ test cases | Active |
+| Play Mode Smoke Tests | 12 automated smoke tests in `Assets/Scripts/Tests/PlayMode/SmokeTests.cs` — run via Unity Test Runner before every deployment | Active |
 
 ---
 

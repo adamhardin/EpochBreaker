@@ -1,7 +1,7 @@
 # Epoch Breaker — Development Roadmap
 
 **Created**: 2026-02-06 | **Updated**: 2026-02-07
-**Starting from**: v0.6.0 build 012 | **Current**: v0.9.9 build 023
+**Starting from**: v0.6.0 build 012 | **Current**: v1.0.0 build 024
 
 > **Platform note (2026-02-06):** Mobile (iOS) is deprioritized. There is no way to test
 > or prepare for mobile at this time. All development targets **Unity Editor** and
@@ -9,6 +9,15 @@
 > to a future release and removed from v0.9.0 scope. Mobile-specific features (haptics,
 > safe area insets, touch UX, battery/thermal) are out of scope until a mobile test
 > environment is available.
+
+---
+
+## v1.0.0: Build 024 — Automated QC System
+
+- 12 Play Mode smoke tests covering multi-level lifecycle, death/respawn, pause/resume, ghost replay, rapid transitions, campaign progression, singleton persistence
+- Singleton lifecycle warnings on all 9 managers (`[Singleton] ... duplicate detected`)
+- Post-transition validation coroutine in GameManager (Editor/Dev builds): checks CameraController, CheckpointManager, Player, LevelRenderer 2 frames after entering Playing state
+- QC-CHECKLIST.md updated with Standing Rules for automated testing
 
 ---
 

@@ -32,6 +32,7 @@ Tracks each WebGL deployment to GitHub Pages. The build number displayed on the 
 | 021 | 0.9.8 | 2026-02-07 | QC bug fix sprint: level complete layout (duplicate rows, off-screen elements, challenge overlap), camera race condition on 2nd load, audio pitch variation, pause escape key, score popup pool, tutorial stuck detection |
 | 022 | 0.9.8 | 2026-02-07 | Remaining QC fixes: enemy registry cleanup on level transition, score text width cap, i-frame flash accumulator, death processing OnDisable guard, Phase Shift multi-tile hitbox check |
 | 023 | 0.9.9 | 2026-02-07 | Challenge cluster vertical stack, audio artifact fix: 2-pass LP filter (alpha 0.35, -12dB/oct), lower normalization (0.28), runtime LPF cutoff 2500Hz |
+| 024 | 1.0.0 | 2026-02-07 | Automated QC: 12 Play Mode smoke tests (multi-level lifecycle, death/respawn, pause/resume, ghost replay, rapid transitions), singleton lifecycle warnings on all 9 managers, post-transition validation coroutine in GameManager (Editor/Dev builds) |
 
 ---
 
