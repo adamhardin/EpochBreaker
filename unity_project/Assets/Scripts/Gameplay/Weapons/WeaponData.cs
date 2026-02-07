@@ -65,10 +65,10 @@ namespace EpochBreaker.Gameplay
                 WeaponType.Spreader => new WeaponStats
                 {
                     FireRate = 0.35f - t * 0.05f,
-                    DamageMultiplier = (1f + t) * 0.8f,
+                    DamageMultiplier = (1f + t) * 0.5f,
                     Range = 8f,
                     ProjectileSpeed = 20f,
-                    ProjectileCount = 3,
+                    ProjectileCount = 3 + t, // 3 → 4 → 5 per tier
                     SpreadAngle = 15f,
                 },
                 WeaponType.Chainer => new WeaponStats
@@ -78,8 +78,8 @@ namespace EpochBreaker.Gameplay
                     Range = 10f,
                     ProjectileSpeed = 22f,
                     ProjectileCount = 1,
-                    ChainCount = 1 + t,
-                    ChainRange = 4f,
+                    ChainCount = 2 + t, // 2 → 3 → 4 per tier
+                    ChainRange = 4f + t, // 4 → 5 → 6 per tier
                 },
                 WeaponType.Slower => new WeaponStats
                 {
@@ -88,8 +88,8 @@ namespace EpochBreaker.Gameplay
                     Range = 10f,
                     ProjectileSpeed = 18f,
                     ProjectileCount = 1,
-                    SlowDuration = 2f + t,
-                    SlowFactor = 0.5f,
+                    SlowDuration = 3f + t, // 3s → 4s → 5s per tier
+                    SlowFactor = 0.5f - t * 0.1f, // 50% → 60% → 70% slow
                 },
                 WeaponType.Cannon => new WeaponStats
                 {

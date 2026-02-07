@@ -26,6 +26,7 @@ namespace EpochBreaker.Gameplay
         private Transform _currentTarget;
         private PlayerController _player;
         private HeatSystem _heatSystem = new HeatSystem();
+        private SpriteRenderer _playerSr;
         private int _nearbyEnemyCount;
         private bool _bossInRange;
         private bool _enemiesInCorridor; // 2+ enemies roughly in a horizontal line
@@ -43,6 +44,7 @@ namespace EpochBreaker.Gameplay
         private void Awake()
         {
             _player = GetComponent<PlayerController>();
+            _playerSr = GetComponent<SpriteRenderer>();
 
             // Initialize all slots
             for (int i = 0; i < SLOT_COUNT; i++)
@@ -67,9 +69,20 @@ namespace EpochBreaker.Gameplay
 
             _heatSystem.Update(Time.deltaTime);
 
-            // Quick Draw timer countdown
+            // Quick Draw timer countdown + white glow on player sprite
             if (_quickDrawTimer > 0f)
+            {
                 _quickDrawTimer -= Time.deltaTime;
+                if (_playerSr != null)
+                {
+                    float glow = Mathf.Lerp(0f, 0.5f, _quickDrawTimer / QUICK_DRAW_DURATION);
+                    _playerSr.color = Color.white + new Color(glow, glow, glow, 0f);
+                }
+            }
+            else if (_playerSr != null && _playerSr.color != Color.white)
+            {
+                _playerSr.color = Color.white;
+            }
 
             // Manual weapon cycle via Attack button
             HandleAttackInput();
@@ -296,7 +309,12 @@ namespace EpochBreaker.Gameplay
             SpawnMuzzleFlash(baseDir);
 
             GameManager.Instance?.RecordShotFired();
-            AudioManager.PlayWeaponSFX(PlaceholderAudio.GetWeaponFireSFX(ActiveWeaponType), 0.1f);
+
+            // Quick Draw: +20% pitch on first shots for impactful feel
+            if (_quickDrawTimer > 0f)
+                AudioManager.PlaySFXPitched(PlaceholderAudio.GetWeaponFireSFX(ActiveWeaponType), 1.1f, 1.3f, 0.12f);
+            else
+                AudioManager.PlayWeaponSFX(PlaceholderAudio.GetWeaponFireSFX(ActiveWeaponType), 0.1f);
         }
 
         private void SpawnMuzzleFlash(Vector2 dir)

@@ -626,7 +626,7 @@ namespace EpochBreaker.Gameplay
             }
         }
 
-        public void TakeDamage(int amount)
+        public void TakeDamage(int amount, float dpsCapBypass = 0f)
         {
             // Boss is immune to damage until activated
             if (IsDead || !IsActive) return;
@@ -638,13 +638,19 @@ namespace EpochBreaker.Gameplay
             if (_isSheltered && _currentPillar != null && !_currentPillar.IsDestroyed)
                 return;
 
+            // Slowed bosses take 20% more damage from all sources
+            if (_slowTimer > 0f)
+                amount = Mathf.CeilToInt(amount * 1.2f);
+
             // DPS cap: ignore excess damage beyond MAX_DPS per second
-            if (_recentDamage >= MAX_DPS)
+            // Cannon bypasses a portion of the cap (dpsCapBypass = 0.3 = 30%)
+            float effectiveCap = MAX_DPS + MAX_DPS * dpsCapBypass;
+            if (_recentDamage >= effectiveCap)
             {
                 LastDpsCapTime = Time.time;
                 return;
             }
-            float remaining = MAX_DPS - _recentDamage;
+            float remaining = effectiveCap - _recentDamage;
             amount = Mathf.Min(amount, Mathf.CeilToInt(remaining));
             if (amount <= 0) return;
             _recentDamage += amount;

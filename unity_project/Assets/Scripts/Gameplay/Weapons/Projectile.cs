@@ -149,7 +149,9 @@ namespace EpochBreaker.Gameplay
                         if (!BreaksAllMaterials)
                             AchievementManager.Instance?.RecordNonCannonBossDamage();
 
-                        boss.TakeDamage(_damage);
+                        // Cannon bypasses 30% of boss DPS cap
+                        float dpsCapBypass = BreaksAllMaterials ? 0.3f : 0f;
+                        boss.TakeDamage(_damage, dpsCapBypass);
 
                         // Slow at 75% effectiveness on bosses
                         if (SlowDuration > 0f && SlowFactor < 1f)

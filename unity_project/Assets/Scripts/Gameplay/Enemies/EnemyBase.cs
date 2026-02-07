@@ -297,6 +297,10 @@ namespace EpochBreaker.Gameplay
         {
             if (IsDead) return;
 
+            // Slowed enemies take 20% more damage from all sources
+            if (_slowTimer > 0f)
+                amount = Mathf.CeilToInt(amount * 1.2f);
+
             Health -= amount;
 
             // Pitch varies by enemy type for variety
