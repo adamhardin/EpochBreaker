@@ -201,6 +201,10 @@ namespace EpochBreaker.Generative
             // Place checkpoints
             PlaceCheckpoints(data);
 
+            // ---- Stage 7: Hazard & Relic Assignment ----
+            AssignHazards(data, id.Epoch, rng.Fork());
+            PlaceRelics(data, rng.Fork());
+
             // Compute metadata
             data.Metadata = ComputeMetadata(data, intensity);
 
@@ -1214,9 +1218,117 @@ namespace EpochBreaker.Generative
                     TileX = hx,
                     TileY = hy,
                     Tier = hiddenTier,
+                    Type = PickWeaponTypeForEpoch(epoch, weaponRng),
                     OnPrimaryPath = false,
                     Hidden = true,
                 });
+            }
+
+            // Place epoch-gated utility weapon drops (non-Bolt types)
+            PlaceUtilityWeaponDrops(data, epoch, weaponRng);
+        }
+
+        /// <summary>
+        /// Pick a weapon type appropriate for the given epoch.
+        /// Epoch 0-2: Bolt, Piercer, Spreader
+        /// Epoch 3-5: adds Chainer, Slower
+        /// Epoch 6-9: adds Cannon
+        /// </summary>
+        private static WeaponType PickWeaponTypeForEpoch(int epoch, XORShift64 rng)
+        {
+            if (epoch <= 2)
+            {
+                // Early: Bolt, Piercer, Spreader
+                int r = rng.Range(0, 3);
+                return r switch { 0 => WeaponType.Bolt, 1 => WeaponType.Piercer, _ => WeaponType.Spreader };
+            }
+            else if (epoch <= 5)
+            {
+                // Mid: add Chainer and Slower
+                int r = rng.Range(0, 5);
+                return r switch { 0 => WeaponType.Bolt, 1 => WeaponType.Piercer, 2 => WeaponType.Spreader,
+                    3 => WeaponType.Chainer, _ => WeaponType.Slower };
+            }
+            else
+            {
+                // Late: all types including Cannon
+                int r = rng.Range(0, 6);
+                return (WeaponType)r;
+            }
+        }
+
+        /// <summary>
+        /// Place 1-3 utility weapon drops (non-Bolt) throughout the level.
+        /// Always places a Slower near boss arena entrance.
+        /// </summary>
+        private void PlaceUtilityWeaponDrops(LevelData data, int epoch, XORShift64 rng)
+        {
+            int width = data.Layout.WidthTiles;
+
+            // Always place a Slower pickup before the boss arena (epoch 3+)
+            if (epoch >= 3)
+            {
+                foreach (var zone in data.Layout.Zones)
+                {
+                    if (zone.Type != ZoneType.BossArena) continue;
+
+                    int dropX = Math.Max(2, zone.StartX - rng.Range(3, 8));
+                    dropX = ClampInt(dropX, 2, width - 2);
+                    int groundY = FindGroundLevel(data, dropX);
+                    int dropY = Math.Max(1, groundY - 1);
+
+                    data.WeaponDrops.Add(new WeaponDropData
+                    {
+                        TileX = dropX,
+                        TileY = dropY,
+                        Tier = WeaponTier.Starting,
+                        Type = WeaponType.Slower,
+                        OnPrimaryPath = true,
+                        Hidden = false,
+                    });
+                    break;
+                }
+            }
+
+            // Place 1-2 random utility weapons in combat/traversal zones
+            int utilityCount = epoch <= 2 ? 1 : 2;
+            int placed = 0;
+
+            foreach (var zone in data.Layout.Zones)
+            {
+                if (placed >= utilityCount) break;
+                if (zone.Type != ZoneType.Combat && zone.Type != ZoneType.Traversal)
+                    continue;
+                if (!rng.NextBool(0.6f)) continue;
+
+                int zoneStartX = Math.Max(zone.StartX, 0);
+                int zoneEndX = Math.Min(zone.EndX, width);
+                if (zoneEndX - zoneStartX < 6) continue;
+
+                int dropX = rng.Range(zoneStartX + 2, zoneEndX - 2);
+                dropX = ClampInt(dropX, 2, width - 2);
+                int groundY = FindGroundLevel(data, dropX);
+                int dropY = Math.Max(1, groundY - 1);
+
+                WeaponType type = PickWeaponTypeForEpoch(epoch, rng);
+                // Avoid duplicating Bolt (player starts with it)
+                if (type == WeaponType.Bolt && epoch >= 2)
+                    type = WeaponType.Piercer;
+
+                WeaponTier tier = WeaponTier.Starting;
+                if (epoch >= 4) tier = WeaponTier.Medium;
+                if (epoch >= 7) tier = WeaponTier.Heavy;
+
+                data.WeaponDrops.Add(new WeaponDropData
+                {
+                    TileX = dropX,
+                    TileY = dropY,
+                    Tier = tier,
+                    Type = type,
+                    OnPrimaryPath = true,
+                    Hidden = false,
+                });
+                placed++;
             }
         }
 
@@ -1822,6 +1934,125 @@ namespace EpochBreaker.Generative
         }
 
         // =====================================================================
+        // Stage 7: Hazard & Relic Assignment
+        // =====================================================================
+
+        /// <summary>
+        /// Assign hazards to destructible tiles. Hazard chance scales with epoch.
+        /// SAFETY: Never assign hazards to the 4-tile walking corridor above ground.
+        /// </summary>
+        private void AssignHazards(LevelData data, int epoch, XORShift64 rng)
+        {
+            int width = data.Layout.WidthTiles;
+            int height = data.Layout.HeightTiles;
+
+            // Hazard chance scales linearly: epoch 0 = 5%, capped at 30%
+            float hazardChance = Math.Min(0.30f, 0.05f + epoch * 0.039f);
+
+            // Available hazard types weighted by zone
+            // Late epochs (7+) add more SpikeTrap bias (avoidable, less punishing than gas/fire)
+            bool lateEpoch = epoch >= 7;
+            HazardType[] combatHazards = lateEpoch
+                ? new[] { HazardType.FallingDebris, HazardType.SpikeTrap, HazardType.SpikeTrap, HazardType.SpikeTrap }
+                : new[] { HazardType.FallingDebris, HazardType.SpikeTrap };
+            HazardType[] destructionHazards = lateEpoch
+                ? new[] { HazardType.FallingDebris, HazardType.GasRelease, HazardType.FireRelease, HazardType.SpikeTrap, HazardType.SpikeTrap }
+                : new[] { HazardType.FallingDebris, HazardType.GasRelease, HazardType.FireRelease };
+            HazardType[] generalHazards = lateEpoch
+                ? new[] { HazardType.FallingDebris, HazardType.GasRelease, HazardType.SpikeTrap }
+                : new[] { HazardType.FallingDebris, HazardType.GasRelease };
+
+            foreach (var zone in data.Layout.Zones)
+            {
+                if (zone.Type == ZoneType.Intro || zone.Type == ZoneType.Buffer)
+                    continue;
+
+                HazardType[] pool;
+                if (zone.Type == ZoneType.Combat)
+                    pool = combatHazards;
+                else if (zone.Type == ZoneType.Destruction)
+                    pool = destructionHazards;
+                else
+                    pool = generalHazards;
+
+                int zoneStart = Math.Max(zone.StartX, 0);
+                int zoneEnd = Math.Min(zone.EndX, width);
+
+                for (int x = zoneStart; x < zoneEnd; x++)
+                {
+                    int groundY = FindGroundLevel(data, x);
+
+                    for (int y = 0; y < height; y++)
+                    {
+                        int idx = y * width + x;
+                        var dt = data.Layout.Destructibles[idx];
+
+                        // Skip non-destructible tiles
+                        if (dt.MaterialClass == 0 || dt.MaterialClass >= (byte)MaterialClass.Indestructible)
+                            continue;
+
+                        // SAFETY: never place hazards in the 4-tile walking corridor above ground
+                        if (y >= groundY - 4 && y <= groundY)
+                            continue;
+
+                        if (!rng.NextBool(hazardChance))
+                            continue;
+
+                        dt.Hazard = pool[rng.Range(0, pool.Length)];
+                        data.Layout.Destructibles[idx] = dt;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Mark ~15% of structural groups' top tiles as relics.
+        /// Relics are bonus score items that are lost if their tile is destroyed.
+        /// </summary>
+        private void PlaceRelics(LevelData data, XORShift64 rng)
+        {
+            int width = data.Layout.WidthTiles;
+            int height = data.Layout.HeightTiles;
+
+            // Find unique structural groups and their topmost tile
+            var groupTopTile = new Dictionary<ushort, int>(); // groupId -> flat index of top tile
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int idx = y * width + x;
+                    var dt = data.Layout.Destructibles[idx];
+                    if (dt.StructuralGroupId == 0) continue;
+                    if (dt.MaterialClass == 0) continue;
+
+                    // Top tile = smallest y (highest in level data)
+                    if (!groupTopTile.ContainsKey(dt.StructuralGroupId))
+                    {
+                        groupTopTile[dt.StructuralGroupId] = idx;
+                    }
+                }
+            }
+
+            // Mark 15% of groups as having a relic
+            foreach (var kvp in groupTopTile)
+            {
+                if (!rng.NextBool(0.15f))
+                    continue;
+
+                int idx = kvp.Value;
+                var dt = data.Layout.Destructibles[idx];
+
+                // Don't place relics on hazard tiles
+                if (dt.Hazard != HazardType.None)
+                    continue;
+
+                dt.IsRelic = true;
+                data.Layout.Destructibles[idx] = dt;
+            }
+        }
+
+        // =====================================================================
         // Metadata
         // =====================================================================
 
@@ -1842,10 +2073,16 @@ namespace EpochBreaker.Generative
             int zoneCount = data.Layout.Zones != null ? data.Layout.Zones.Length : 0;
 
             int totalTiles = data.Layout.WidthTiles * data.Layout.HeightTiles;
+            int hazardCount = 0;
+            int relicCount = 0;
             for (int i = 0; i < totalTiles; i++)
             {
                 if (IsDestructibleTile(data.Layout.Tiles[i]))
                     destructibleCount++;
+                if (data.Layout.Destructibles[i].Hazard != HazardType.None)
+                    hazardCount++;
+                if (data.Layout.Destructibles[i].IsRelic)
+                    relicCount++;
             }
 
             for (int i = 0; i < zoneCount; i++)
@@ -1866,6 +2103,8 @@ namespace EpochBreaker.Generative
                 TotalRewards = data.Rewards.Count,
                 TotalCheckpoints = data.Checkpoints.Count,
                 TotalDestructibleTiles = destructibleCount,
+                TotalHazards = hazardCount,
+                TotalRelics = relicCount,
             };
         }
 

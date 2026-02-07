@@ -15,6 +15,9 @@ namespace EpochBreaker.UI
         private Button _menuBtn;
         private Text _continueBtnLabel;
         private Text _hintText;
+        private GameObject _detailsPanel;
+        private Text _detailsBtnText;
+        private bool _detailsExpanded;
 
         private void Start()
         {
@@ -73,9 +76,14 @@ namespace EpochBreaker.UI
             int timeScore = gm?.TimeScore ?? 0;
             int itemBonus = gm?.ItemBonusScore ?? 0;
             int enemyBonus = gm?.EnemyBonusScore ?? 0;
-            int stars = Gameplay.GameManager.GetStarRating(elapsed);
+            int combatMastery = gm?.CombatMasteryScore ?? 0;
+            int exploration = gm?.ExplorationScore ?? 0;
+            int preservation = gm?.PreservationScore ?? 0;
+            int stars = Gameplay.GameManager.GetStarRating(score);
             int enemies = gm?.EnemiesKilled ?? 0;
-            int bestMultiplier = gm?.GetBestMultiplier() ?? 0;
+            int totalRelics = gm?.TotalRelics ?? 0;
+            int relicsDestroyed = gm?.RelicsDestroyed ?? 0;
+            int relicsPreserved = Mathf.Max(0, totalRelics - relicsDestroyed);
             string epochName = gm != null ? gm.CurrentLevelID.EpochName : "";
             string levelCode = gm != null ? gm.CurrentLevelID.ToCode() : "";
 
@@ -96,7 +104,13 @@ namespace EpochBreaker.UI
             CreateText(canvasGO.transform, starDisplay, 44,
                 new Color(1f, 0.85f, 0.1f), new Vector2(0, 320));
 
-            // Stats panel (left side) - 95% opacity for readability
+            Color statColor = new Color(0.75f, 0.75f, 0.85f);
+            Color greenColor = new Color(0.4f, 0.9f, 0.4f);
+            Color cyanColor = new Color(0.3f, 0.85f, 0.85f);
+            Color blueColor = new Color(0.5f, 0.6f, 1f);
+            Color goldColor = new Color(1f, 0.85f, 0.1f);
+
+            // Stats panel (left side) — collapsed by default, shows top 2 + totals
             var panelGO = new GameObject("StatsPanel");
             panelGO.transform.SetParent(canvasGO.transform, false);
             var panelImg = panelGO.AddComponent<Image>();
@@ -104,64 +118,115 @@ namespace EpochBreaker.UI
             var panelRect = panelGO.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(420, 340);
-            panelRect.anchoredPosition = new Vector2(-230, 60);
+            panelRect.sizeDelta = new Vector2(420, 220);
+            panelRect.anchoredPosition = new Vector2(-230, 100);
 
-            // Panel header
-            var statHeaderGO = new GameObject("Header");
-            statHeaderGO.transform.SetParent(panelGO.transform, false);
-            var statHeaderText = statHeaderGO.AddComponent<Text>();
-            statHeaderText.text = "SCORE BREAKDOWN";
-            statHeaderText.fontSize = 22;
-            statHeaderText.color = new Color(0.9f, 0.9f, 1f);
-            statHeaderText.alignment = TextAnchor.MiddleCenter;
-            statHeaderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            var statHeaderRect = statHeaderGO.GetComponent<RectTransform>();
-            statHeaderRect.anchorMin = new Vector2(0.5f, 1f);
-            statHeaderRect.anchorMax = new Vector2(0.5f, 1f);
-            statHeaderRect.sizeDelta = new Vector2(380, 30);
-            statHeaderRect.anchoredPosition = new Vector2(0, -25);
+            float rowY = 70f;
+            float rowSpacing = 34f;
 
-            Color statColor = new Color(0.75f, 0.75f, 0.85f);
-            Color bonusColor = new Color(0.4f, 0.9f, 0.4f);
-            Color goldColor = new Color(1f, 0.85f, 0.1f);
+            // Find top 2 scoring components for collapsed view
+            var components = new (string name, int value, Color color)[]
+            {
+                ($"Speed ({(int)(elapsed / 60f)}:{elapsed % 60f:00.0})", timeScore, new Color(1f, 0.9f, 0.4f)),
+                ("Items & Enemies", itemBonus + enemyBonus, greenColor),
+                ("Combat Mastery", combatMastery, cyanColor),
+                ("Exploration", exploration, blueColor),
+                ("Archaeology", preservation, goldColor),
+            };
+            // Sort descending by value to find top 2
+            System.Array.Sort(components, (a, b) => b.value.CompareTo(a.value));
 
-            // Consistent 38px spacing for all rows, starting from top padding
-            float rowY = 105f;
-            float rowSpacing = 38f;
+            // Show top 2 components
+            for (int i = 0; i < 2 && i < components.Length; i++)
+            {
+                string valStr = components[i].value > 0 ? $"+{components[i].value}" : "0";
+                CreateStatRow(panelGO.transform, components[i].name, valStr, rowY,
+                    components[i].value > 0 ? components[i].color : statColor);
+                rowY -= rowSpacing;
+            }
 
-            // Time
-            int minutes = (int)(elapsed / 60f);
-            float seconds = elapsed % 60f;
-            CreateStatRow(panelGO.transform, "Time", $"{minutes}:{seconds:00.0}", rowY, statColor);
-            rowY -= rowSpacing;
+            rowY -= 6f;
 
-            // Time score
-            CreateStatRow(panelGO.transform, "Time Score", $"{timeScore}", rowY, statColor);
-            rowY -= rowSpacing;
-
-            // Item bonus (always show, even if 0)
-            CreateStatRow(panelGO.transform, "Item Bonus", itemBonus > 0 ? $"+{itemBonus}" : "0", rowY,
-                itemBonus > 0 ? bonusColor : statColor);
-            rowY -= rowSpacing;
-
-            // Enemies defeated with bonus
-            string enemyStr = enemies > 0 ? $"{enemies}  (+{enemyBonus})" : "0";
-            CreateStatRow(panelGO.transform, "Enemies Defeated", enemyStr, rowY,
-                enemies > 0 ? bonusColor : statColor);
-            rowY -= rowSpacing;
-
-            // Best multiplier (always show)
-            CreateStatRow(panelGO.transform, "Best Multiplier", bestMultiplier > 1 ? $"x{bestMultiplier}" : "-", rowY,
-                bestMultiplier > 1 ? goldColor : statColor);
-            rowY -= rowSpacing + 8f; // Extra gap before totals
-
-            // Level score (highlighted)
+            // Level score
             CreateStatRow(panelGO.transform, "Level Score", $"{score}", rowY, Color.white);
             rowY -= rowSpacing;
 
-            // Total score (highlighted)
+            // Total score
             CreateStatRow(panelGO.transform, "Total Score", $"{totalScore}", rowY, goldColor);
+
+            // "DETAILS" toggle button
+            var detailsBtn = CreateButton(canvasGO.transform, "DETAILS", new Vector2(-230, -30),
+                new Color(0.15f, 0.13f, 0.25f), () => ToggleDetails());
+            var detailsBtnRect = detailsBtn.GetComponent<RectTransform>();
+            detailsBtnRect.sizeDelta = new Vector2(140, 35);
+            _detailsBtnText = detailsBtn.GetComponentInChildren<Text>();
+            if (_detailsBtnText != null) _detailsBtnText.fontSize = 18;
+
+            // Details panel (hidden by default)
+            _detailsPanel = new GameObject("DetailsPanel");
+            _detailsPanel.transform.SetParent(canvasGO.transform, false);
+            var detPanelImg = _detailsPanel.AddComponent<Image>();
+            detPanelImg.color = new Color(0.08f, 0.06f, 0.14f, 0.95f);
+            var detPanelRect = _detailsPanel.GetComponent<RectTransform>();
+            detPanelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            detPanelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            detPanelRect.sizeDelta = new Vector2(420, 340);
+            detPanelRect.anchoredPosition = new Vector2(-230, -170);
+
+            float dRowY = 130f;
+
+            // All 5 components with sub-breakdowns
+            int minutes = (int)(elapsed / 60f);
+            float secs = elapsed % 60f;
+            CreateStatRow(_detailsPanel.transform, $"Speed ({minutes}:{secs:00.0})", $"{timeScore}", dRowY,
+                new Color(1f, 0.9f, 0.4f));
+            dRowY -= rowSpacing;
+
+            int itemEnemyTotal = itemBonus + enemyBonus;
+            CreateStatRow(_detailsPanel.transform, "Items & Enemies",
+                itemEnemyTotal > 0 ? $"+{itemEnemyTotal}" : "0", dRowY,
+                itemEnemyTotal > 0 ? greenColor : statColor);
+            dRowY -= rowSpacing;
+
+            // Combat Mastery with sub-breakdown
+            CreateStatRow(_detailsPanel.transform, "Combat Mastery",
+                combatMastery > 0 ? $"+{combatMastery}" : "0", dRowY,
+                combatMastery > 0 ? cyanColor : statColor);
+            dRowY -= 22f;
+            int shotsFired = gm?.ShotsFired ?? 0;
+            int bestStreak = gm?.BestNoDamageStreak ?? 0;
+            bool bossWon = gm?.BossDefeated ?? false;
+            string effStr = shotsFired > 0
+                ? $"  Efficiency: {enemies}/{shotsFired} shots"
+                : (enemies > 0 ? "  Stomps only" : "");
+            string streakStr = bestStreak > 0 ? $"  No-hit streak: x{bestStreak}" : "";
+            string bossStr = bossWon ? "  Boss defeated" : "";
+            string subText = (effStr + (streakStr.Length > 0 ? "\n" + streakStr : "")
+                + (bossStr.Length > 0 ? "\n" + bossStr : "")).Trim();
+            if (subText.Length > 0)
+                CreateSmallText(_detailsPanel.transform, subText, dRowY, new Color(0.6f, 0.6f, 0.7f));
+            dRowY -= (subText.Split('\n').Length * 16f) + 10f;
+
+            // Exploration
+            CreateStatRow(_detailsPanel.transform, "Exploration",
+                exploration > 0 ? $"+{exploration}" : "0", dRowY,
+                exploration > 0 ? blueColor : statColor);
+            dRowY -= rowSpacing;
+
+            // Archaeology
+            string preserveStr = preservation > 0 ? $"+{preservation}" : "0";
+            if (totalRelics > 0)
+                preserveStr += $" ({relicsPreserved}/{totalRelics} recovered)";
+            CreateStatRow(_detailsPanel.transform, "Archaeology", preserveStr, dRowY,
+                preservation > 0 ? goldColor : statColor);
+            dRowY -= rowSpacing;
+
+            // Enemies
+            string enemyStr = enemies > 0 ? $"{enemies} defeated" : "None";
+            CreateStatRow(_detailsPanel.transform, "Enemies", enemyStr, dRowY,
+                enemies > 0 ? statColor : new Color(0.5f, 0.5f, 0.6f));
+
+            _detailsPanel.SetActive(false);
 
             // Items panel (right side)
             CreateItemsPanel(canvasGO.transform, gm);
@@ -204,8 +269,8 @@ namespace EpochBreaker.UI
             var itemsPanelRect = itemsPanelGO.GetComponent<RectTransform>();
             itemsPanelRect.anchorMin = new Vector2(0.5f, 0.5f);
             itemsPanelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            itemsPanelRect.sizeDelta = new Vector2(420, 340);
-            itemsPanelRect.anchoredPosition = new Vector2(230, 60);
+            itemsPanelRect.sizeDelta = new Vector2(420, 400);
+            itemsPanelRect.anchoredPosition = new Vector2(230, 40);
 
             // Panel header
             var headerGO = new GameObject("Header");
@@ -338,6 +403,35 @@ namespace EpochBreaker.UI
             countRect.anchorMax = new Vector2(0.5f, 0f);
             countRect.sizeDelta = new Vector2(size, 24);
             countRect.anchoredPosition = new Vector2(0, 12);
+        }
+
+        private void ToggleDetails()
+        {
+            _detailsExpanded = !_detailsExpanded;
+            if (_detailsPanel != null)
+                _detailsPanel.SetActive(_detailsExpanded);
+            if (_detailsBtnText != null)
+                _detailsBtnText.text = _detailsExpanded ? "HIDE" : "DETAILS";
+        }
+
+        private void CreateSmallText(Transform parent, string text, float yPos, Color color)
+        {
+            var go = new GameObject("SubText");
+            go.transform.SetParent(parent, false);
+            var t = go.AddComponent<Text>();
+            t.text = text;
+            t.fontSize = 14;
+            t.color = color;
+            t.alignment = TextAnchor.UpperLeft;
+            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            t.verticalOverflow = VerticalWrapMode.Overflow;
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0f, 0.5f);
+            rect.anchorMax = new Vector2(0f, 0.5f);
+            rect.pivot = new Vector2(0f, 1f);
+            rect.sizeDelta = new Vector2(380, 60);
+            rect.anchoredPosition = new Vector2(30, yPos);
         }
 
         private void CreateStatRow(Transform parent, string label, string value, float yPos, Color valueColor)

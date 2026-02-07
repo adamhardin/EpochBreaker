@@ -9,6 +9,8 @@ namespace EpochBreaker.Gameplay
     /// </summary>
     public class CameraController : MonoBehaviour
     {
+        public static CameraController Instance { get; private set; }
+
         private Transform _target;
         private LevelRenderer _tilemapRenderer;
         private Camera _camera;
@@ -23,11 +25,46 @@ namespace EpochBreaker.Gameplay
         // visible), offset 2.8 puts the player at (7-2.8)/14 = 30% from bottom.
         private float _verticalOffset = 2.8f;
 
+        // Screen shake
+        private float _shakeTimer;
+        private float _shakeDuration;
+        private float _shakeIntensity;
+
+        private void Awake()
+        {
+            if (Instance != null && Instance != this)
+            {
+                Destroy(this);
+                return;
+            }
+            Instance = this;
+        }
+
+        private void OnDestroy()
+        {
+            if (Instance == this)
+                Instance = null;
+        }
+
         public void Initialize(Transform target, LevelRenderer tilemapRenderer)
         {
             _target = target;
             _tilemapRenderer = tilemapRenderer;
             _camera = GetComponent<Camera>();
+        }
+
+        /// <summary>
+        /// Trigger screen shake. Intensity decays linearly over duration.
+        /// </summary>
+        public void Shake(float intensity, float duration)
+        {
+            // Only override if stronger than current shake
+            if (intensity > _shakeIntensity || _shakeTimer <= 0f)
+            {
+                _shakeIntensity = intensity;
+                _shakeTimer = duration;
+                _shakeDuration = duration;
+            }
         }
 
         private void LateUpdate()
@@ -71,7 +108,21 @@ namespace EpochBreaker.Gameplay
                 newY = Mathf.Clamp(newY, minY, Mathf.Max(minY, maxY));
             }
 
-            transform.position = new Vector3(newX, newY, -10f);
+            // Apply screen shake offset
+            float shakeX = 0f, shakeY = 0f;
+            if (_shakeTimer > 0f)
+            {
+                _shakeTimer -= Time.deltaTime;
+                float decay = Mathf.Clamp01(_shakeTimer / _shakeDuration);
+                float magnitude = _shakeIntensity * decay;
+                shakeX = Random.Range(-magnitude, magnitude);
+                shakeY = Random.Range(-magnitude, magnitude);
+
+                if (_shakeTimer <= 0f)
+                    _shakeIntensity = 0f;
+            }
+
+            transform.position = new Vector3(newX + shakeX, newY + shakeY, -10f);
         }
     }
 }

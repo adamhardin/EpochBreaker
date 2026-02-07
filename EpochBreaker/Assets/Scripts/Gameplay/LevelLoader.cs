@@ -15,9 +15,27 @@ namespace EpochBreaker.Gameplay
         private GameObject _mainCamera;
         private GameObject _bossObj;
 
+        // Stored for pillar respawn on boss reset
+        private ZoneData? _bossZone;
+        private int _bossGroundY;
+
         public LevelRenderer TilemapRenderer => _tilemapRenderer;
         public PlayerController Player { get; private set; }
         public Boss CurrentBoss { get; private set; }
+
+        /// <summary>
+        /// Load a tutorial level by index (0, 1, 2).
+        /// Uses TutorialLevelBuilder for deterministic handcrafted layouts.
+        /// </summary>
+        public void LoadTutorialLevel(int tutorialIndex)
+        {
+            CleanupLevel();
+
+            var data = TutorialLevelBuilder.BuildTutorial(tutorialIndex);
+            GameManager.Instance.CurrentLevel = data;
+
+            BuildLevelFromData(data);
+        }
 
         public void LoadLevel(LevelID id)
         {
@@ -28,6 +46,11 @@ namespace EpochBreaker.Gameplay
             var data = generator.Generate(id);
             GameManager.Instance.CurrentLevel = data;
 
+            BuildLevelFromData(data);
+        }
+
+        private void BuildLevelFromData(LevelData data)
+        {
             // Create level root
             _levelRoot = new GameObject("LevelRoot");
 
@@ -37,15 +60,29 @@ namespace EpochBreaker.Gameplay
             _tilemapRenderer = tilemapObj.AddComponent<LevelRenderer>();
             _tilemapRenderer.RenderLevel(data);
 
+            // Hazard system
+            var hazardGO = new GameObject("HazardSystem");
+            hazardGO.transform.SetParent(_levelRoot.transform);
+            var hazardSystem = hazardGO.AddComponent<HazardSystem>();
+            hazardSystem.Initialize(data, _tilemapRenderer);
+            _tilemapRenderer.SetHazardSystem(hazardSystem);
+
             // Spawn player
             SpawnPlayer(data);
 
             // Create camera
             CreateCamera();
 
+            // Parallax background
+            var parallaxGO = new GameObject("ParallaxBackground");
+            parallaxGO.transform.SetParent(_levelRoot.transform);
+            var parallax = parallaxGO.AddComponent<ParallaxBackground>();
+            parallax.Initialize(Camera.main.transform, data.ID.Epoch);
+
             // Spawn entities
             SpawnEnemies(data);
             SpawnWeaponPickups(data);
+            SpawnAbilityPickups(data);
             SpawnRewards(data);
             SpawnExtraLives(data);
             SpawnCheckpoints(data);
@@ -79,6 +116,22 @@ namespace EpochBreaker.Gameplay
             Player = null;
             CurrentBoss = null;
             GameManager.Instance.CurrentLevel = null;
+        }
+
+        /// <summary>
+        /// Destroy existing arena pillars and respawn fresh ones.
+        /// Called on player respawn to restore Phase 3 shelter mechanic.
+        /// </summary>
+        public void RespawnArenaPillars()
+        {
+            if (!_bossZone.HasValue || _levelRoot == null) return;
+
+            // Destroy existing pillar parent
+            var existing = _levelRoot.transform.Find("ArenaPillars");
+            if (existing != null)
+                Destroy(existing.gameObject);
+
+            SpawnArenaPillars(_bossZone.Value, _bossGroundY);
         }
 
         private void SpawnPlayer(LevelData data)
@@ -212,12 +265,12 @@ namespace EpochBreaker.Gameplay
                 int clampedY = ClampAboveGround(data, drop.TileX, drop.TileY);
                 Vector3 pos = _tilemapRenderer.LevelToWorld(drop.TileX, clampedY);
 
-                var go = new GameObject($"Weapon_{drop.Tier}_{i}");
+                var go = new GameObject($"Weapon_{drop.Type}_{drop.Tier}_{i}");
                 go.transform.SetParent(weaponParent.transform);
                 go.transform.position = pos;
 
                 var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = PlaceholderAssets.GetWeaponPickupSprite(drop.Tier);
+                sr.sprite = PlaceholderAssets.GetWeaponPickupSprite(drop.Type, drop.Tier);
                 sr.sortingOrder = 8;
 
                 var col = go.AddComponent<BoxCollider2D>();
@@ -226,7 +279,45 @@ namespace EpochBreaker.Gameplay
 
                 var pickup = go.AddComponent<WeaponPickup>();
                 pickup.Tier = drop.Tier;
+                pickup.Type = drop.Type;
             }
+        }
+
+        private void SpawnAbilityPickups(LevelData data)
+        {
+            int epoch = data.ID.Epoch;
+            // Ability pickups appear from epoch 3+, placed at ~40% through the level
+            if (epoch < 3) return;
+
+            var rng = new Generative.XORShift64(data.ID.Seed + 77777UL);
+            int placeX = data.Layout.WidthTiles * 2 / 5;
+            int placeY = data.Layout.StartY; // Same height as player start
+
+            // Find ground at that X position
+            placeY = ClampAboveGround(data, placeX, placeY);
+            Vector3 pos = _tilemapRenderer.LevelToWorld(placeX, placeY);
+
+            // Alternate between abilities based on epoch
+            AbilityType type = (epoch % 2 == 1) ? AbilityType.DoubleJump : AbilityType.AirDash;
+
+            var go = new GameObject($"AbilityPickup_{type}");
+            go.transform.SetParent(_levelRoot.transform);
+            go.transform.position = pos;
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = PlaceholderAssets.GetParticleSprite(); // Placeholder — glowing orb
+            sr.color = type == AbilityType.DoubleJump
+                ? new Color(0.4f, 1f, 0.6f) // Green for double jump
+                : new Color(0.4f, 0.7f, 1f); // Blue for dash
+            sr.sortingOrder = 9;
+            go.transform.localScale = Vector3.one * 1.2f;
+
+            var col = go.AddComponent<CircleCollider2D>();
+            col.isTrigger = true;
+            col.radius = 0.5f;
+
+            var pickup = go.AddComponent<AbilityPickup>();
+            pickup.Type = type;
         }
 
         private void SpawnRewards(LevelData data)
@@ -480,6 +571,7 @@ namespace EpochBreaker.Gameplay
 
             if (!bossZone.HasValue) return;
 
+            _bossZone = bossZone;
             var zone = bossZone.Value;
             int epoch = data.ID.Epoch;
             BossType bossType = (BossType)epoch;
@@ -487,10 +579,10 @@ namespace EpochBreaker.Gameplay
             // Spawn boss in the center of the arena
             int arenaCenterX = (zone.StartX + zone.EndX) / 2;
 
-            // Find ground level in arena by scanning from top down (level coords y=0 is top)
-            // In level coordinates, higher Y = lower in world
+            // Find ground level in arena by scanning from bottom up (level coords: higher Y = lower in world)
+            // We want the topmost solid tile (the floor surface), so scan upward from the bottom
             int arenaGroundY = data.Layout.HeightTiles - 3; // Default to near bottom
-            for (int y = 0; y < data.Layout.HeightTiles; y++)
+            for (int y = data.Layout.HeightTiles - 1; y >= 0; y--)
             {
                 int idx = y * data.Layout.WidthTiles + arenaCenterX;
                 if (idx >= 0 && idx < data.Layout.Collision.Length &&
@@ -539,8 +631,56 @@ namespace EpochBreaker.Gameplay
 
             CurrentBoss.Initialize(bossType, _tilemapRenderer, arenaMinX, arenaMaxX);
 
+            // Spawn arena pillars (used in Phase 3)
+            _bossGroundY = arenaGroundY;
+            SpawnArenaPillars(zone, arenaGroundY);
+
             // Boss activates when player enters the arena (handled by BossArenaTrigger)
             CreateBossArenaTrigger(zone, arenaGroundY);
+        }
+
+        /// <summary>
+        /// Spawn 2-3 destructible stone pillars in the boss arena.
+        /// Pillars are inert in Phases 1-2; boss shelters behind them in Phase 3.
+        /// </summary>
+        private void SpawnArenaPillars(ZoneData zone, int groundY)
+        {
+            int arenaWidth = zone.EndX - zone.StartX;
+            int pillarCount = arenaWidth >= 40 ? 3 : 2;
+
+            var pillarParent = new GameObject("ArenaPillars");
+            pillarParent.transform.SetParent(_levelRoot.transform);
+
+            for (int i = 0; i < pillarCount; i++)
+            {
+                // Space pillars evenly across the arena
+                float fraction = (i + 1f) / (pillarCount + 1f);
+                int pillarX = zone.StartX + (int)(arenaWidth * fraction);
+                Vector3 pos = _tilemapRenderer.LevelToWorld(pillarX, groundY - 1);
+                pos.y += 1.5f; // Raise above ground
+
+                var go = new GameObject($"ArenaPillar_{i}");
+                go.transform.SetParent(pillarParent.transform);
+                go.transform.position = pos;
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetArenaPillarSprite();
+                sr.sortingOrder = 8;
+                sr.color = new Color(0.6f, 0.55f, 0.45f);
+
+                // Solid collider (blocks movement)
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(1f, 3f);
+                col.offset = new Vector2(0f, 0f);
+
+                // Trigger collider (detects projectiles)
+                var triggerCol = go.AddComponent<BoxCollider2D>();
+                triggerCol.size = new Vector2(1.2f, 3.2f);
+                triggerCol.offset = new Vector2(0f, 0f);
+                triggerCol.isTrigger = true;
+
+                go.AddComponent<ArenaPillar>();
+            }
         }
 
         /// <summary>

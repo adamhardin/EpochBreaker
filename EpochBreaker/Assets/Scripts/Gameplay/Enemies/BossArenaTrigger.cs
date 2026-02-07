@@ -23,8 +23,19 @@ namespace EpochBreaker.Gameplay
                 levelLoader.CurrentBoss.Activate();
             }
 
-            // Destroy trigger after use
-            Destroy(gameObject);
+            // Disable trigger (don't destroy — needed for respawn reactivation)
+            var col = GetComponent<Collider2D>();
+            if (col != null) col.enabled = false;
+        }
+
+        /// <summary>
+        /// Re-enable the trigger so the boss can be reactivated after player respawn.
+        /// </summary>
+        public void ResetTrigger()
+        {
+            _triggered = false;
+            var col = GetComponent<Collider2D>();
+            if (col != null) col.enabled = true;
         }
     }
 }

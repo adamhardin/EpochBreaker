@@ -1834,7 +1834,12 @@ namespace EpochBreaker.Gameplay
 
         public static Sprite GetWeaponPickupSprite(WeaponTier tier)
         {
-            string key = $"weapon_{tier}";
+            return GetWeaponPickupSprite(WeaponType.Bolt, tier);
+        }
+
+        public static Sprite GetWeaponPickupSprite(WeaponType type, WeaponTier tier)
+        {
+            string key = $"weapon_{type}_{tier}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 96;
@@ -1842,11 +1847,21 @@ namespace EpochBreaker.Gameplay
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
-            switch (tier)
+            switch (type)
             {
-                case WeaponTier.Starting: PaintWeaponSword(px, size); break;
-                case WeaponTier.Medium:   PaintWeaponCrossbow(px, size); break;
-                case WeaponTier.Heavy:    PaintWeaponCannon(px, size); break;
+                case WeaponType.Bolt:
+                    switch (tier)
+                    {
+                        case WeaponTier.Heavy: PaintWeaponCannon(px, size); break;
+                        case WeaponTier.Medium: PaintWeaponCrossbow(px, size); break;
+                        default: PaintWeaponSword(px, size); break;
+                    }
+                    break;
+                case WeaponType.Piercer:   PaintWeaponPiercer(px, size, tier); break;
+                case WeaponType.Spreader:  PaintWeaponSpreader(px, size, tier); break;
+                case WeaponType.Chainer:   PaintWeaponChainer(px, size, tier); break;
+                case WeaponType.Slower:    PaintWeaponSlower(px, size, tier); break;
+                case WeaponType.Cannon:    PaintWeaponCannonType(px, size, tier); break;
             }
 
             tex.SetPixels(px);
@@ -1960,6 +1975,189 @@ namespace EpochBreaker.Gameplay
             SetRect(px, s, 34, 86, 28, 8, glow);
             SetRect(px, s, 38, 88, 20, 4, Lighten(glow, 0.30f));
             SetRect(px, s, 42, 90, 12, 2, Lighten(glow, 0.50f));
+        }
+
+        // ── New weapon type pickup sprites ──
+
+        private static Color TierTint(Color baseColor, WeaponTier tier)
+        {
+            return tier switch
+            {
+                WeaponTier.Heavy => Lighten(baseColor, 0.25f),
+                WeaponTier.Medium => Lighten(baseColor, 0.10f),
+                _ => baseColor
+            };
+        }
+
+        /// <summary>Piercer: lance/javelin shape — light blue</summary>
+        private static void PaintWeaponPiercer(Color[] px, int s, WeaponTier tier)
+        {
+            Color shaft = TierTint(new Color(0.45f, 0.70f, 0.90f), tier);
+            Color tip = Lighten(shaft, 0.40f);
+            Color dark = Darken(shaft, 0.60f);
+            Color grip = Darken(shaft, 0.40f);
+
+            // Shaft (long narrow)
+            SetRect(px, s, 42, 10, 12, 70, shaft);
+            SetRect(px, s, 42, 10, 4, 70, Lighten(shaft, 0.15f)); // left highlight
+            SetRect(px, s, 50, 10, 4, 70, dark);                  // right shadow
+            // Pointed tip
+            SetRect(px, s, 40, 80, 16, 6, tip);
+            SetRect(px, s, 42, 86, 12, 4, tip);
+            SetRect(px, s, 44, 90, 8, 4, Lighten(tip, 0.20f));
+            SetRect(px, s, 46, 94, 4, 2, Color.white);
+            // Grip wrapping
+            for (int i = 0; i < 4; i++)
+                SetRect(px, s, 44, 14 + i * 6, 8, 2, grip);
+            // Pommel
+            SetRect(px, s, 38, 4, 20, 8, dark);
+            SetRect(px, s, 40, 6, 16, 4, Lighten(dark, 0.15f));
+        }
+
+        /// <summary>Spreader: trident shape — orange</summary>
+        private static void PaintWeaponSpreader(Color[] px, int s, WeaponTier tier)
+        {
+            Color metal = TierTint(new Color(0.95f, 0.65f, 0.20f), tier);
+            Color dark = Darken(metal, 0.55f);
+            Color tip = Lighten(metal, 0.35f);
+            Color grip = new Color(0.45f, 0.30f, 0.20f);
+
+            // Handle
+            SetRect(px, s, 42, 6, 12, 40, grip);
+            SetRect(px, s, 44, 8, 8, 36, Darken(grip, 0.75f));
+            // Crossbar
+            SetRect(px, s, 18, 46, 60, 6, metal);
+            SetRect(px, s, 20, 48, 56, 2, dark);
+            // Center prong
+            SetRect(px, s, 42, 52, 12, 36, metal);
+            SetRect(px, s, 44, 54, 8, 32, Lighten(metal, 0.10f));
+            SetRect(px, s, 44, 88, 8, 4, tip);
+            SetRect(px, s, 46, 92, 4, 2, Color.white);
+            // Left prong
+            SetRect(px, s, 20, 52, 10, 28, metal);
+            SetRect(px, s, 22, 54, 6, 24, Lighten(metal, 0.10f));
+            SetRect(px, s, 22, 80, 6, 4, tip);
+            SetRect(px, s, 24, 84, 2, 2, Color.white);
+            // Right prong
+            SetRect(px, s, 66, 52, 10, 28, metal);
+            SetRect(px, s, 68, 54, 6, 24, Lighten(metal, 0.10f));
+            SetRect(px, s, 68, 80, 6, 4, tip);
+            SetRect(px, s, 70, 84, 2, 2, Color.white);
+        }
+
+        /// <summary>Chainer: lightning bolt shape — electric blue</summary>
+        private static void PaintWeaponChainer(Color[] px, int s, WeaponTier tier)
+        {
+            Color bolt = TierTint(new Color(0.40f, 0.75f, 1.00f), tier);
+            Color glow = Lighten(bolt, 0.40f);
+            Color core = new Color(0.90f, 0.95f, 1.00f);
+            Color dark = Darken(bolt, 0.50f);
+
+            // Lightning bolt zigzag shape
+            // Top segment going right
+            SetRect(px, s, 28, 78, 24, 10, bolt);
+            SetRect(px, s, 30, 80, 20, 6, glow);
+            // Middle segment going left
+            SetRect(px, s, 36, 54, 24, 10, bolt);
+            SetRect(px, s, 38, 56, 20, 6, glow);
+            // Diagonal connector top
+            SetRect(px, s, 48, 64, 14, 14, bolt);
+            SetRect(px, s, 50, 66, 10, 10, glow);
+            // Bottom segment going right
+            SetRect(px, s, 28, 30, 24, 10, bolt);
+            SetRect(px, s, 30, 32, 20, 6, glow);
+            // Diagonal connector bottom
+            SetRect(px, s, 32, 40, 14, 14, bolt);
+            SetRect(px, s, 34, 42, 10, 10, glow);
+            // Bottom tip
+            SetRect(px, s, 36, 18, 16, 12, bolt);
+            SetRect(px, s, 40, 10, 8, 8, glow);
+            SetRect(px, s, 42, 6, 4, 4, core);
+            // Top fan
+            SetRect(px, s, 24, 88, 14, 6, bolt);
+            SetRect(px, s, 46, 88, 14, 6, bolt);
+            // Core glow spots
+            SetRect(px, s, 44, 58, 6, 4, core);
+            SetRect(px, s, 36, 34, 6, 4, core);
+            // Orb at handle
+            SetRect(px, s, 38, 88, 20, 8, dark);
+            SetRect(px, s, 40, 90, 16, 4, bolt);
+        }
+
+        /// <summary>Slower: hourglass shape — purple</summary>
+        private static void PaintWeaponSlower(Color[] px, int s, WeaponTier tier)
+        {
+            Color glass = TierTint(new Color(0.55f, 0.35f, 0.90f), tier);
+            Color frame = new Color(0.70f, 0.65f, 0.50f);
+            Color sand = new Color(0.90f, 0.75f, 0.40f);
+            Color glow = Lighten(glass, 0.30f);
+            Color dark = Darken(glass, 0.50f);
+
+            // Top frame
+            SetRect(px, s, 20, 82, 56, 8, frame);
+            SetRect(px, s, 22, 84, 52, 4, Lighten(frame, 0.15f));
+            // Bottom frame
+            SetRect(px, s, 20, 6, 56, 8, frame);
+            SetRect(px, s, 22, 8, 52, 4, Lighten(frame, 0.15f));
+            // Top bulb
+            SetRect(px, s, 24, 62, 48, 20, glass);
+            SetRect(px, s, 28, 66, 40, 12, Lighten(glass, 0.10f));
+            // Neck
+            SetRect(px, s, 40, 44, 16, 18, glass);
+            SetRect(px, s, 42, 46, 12, 14, glow);
+            // Bottom bulb
+            SetRect(px, s, 24, 14, 48, 30, glass);
+            SetRect(px, s, 28, 18, 40, 22, Lighten(glass, 0.10f));
+            // Sand in bottom
+            SetRect(px, s, 30, 16, 36, 16, sand);
+            SetRect(px, s, 34, 18, 28, 12, Lighten(sand, 0.15f));
+            // Sand stream through neck
+            SetRect(px, s, 46, 46, 4, 14, sand);
+            // Sand in top (less)
+            SetRect(px, s, 34, 64, 28, 6, sand);
+            SetRect(px, s, 38, 66, 20, 2, Lighten(sand, 0.10f));
+            // Glow at neck
+            Px(px, s, 47, 52, Color.white); Px(px, s, 48, 52, Color.white);
+            // Frame ornaments
+            SetRect(px, s, 18, 84, 4, 4, dark);
+            SetRect(px, s, 74, 84, 4, 4, dark);
+            SetRect(px, s, 18, 8, 4, 4, dark);
+            SetRect(px, s, 74, 8, 4, 4, dark);
+        }
+
+        /// <summary>Cannon type: heavy barrel weapon — red</summary>
+        private static void PaintWeaponCannonType(Color[] px, int s, WeaponTier tier)
+        {
+            Color barrel = TierTint(new Color(0.80f, 0.25f, 0.15f), tier);
+            Color body = Lighten(barrel, 0.15f);
+            Color glow = new Color(1.0f, 0.50f, 0.20f);
+            Color dark = Darken(barrel, 0.50f);
+
+            // Wheels
+            SetRect(px, s, 14, 6, 18, 18, dark);
+            SetRect(px, s, 16, 8, 14, 14, Darken(dark, 0.70f));
+            Px(px, s, 22, 14, Lighten(dark, 0.20f));
+            SetRect(px, s, 64, 6, 18, 18, dark);
+            SetRect(px, s, 66, 8, 14, 14, Darken(dark, 0.70f));
+            Px(px, s, 72, 14, Lighten(dark, 0.20f));
+            // Carriage
+            SetRect(px, s, 20, 24, 56, 16, dark);
+            SetRect(px, s, 24, 28, 48, 8, Lighten(dark, 0.10f));
+            // Barrel body
+            SetRect(px, s, 30, 40, 36, 46, barrel);
+            SetRect(px, s, 32, 42, 32, 42, body);
+            // Barrel rings
+            SetRect(px, s, 26, 48, 44, 4, dark);
+            SetRect(px, s, 26, 62, 44, 4, dark);
+            SetRect(px, s, 26, 76, 44, 4, dark);
+            // Muzzle
+            SetRect(px, s, 28, 86, 40, 6, barrel);
+            SetRect(px, s, 34, 88, 28, 4, glow);
+            SetRect(px, s, 40, 92, 16, 4, Lighten(glow, 0.30f));
+            SetRect(px, s, 44, 94, 8, 2, Lighten(glow, 0.50f));
+            // Fuse
+            SetRect(px, s, 44, 36, 8, 6, new Color(0.60f, 0.55f, 0.40f));
+            Px(px, s, 47, 34, glow);
         }
 
         #endregion
@@ -2376,6 +2574,151 @@ namespace EpochBreaker.Gameplay
             tex.SetPixels(px);
             tex.Apply();
             var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        #endregion
+
+        #region Hazards
+
+        public static Sprite GetDebrisSprite()
+        {
+            string key = "debris";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int size = 32;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+
+            Color stone = new Color(0.55f, 0.45f, 0.35f);
+            Color dark = Darken(stone, 0.60f);
+            // Irregular chunk
+            SetRect(px, size, 4, 4, 24, 24, stone);
+            SetRect(px, size, 8, 8, 16, 16, dark);
+            SetRect(px, size, 6, 10, 20, 12, stone);
+            Px(px, size, 10, 12, Lighten(stone, 0.20f));
+            Px(px, size, 20, 18, Lighten(stone, 0.20f));
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        public static Sprite GetHazardCloudSprite()
+        {
+            string key = "hazard_cloud";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+
+            // Soft circular cloud
+            int cx = size / 2, cy = size / 2;
+            float maxR = size / 2f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = x - cx;
+                    float dy = y - cy;
+                    float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                    if (dist < maxR)
+                    {
+                        float alpha = 1f - (dist / maxR);
+                        alpha *= alpha; // quadratic falloff
+                        px[y * size + x] = new Color(1f, 1f, 1f, alpha * 0.6f);
+                    }
+                }
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        public static Sprite GetSpikeSprite()
+        {
+            string key = "spike";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+
+            Color metal = new Color(0.60f, 0.60f, 0.65f);
+            Color tip = Lighten(metal, 0.30f);
+            Color dark = Darken(metal, 0.50f);
+
+            // 3 spikes pointing up
+            for (int spike = 0; spike < 3; spike++)
+            {
+                int baseX = 8 + spike * 20;
+                // Spike body (triangular)
+                SetRect(px, size, baseX + 4, 32, 12, 24, metal);
+                SetRect(px, size, baseX + 6, 40, 8, 16, dark);
+                // Tip
+                SetRect(px, size, baseX + 6, 56, 8, 4, tip);
+                SetRect(px, size, baseX + 8, 60, 4, 4, Lighten(tip, 0.20f));
+                // Base
+                SetRect(px, size, baseX, 28, 20, 6, dark);
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        public static Sprite GetArenaPillarSprite()
+        {
+            string key = "arena_pillar";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int w = 64, h = 192;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[w * h];
+
+            Color stone = new Color(0.55f, 0.50f, 0.42f);
+            Color stoneLight = new Color(0.65f, 0.60f, 0.50f);
+            Color stoneDark = new Color(0.38f, 0.33f, 0.28f);
+            Color cap = new Color(0.50f, 0.45f, 0.38f);
+
+            // Main column body
+            SetRect(px, w, 8, 8, 48, 172, stone);
+            // Left edge highlight
+            SetRect(px, w, 8, 8, 14, 172, stoneLight);
+            // Right edge shadow
+            SetRect(px, w, 50, 8, 56, 172, stoneDark);
+            // Top cap (wider)
+            SetRect(px, w, 4, 172, 60, 188, cap);
+            SetRect(px, w, 6, 184, 58, 192, stoneLight);
+            // Base (wider)
+            SetRect(px, w, 4, 0, 60, 12, cap);
+            SetRect(px, w, 6, 0, 58, 4, stoneDark);
+            // Horizontal mortar lines
+            for (int lineY = 30; lineY < 170; lineY += 32)
+            {
+                SetRect(px, w, 8, lineY, 56, lineY + 2, stoneDark);
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), PPU);
             sprite.name = key;
             _cache[key] = sprite;
             return sprite;
@@ -3036,6 +3379,65 @@ namespace EpochBreaker.Gameplay
             tex.Apply();
             var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), ppu);
             return sprite;
+        }
+
+        #endregion
+
+        #region Particles & Effects
+
+        private static Sprite _particleSprite;
+
+        /// <summary>
+        /// Get a small white circle sprite for particles (recolored at runtime).
+        /// </summary>
+        public static Sprite GetParticleSprite()
+        {
+            if (_particleSprite != null) return _particleSprite;
+
+            const int size = 8;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            float center = (size - 1) * 0.5f;
+            float radius = center;
+
+            for (int y = 0; y < size; y++)
+                for (int x = 0; x < size; x++)
+                {
+                    float dist = Mathf.Sqrt((x - center) * (x - center) + (y - center) * (y - center));
+                    float alpha = Mathf.Clamp01(1f - dist / radius);
+                    px[y * size + x] = new Color(1f, 1f, 1f, alpha);
+                }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            _particleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 16f);
+            return _particleSprite;
+        }
+
+        /// <summary>
+        /// Get the body color for an era (public accessor for the private GetEraColors).
+        /// </summary>
+        public static Color GetEraBodyColor(int era)
+        {
+            return GetEraColors(era).body;
+        }
+
+        /// <summary>
+        /// Get a color representing a tile type for destruction particles.
+        /// </summary>
+        public static Color GetTileParticleColor(byte tileType, int epoch)
+        {
+            var terrain = GetEpochTerrainColors(epoch);
+            return (TileType)tileType switch
+            {
+                TileType.DestructibleSoft => terrain.block,
+                TileType.DestructibleMedium => Darken(terrain.block, 0.8f),
+                TileType.DestructibleHard => terrain.accent,
+                TileType.DestructibleReinforced => Darken(terrain.accent, 0.7f),
+                TileType.Indestructible => terrain.ground,
+                _ => terrain.surface,
+            };
         }
 
         #endregion

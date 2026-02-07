@@ -99,6 +99,8 @@ namespace EpochBreaker.Generative
         public int TotalRewards;
         public int TotalCheckpoints;
         public int TotalDestructibleTiles;
+        public int TotalRelics;
+        public int TotalHazards;
     }
 
     public struct LevelLayout
@@ -136,6 +138,19 @@ namespace EpochBreaker.Generative
         public bool IsLoadBearing;
         public ushort StructuralGroupId;
         public HiddenContentType HiddenContent;
+        public HazardType Hazard;
+        public bool IsRelic;
+    }
+
+    public enum HazardType : byte
+    {
+        None = 0,
+        FallingDebris = 1,  // Tiles above fall as physics objects, deal damage
+        GasRelease = 2,     // 3s green cloud, 1 damage/0.5s in 1.5-tile radius
+        FireRelease = 3,    // 4s fire, 1 damage/0.3s in 1-tile radius
+        SpikeTrap = 4,      // Spikes emerge from adjacent tiles, 2 damage on contact
+        UnstableFloor = 5,  // Collapses after destruction, spawns falling debris
+        CoverWall = 6,      // Structural cover — destroying it removes protection
     }
 
     public enum MaterialClass : byte
@@ -168,11 +183,22 @@ namespace EpochBreaker.Generative
         Heavy = 2       // breaks Soft(1), Medium(1), Hard(1), Reinforced(3)
     }
 
+    public enum WeaponType : byte
+    {
+        Bolt = 0,       // Starting weapon: fast, reliable, basic projectile
+        Piercer = 1,    // Passes through enemies, reduced per-hit damage
+        Spreader = 2,   // 3-projectile fan, shorter range, crowd control
+        Chainer = 3,    // Hits enemy, arcs to nearby enemies
+        Slower = 4,     // Low damage, applies slow debuff to enemies
+        Cannon = 5      // High damage, slow fire, breaks all materials, uses heat
+    }
+
     public struct WeaponDropData
     {
         public int TileX;
         public int TileY;
         public WeaponTier Tier;
+        public WeaponType Type;
         public bool OnPrimaryPath;
         public bool Hidden;
     }
@@ -198,7 +224,8 @@ namespace EpochBreaker.Generative
         Destruction = 2,
         Combat = 3,
         BossArena = 4,
-        Buffer = 5
+        Buffer = 5,
+        SkillGate = 6
     }
 
     // =====================================================================

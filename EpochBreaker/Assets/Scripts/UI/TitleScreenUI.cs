@@ -169,14 +169,14 @@ namespace EpochBreaker.UI
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
 
-            // Build ID
-            var verGO = CreateText(canvasGO.transform, BuildInfo.FullBuildID, 14,
-                new Color(0.4f, 0.4f, 0.5f));
+            // Build ID — above bottom gold border, left corner on purple background
+            var verGO = CreateText(canvasGO.transform, BuildInfo.FullBuildID, 22,
+                new Color(0.9f, 0.9f, 0.95f));
             var verRect = verGO.GetComponent<RectTransform>();
             verRect.anchorMin = new Vector2(0, 0);
             verRect.anchorMax = new Vector2(0, 0);
             verRect.pivot = new Vector2(0, 0);
-            verRect.anchoredPosition = new Vector2(20, 20);
+            verRect.anchoredPosition = new Vector2(30, 85);
 
             // Enter code overlay (initially hidden)
             CreateEnterCodeOverlay(canvasGO.transform);
@@ -837,14 +837,38 @@ namespace EpochBreaker.UI
                         _levelSelectorPanel.SetActive(true);
                 });
 
-            // Randomize checkbox (below other buttons)
-            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, -140));
+            // Tutorial buttons
+            bool tutDone = Gameplay.TutorialManager.IsTutorialCompleted();
+
+            // Replay tutorial — resets flag and immediately starts game in tutorial mode
+            CreateMenuButton(_settingsMenuContent.transform, "REPLAY TUTORIAL", new Vector2(0, -130),
+                new Vector2(300, 45), new Color(0.35f, 0.45f, 0.4f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    Gameplay.TutorialManager.ResetTutorial();
+                    _settingsPanel.SetActive(false);
+                    GameManager.Instance?.StartGame();
+                });
+
+            // Skip tutorial — only shown if tutorial hasn't been completed
+            if (!tutDone)
+            {
+                CreateMenuButton(_settingsMenuContent.transform, "SKIP TUTORIAL", new Vector2(0, -180),
+                    new Vector2(300, 45), new Color(0.45f, 0.35f, 0.35f), () => {
+                        AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                        Gameplay.TutorialManager.SetTutorialCompleted();
+                        _settingsPanel.SetActive(false);
+                    });
+            }
+
+            // Randomize checkbox (below tutorial buttons)
+            float randomizeY = tutDone ? -190f : -240f;
+            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, randomizeY));
 
             // Escape hint
             var escGO = CreateText(_settingsMenuContent.transform, "Press Esc to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
-            escRect.anchoredPosition = new Vector2(0, -195);
+            escRect.anchoredPosition = new Vector2(0, randomizeY - 45f);
 
             // ── Audio sub-panel ──
             _audioSubPanel = new GameObject("AudioSubPanel");

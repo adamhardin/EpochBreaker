@@ -3,7 +3,8 @@
     "rootNamespace": "EpochBreaker.Gameplay",
     "references": [
         "EpochBreaker.Generative",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

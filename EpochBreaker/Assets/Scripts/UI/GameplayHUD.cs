@@ -4,7 +4,7 @@ using UnityEngine.UI;
 namespace EpochBreaker.UI
 {
     /// <summary>
-    /// In-game HUD showing health hearts, score, weapon tier, and pause button.
+    /// In-game HUD showing health hearts, score, weapon info, heat bar, and pause button.
     /// </summary>
     public class GameplayHUD : MonoBehaviour
     {
@@ -15,7 +15,15 @@ namespace EpochBreaker.UI
         private Text _eraText;
         private Text _livesText;
         private Text _modeInfoText;
+        private Image _heatBarBg;
+        private Image _heatBarFill;
+        private Text _weaponSlotsText;
+        private Text _relicText;
+        private Text _killStreakText;
+        private float _killStreakFadeTimer;
+        private int _lastKnownStreak;
         private Gameplay.HealthSystem _healthSystem;
+        private Gameplay.WeaponSystem _cachedWeaponSystem;
 
         private const int MAX_HEARTS = 5;
 
@@ -29,7 +37,10 @@ namespace EpochBreaker.UI
         {
             UpdateTimer();
             UpdateWeaponDisplay();
+            UpdateHeatBar();
+            UpdateRelicCounter();
             UpdateModeInfo();
+            UpdateKillStreak();
         }
 
         private void FindPlayerHealth()
@@ -38,6 +49,7 @@ namespace EpochBreaker.UI
             if (player != null)
             {
                 _healthSystem = player.GetComponent<Gameplay.HealthSystem>();
+                _cachedWeaponSystem = player.GetComponent<Gameplay.WeaponSystem>();
                 if (_healthSystem != null)
                 {
                     _healthSystem.OnHealthChanged += UpdateHearts;
@@ -97,8 +109,8 @@ namespace EpochBreaker.UI
             timerRect.pivot = new Vector2(0, 1);
             timerRect.anchoredPosition = new Vector2(20, -70);
 
-            // Weapon tier (top-right)
-            var weaponGO = CreateHUDText(canvasGO.transform, "Weapon: Starting", TextAnchor.UpperRight);
+            // Weapon type + tier (top-right)
+            var weaponGO = CreateHUDText(canvasGO.transform, "Bolt", TextAnchor.UpperRight);
             _weaponText = weaponGO.GetComponent<Text>();
             var weaponRect = weaponGO.GetComponent<RectTransform>();
             weaponRect.anchorMin = new Vector2(1, 1);
@@ -106,7 +118,21 @@ namespace EpochBreaker.UI
             weaponRect.pivot = new Vector2(1, 1);
             weaponRect.anchoredPosition = new Vector2(-20, -20);
 
-            // Era name (top-right, below weapon)
+            // Weapon slots indicator (top-right, below weapon name)
+            var slotsGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
+            _weaponSlotsText = slotsGO.GetComponent<Text>();
+            _weaponSlotsText.fontSize = 16;
+            _weaponSlotsText.color = new Color(0.7f, 0.7f, 0.7f);
+            var slotsRect = slotsGO.GetComponent<RectTransform>();
+            slotsRect.anchorMin = new Vector2(1, 1);
+            slotsRect.anchorMax = new Vector2(1, 1);
+            slotsRect.pivot = new Vector2(1, 1);
+            slotsRect.anchoredPosition = new Vector2(-20, -46);
+
+            // Heat bar (top-right, below weapon slots — hidden by default)
+            CreateHeatBar(canvasGO.transform);
+
+            // Era name (top-right, below heat bar)
             var eraGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
             _eraText = eraGO.GetComponent<Text>();
             _eraText.fontSize = 18;
@@ -114,18 +140,44 @@ namespace EpochBreaker.UI
             eraRect.anchorMin = new Vector2(1, 1);
             eraRect.anchorMax = new Vector2(1, 1);
             eraRect.pivot = new Vector2(1, 1);
-            eraRect.anchoredPosition = new Vector2(-20, -50);
+            eraRect.anchoredPosition = new Vector2(-20, -82);
 
             var gm = Gameplay.GameManager.Instance;
             if (gm != null && gm.CurrentLevelID.Epoch >= 0)
                 _eraText.text = $"{gm.CurrentLevelID.EpochName} [{gm.CurrentLevelID.ToCode()}]";
 
+            // Relic counter (below timer, left side — only shown if level has relics)
+            if (gm != null && gm.TotalRelics > 0)
+            {
+                var relicGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperLeft);
+                _relicText = relicGO.GetComponent<Text>();
+                _relicText.fontSize = 20;
+                _relicText.color = new Color(1f, 0.85f, 0.2f);
+                var relicRect = relicGO.GetComponent<RectTransform>();
+                relicRect.anchorMin = new Vector2(0, 1);
+                relicRect.anchorMax = new Vector2(0, 1);
+                relicRect.pivot = new Vector2(0, 1);
+                relicRect.anchoredPosition = new Vector2(20, -96);
+            }
+
             // Pause button (top-right corner)
             CreatePauseButton(canvasGO.transform);
 
-            // Lives counter (below timer, for Campaign/Streak)
+            // Kill streak indicator (center-bottom area, hidden by default)
+            var streakGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+            _killStreakText = streakGO.GetComponent<Text>();
+            _killStreakText.fontSize = 32;
+            _killStreakText.color = new Color(1f, 0.85f, 0.2f, 0f); // Start transparent
+            var streakRect = streakGO.GetComponent<RectTransform>();
+            streakRect.anchorMin = new Vector2(0.5f, 0.5f);
+            streakRect.anchorMax = new Vector2(0.5f, 0.5f);
+            streakRect.pivot = new Vector2(0.5f, 0.5f);
+            streakRect.anchoredPosition = new Vector2(0, -200);
+
+            // Lives counter (below timer/relic, for Campaign/Streak)
             if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.FreePlay)
             {
+                float livesY = (gm.TotalRelics > 0) ? -122f : -100f;
                 var livesGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperLeft);
                 _livesText = livesGO.GetComponent<Text>();
                 _livesText.fontSize = 22;
@@ -134,7 +186,7 @@ namespace EpochBreaker.UI
                 livesRect.anchorMin = new Vector2(0, 1);
                 livesRect.anchorMax = new Vector2(0, 1);
                 livesRect.pivot = new Vector2(0, 1);
-                livesRect.anchoredPosition = new Vector2(20, -100);
+                livesRect.anchoredPosition = new Vector2(20, livesY);
             }
 
             // Mode info (top-center: epoch or streak)
@@ -176,11 +228,152 @@ namespace EpochBreaker.UI
         private void UpdateWeaponDisplay()
         {
             if (_weaponText == null) return;
-            var player = GameObject.FindWithTag("Player");
-            if (player == null) return;
-            var ws = player.GetComponent<Gameplay.WeaponSystem>();
-            if (ws != null)
-                _weaponText.text = $"Weapon: {ws.CurrentTier}";
+            if (_cachedWeaponSystem == null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                if (player != null)
+                    _cachedWeaponSystem = player.GetComponent<Gameplay.WeaponSystem>();
+            }
+            var ws = _cachedWeaponSystem;
+            if (ws == null) return;
+
+            // Show active weapon name + tier with color
+            string typeName = ws.ActiveWeaponType.ToString();
+            Color typeColor = GetWeaponDisplayColor(ws.ActiveWeaponType);
+            string tierSuffix = ws.ActiveWeaponTier != Generative.WeaponTier.Starting
+                ? $" [{ws.ActiveWeaponTier}]" : "";
+            _weaponText.text = $"{typeName}{tierSuffix}";
+            _weaponText.color = typeColor;
+
+            // Show acquired weapon slots as dots
+            if (_weaponSlotsText != null)
+            {
+                var slots = ws.Slots;
+                string dots = "";
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    if (slots[i].Acquired)
+                        dots += i == (int)ws.ActiveWeaponType ? "\u25cf " : "\u25cb ";
+                }
+                _weaponSlotsText.text = dots.TrimEnd();
+            }
+        }
+
+        private static Color GetWeaponDisplayColor(Generative.WeaponType type)
+        {
+            return type switch
+            {
+                Generative.WeaponType.Bolt => Color.white,
+                Generative.WeaponType.Piercer => new Color(0.6f, 0.9f, 1f),
+                Generative.WeaponType.Spreader => new Color(1f, 0.7f, 0.3f),
+                Generative.WeaponType.Chainer => new Color(0.5f, 0.8f, 1f),
+                Generative.WeaponType.Slower => new Color(0.6f, 0.4f, 1f),
+                Generative.WeaponType.Cannon => new Color(1f, 0.3f, 0.2f),
+                _ => Color.white
+            };
+        }
+
+        private void CreateHeatBar(Transform parent)
+        {
+            // Background
+            var bgGO = new GameObject("HeatBarBg");
+            bgGO.transform.SetParent(parent, false);
+            _heatBarBg = bgGO.AddComponent<Image>();
+            _heatBarBg.color = new Color(0.2f, 0.2f, 0.2f, 0.6f);
+            var bgRect = bgGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = new Vector2(1, 1);
+            bgRect.anchorMax = new Vector2(1, 1);
+            bgRect.pivot = new Vector2(1, 1);
+            bgRect.sizeDelta = new Vector2(120, 10);
+            bgRect.anchoredPosition = new Vector2(-20, -66);
+
+            // Fill
+            var fillGO = new GameObject("HeatBarFill");
+            fillGO.transform.SetParent(bgGO.transform, false);
+            _heatBarFill = fillGO.AddComponent<Image>();
+            _heatBarFill.color = new Color(1f, 0.5f, 0.1f);
+            var fillRect = fillGO.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(0, 1);
+            fillRect.pivot = new Vector2(0, 0.5f);
+            fillRect.sizeDelta = new Vector2(0, 0);
+            fillRect.offsetMin = new Vector2(1, 1);
+            fillRect.offsetMax = new Vector2(1, -1);
+
+            // Hidden by default
+            bgGO.SetActive(false);
+        }
+
+        private void UpdateHeatBar()
+        {
+            if (_heatBarBg == null) return;
+            var ws = _cachedWeaponSystem;
+            if (ws == null) return;
+
+            bool showHeat = ws.ActiveWeaponType == Generative.WeaponType.Cannon && ws.HasWeapon(Generative.WeaponType.Cannon);
+            _heatBarBg.gameObject.SetActive(showHeat);
+
+            if (showHeat && _heatBarFill != null)
+            {
+                float ratio = ws.Heat.HeatRatio;
+                var fillRect = _heatBarFill.GetComponent<RectTransform>();
+                float maxWidth = 118f; // 120 - 2 padding
+                fillRect.sizeDelta = new Vector2(maxWidth * ratio, 0);
+                fillRect.offsetMax = new Vector2(1 + maxWidth * ratio, -1);
+
+                // Color changes: normal orange, overheated red
+                _heatBarFill.color = ws.Heat.IsOverheated
+                    ? new Color(1f, 0.15f, 0.1f)
+                    : Color.Lerp(new Color(1f, 0.6f, 0.1f), new Color(1f, 0.2f, 0.1f), ratio);
+            }
+        }
+
+        private void UpdateRelicCounter()
+        {
+            if (_relicText == null) return;
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            int preserved = Mathf.Max(0, gm.TotalRelics - gm.RelicsDestroyed);
+            _relicText.text = $"Relics: {preserved}/{gm.TotalRelics} recovered";
+
+            // Gold when all preserved, red-tinted when some lost
+            _relicText.color = gm.RelicsDestroyed > 0
+                ? new Color(1f, 0.5f, 0.3f)
+                : new Color(1f, 0.85f, 0.2f);
+        }
+
+        private void UpdateKillStreak()
+        {
+            if (_killStreakText == null) return;
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            int streak = gm.CurrentNoDamageStreak;
+
+            // Show when streak reaches 3+
+            if (streak >= 3 && streak != _lastKnownStreak)
+            {
+                _lastKnownStreak = streak;
+                _killStreakText.text = $"x{streak}";
+                _killStreakFadeTimer = 2f;
+            }
+
+            // Reset on streak break
+            if (streak < 3)
+                _lastKnownStreak = 0;
+
+            // Fade out
+            if (_killStreakFadeTimer > 0f)
+            {
+                _killStreakFadeTimer -= Time.deltaTime;
+                float alpha = Mathf.Clamp01(_killStreakFadeTimer / 0.5f); // fade over last 0.5s
+                _killStreakText.color = new Color(1f, 0.85f, 0.2f, alpha);
+            }
+            else
+            {
+                _killStreakText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            }
         }
 
         private void UpdateModeInfo()
@@ -244,8 +437,8 @@ namespace EpochBreaker.UI
             rect.anchorMin = new Vector2(1, 1);
             rect.anchorMax = new Vector2(1, 1);
             rect.pivot = new Vector2(1, 1);
-            rect.sizeDelta = new Vector2(50, 50);
-            rect.anchoredPosition = new Vector2(-80, -20);
+            rect.sizeDelta = new Vector2(70, 70);
+            rect.anchoredPosition = new Vector2(-70, -16);
 
             // Pause icon text
             var textGO = new GameObject("PauseLabel");

@@ -42,6 +42,19 @@ namespace EpochBreaker.Gameplay
         // Score achievements
         HighScorer,           // Score over 10,000 in a single level
         ScoreLegend,          // Score over 25,000 in a single level
+
+        // Movement achievements
+        WallJumpMaster,       // Perform 10 wall-jumps in a single level
+
+        // Sprint 4: Preservation & mastery achievements
+        Archaeologist,        // Preserve all relic tiles in a level
+        MinimalFootprint,     // Complete destroying <10% of blocks
+        StructuralEngineer,   // Complete with >80% structures intact
+        HazardDodger,         // Complete without taking hazard damage
+        WeaponCollector,      // Acquire all 6 weapon types in one level
+        ChainMaster,          // Kill 3 enemies with one chain lightning
+        CannonExpert,         // Defeat boss using only Cannon
+        CoolUnderPressure,    // Complete without overheating Cannon
     }
 
     /// <summary>
@@ -78,11 +91,14 @@ namespace EpochBreaker.Gameplay
     public class AchievementManager : MonoBehaviour
     {
         private const string SAVE_KEY = "EpochBreaker_Achievements";
+        private const float SAVE_DEBOUNCE_INTERVAL = 2f;
 
         public static AchievementManager Instance { get; private set; }
 
         private AchievementSaveData _saveData;
         private Dictionary<AchievementType, AchievementData> _achievementMap;
+        private bool _saveDirty;
+        private float _lastSaveTime;
 
         // Session tracking (reset per level)
         private int _levelBlocksDestroyed;
@@ -94,7 +110,13 @@ namespace EpochBreaker.Gameplay
         private bool _tookDamageThisLevel;
         private float _lastBlockDestroyTime;
         private int _recentBlockDestroyCount;
+        private int _levelWallJumps;
         private HashSet<Generative.WeaponTier> _weaponsAcquired;
+        private HashSet<Generative.WeaponType> _weaponTypesAcquired;
+        private bool _tookHazardDamage;
+        private bool _cannonOverheated;
+        private int _chainKillBest;
+        private bool _usedNonCannonOnBoss;
 
         public event Action<AchievementType> OnAchievementUnlocked;
 
@@ -109,12 +131,31 @@ namespace EpochBreaker.Gameplay
 
             LoadAchievements();
             _weaponsAcquired = new HashSet<Generative.WeaponTier>();
+            _weaponTypesAcquired = new HashSet<Generative.WeaponType>();
         }
 
         private void OnDestroy()
         {
+            // Flush any pending saves before destruction
+            if (_saveDirty)
+                FlushSave();
             if (Instance == this)
                 Instance = null;
+        }
+
+        private void Update()
+        {
+            if (_saveDirty && Time.time - _lastSaveTime >= SAVE_DEBOUNCE_INTERVAL)
+                FlushSave();
+        }
+
+        private void FlushSave()
+        {
+            string json = JsonUtility.ToJson(_saveData);
+            PlayerPrefs.SetString(SAVE_KEY, json);
+            PlayerPrefs.Save();
+            _saveDirty = false;
+            _lastSaveTime = Time.time;
         }
 
         /// <summary>
@@ -131,8 +172,15 @@ namespace EpochBreaker.Gameplay
             _tookDamageThisLevel = false;
             _lastBlockDestroyTime = 0f;
             _recentBlockDestroyCount = 0;
+            _levelWallJumps = 0;
+            _tookHazardDamage = false;
+            _cannonOverheated = false;
+            _chainKillBest = 0;
+            _usedNonCannonOnBoss = false;
             _weaponsAcquired.Clear();
             _weaponsAcquired.Add(Generative.WeaponTier.Starting); // Player starts with this
+            _weaponTypesAcquired.Clear();
+            _weaponTypesAcquired.Add(Generative.WeaponType.Bolt); // Player starts with Bolt
         }
 
         /// <summary>
@@ -230,6 +278,44 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
+        /// Called when a weapon type is acquired (for 6-slot system).
+        /// </summary>
+        public void RecordWeaponTypeAcquired(Generative.WeaponType type)
+        {
+            _weaponTypesAcquired.Add(type);
+
+            // Check if player has all 6 types
+            if (_weaponTypesAcquired.Count >= 6)
+                TryUnlock(AchievementType.WeaponCollector);
+        }
+
+        /// <summary>
+        /// Called when chain lightning kills multiple enemies.
+        /// </summary>
+        public void RecordChainKills(int killCount)
+        {
+            _chainKillBest = Mathf.Max(_chainKillBest, killCount);
+            if (_chainKillBest >= 3)
+                TryUnlock(AchievementType.ChainMaster);
+        }
+
+        /// <summary>
+        /// Called when player takes hazard damage (gas, fire, spikes, debris).
+        /// </summary>
+        public void RecordHazardDamage()
+        {
+            _tookHazardDamage = true;
+        }
+
+        /// <summary>
+        /// Called when the Cannon overheats.
+        /// </summary>
+        public void RecordCannonOverheat()
+        {
+            _cannonOverheated = true;
+        }
+
+        /// <summary>
         /// Called when a level is completed.
         /// </summary>
         public void RecordLevelComplete(int epoch, float elapsedTime, int score, int stars)
@@ -279,7 +365,57 @@ namespace EpochBreaker.Gameplay
             if (score >= 25000)
                 TryUnlock(AchievementType.ScoreLegend);
 
+            // Movement achievements
+            if (_levelWallJumps >= 10)
+                TryUnlock(AchievementType.WallJumpMaster);
+
+            // Preservation achievements
+            var gm = GameManager.Instance;
+            if (gm != null)
+            {
+                // Archaeologist: preserve all relics
+                if (gm.TotalRelics > 0 && gm.RelicsDestroyed == 0)
+                    TryUnlock(AchievementType.Archaeologist);
+
+                // Minimal Footprint: destroy < 10% of blocks
+                if (gm.CurrentLevel != null && gm.CurrentLevel.Metadata.TotalDestructibleTiles > 0)
+                {
+                    float destructRatio = (float)gm.BlocksDestroyed / gm.CurrentLevel.Metadata.TotalDestructibleTiles;
+                    if (destructRatio < 0.1f)
+                        TryUnlock(AchievementType.MinimalFootprint);
+
+                    // Structural Engineer: > 80% intact
+                    if (destructRatio < 0.2f)
+                        TryUnlock(AchievementType.StructuralEngineer);
+                }
+            }
+
+            // Hazard Dodger: no hazard damage taken
+            if (!_tookHazardDamage)
+                TryUnlock(AchievementType.HazardDodger);
+
+            // Cool Under Pressure: completed without overheating Cannon
+            // Only relevant if player acquired and used Cannon
+            if (_weaponTypesAcquired.Contains(Generative.WeaponType.Cannon) && !_cannonOverheated)
+                TryUnlock(AchievementType.CoolUnderPressure);
+
             SaveAchievements();
+        }
+
+        /// <summary>
+        /// Called to record wall-jump count for achievement tracking.
+        /// </summary>
+        public void RecordWallJumps(int count)
+        {
+            _levelWallJumps = count;
+        }
+
+        /// <summary>
+        /// Called when the boss takes damage from a non-Cannon weapon.
+        /// </summary>
+        public void RecordNonCannonBossDamage()
+        {
+            _usedNonCannonOnBoss = true;
         }
 
         /// <summary>
@@ -288,6 +424,11 @@ namespace EpochBreaker.Gameplay
         public void RecordBossDefeated()
         {
             TryUnlock(AchievementType.BossKiller);
+
+            // CannonExpert: defeated boss using only Cannon
+            if (_weaponTypesAcquired.Contains(Generative.WeaponType.Cannon) && !_usedNonCannonOnBoss)
+                TryUnlock(AchievementType.CannonExpert);
+
             SaveAchievements();
         }
 
@@ -395,6 +536,15 @@ namespace EpochBreaker.Gameplay
                 AchievementType.Master => "Master",
                 AchievementType.HighScorer => "High Scorer",
                 AchievementType.ScoreLegend => "Score Legend",
+                AchievementType.WallJumpMaster => "Wall Jump Master",
+                AchievementType.Archaeologist => "Archaeologist",
+                AchievementType.MinimalFootprint => "Minimal Footprint",
+                AchievementType.StructuralEngineer => "Structural Engineer",
+                AchievementType.HazardDodger => "Hazard Dodger",
+                AchievementType.WeaponCollector => "Weapon Collector",
+                AchievementType.ChainMaster => "Chain Master",
+                AchievementType.CannonExpert => "Cannon Expert",
+                AchievementType.CoolUnderPressure => "Cool Under Pressure",
                 _ => type.ToString()
             };
         }
@@ -428,6 +578,15 @@ namespace EpochBreaker.Gameplay
                 AchievementType.Master => "Complete 50 levels",
                 AchievementType.HighScorer => "Score over 10,000 in a level",
                 AchievementType.ScoreLegend => "Score over 25,000 in a level",
+                AchievementType.WallJumpMaster => "Perform 10 wall-jumps in a single level",
+                AchievementType.Archaeologist => "Preserve all relic tiles in a level",
+                AchievementType.MinimalFootprint => "Complete destroying less than 10% of blocks",
+                AchievementType.StructuralEngineer => "Complete with over 80% structures intact",
+                AchievementType.HazardDodger => "Complete without taking hazard damage",
+                AchievementType.WeaponCollector => "Acquire all 6 weapon types in one level",
+                AchievementType.ChainMaster => "Kill 3 enemies with one chain lightning",
+                AchievementType.CannonExpert => "Defeat a boss using only Cannon",
+                AchievementType.CoolUnderPressure => "Complete without overheating Cannon",
                 _ => ""
             };
         }
@@ -499,9 +658,7 @@ namespace EpochBreaker.Gameplay
 
         private void SaveAchievements()
         {
-            string json = JsonUtility.ToJson(_saveData);
-            PlayerPrefs.SetString(SAVE_KEY, json);
-            PlayerPrefs.Save();
+            _saveDirty = true;
         }
 
         /// <summary>

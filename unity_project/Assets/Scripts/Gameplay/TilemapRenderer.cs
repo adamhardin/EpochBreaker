@@ -18,12 +18,27 @@ namespace EpochBreaker.Gameplay
 
         private Grid _grid;
         private LevelData _levelData;
+        private HazardSystem _hazardSystem;
+        private bool _geometryDirty;
 
         // Pre-built Unity Tile assets (one per tile type)
         private Tile[] _tileAssets;
 
         public int LevelWidth => _levelData?.Layout.WidthTiles ?? 0;
         public int LevelHeight => _levelData?.Layout.HeightTiles ?? 0;
+
+        public void SetHazardSystem(HazardSystem hs) => _hazardSystem = hs;
+
+        private void LateUpdate()
+        {
+            if (_geometryDirty && DestructibleTilemap != null)
+            {
+                var composite = DestructibleTilemap.GetComponent<CompositeCollider2D>();
+                if (composite != null)
+                    composite.GenerateGeometry();
+                _geometryDirty = false;
+            }
+        }
 
         public void RenderLevel(LevelData data)
         {
@@ -63,7 +78,7 @@ namespace EpochBreaker.Gameplay
 
         /// <summary>
         /// Remove a destructible tile at level-data coordinates.
-        /// Called when a projectile or weapon destroys a tile.
+        /// Triggers hazard effects if the tile has a hazard assigned.
         /// </summary>
         public void DestroyTile(int tileX, int tileY)
         {
@@ -72,6 +87,14 @@ namespace EpochBreaker.Gameplay
             int idx = tileY * width + tileX;
 
             if (idx < 0 || idx >= _levelData.Layout.Tiles.Length) return;
+
+            // Check for hazard, relic, and hidden content before clearing data
+            var hazard = _levelData.Layout.Destructibles[idx].Hazard;
+            bool isRelic = _levelData.Layout.Destructibles[idx].IsRelic;
+            var hiddenContent = _levelData.Layout.Destructibles[idx].HiddenContent;
+
+            // Spawn destruction particles before clearing data
+            SpawnTileParticles(tileX, tileY, _levelData.Layout.Tiles[idx]);
 
             // Clear tile data
             _levelData.Layout.Tiles[idx] = (byte)TileType.Empty;
@@ -82,12 +105,51 @@ namespace EpochBreaker.Gameplay
             var cell = LevelToCell(tileX, tileY);
             DestructibleTilemap.SetTile(cell, null);
 
-            // Refresh the composite collider after tile removal
-            var composite = DestructibleTilemap.GetComponent<CompositeCollider2D>();
-            if (composite != null)
-                composite.GenerateGeometry();
+            // Mark geometry dirty — batched in LateUpdate
+            _geometryDirty = true;
 
             // Notify achievement system
+            GameManager.Instance?.RecordBlockDestroyed();
+
+            // Record relic destruction (lost preservation score)
+            if (isRelic)
+                GameManager.Instance?.RecordRelicDestroyed();
+
+            // Record hidden content discovery (exploration score)
+            if (hiddenContent != Generative.HiddenContentType.None)
+                GameManager.Instance?.RecordHiddenContentFound(hiddenContent);
+
+            // Trigger hazard effect
+            if (hazard != HazardType.None)
+            {
+                if (_hazardSystem == null)
+                    _hazardSystem = FindAnyObjectByType<HazardSystem>();
+                _hazardSystem?.OnTileDestroyed(tileX, tileY, hazard);
+            }
+        }
+
+        /// <summary>
+        /// Remove a tile without triggering hazards. Used by HazardSystem
+        /// for debris cascade to prevent infinite loops.
+        /// </summary>
+        public void DestroyTileRaw(int tileX, int tileY)
+        {
+            if (_levelData == null) return;
+            int width = _levelData.Layout.WidthTiles;
+            int idx = tileY * width + tileX;
+
+            if (idx < 0 || idx >= _levelData.Layout.Tiles.Length) return;
+
+            _levelData.Layout.Tiles[idx] = (byte)TileType.Empty;
+            _levelData.Layout.Collision[idx] = (byte)CollisionType.None;
+            _levelData.Layout.Destructibles[idx] = default;
+
+            var cell = LevelToCell(tileX, tileY);
+            DestructibleTilemap.SetTile(cell, null);
+
+            // Mark geometry dirty — batched in LateUpdate
+            _geometryDirty = true;
+
             GameManager.Instance?.RecordBlockDestroyed();
         }
 
@@ -174,6 +236,34 @@ namespace EpochBreaker.Gameplay
             int tileX = Mathf.FloorToInt(worldPos.x);
             int tileY = (_levelData.Layout.HeightTiles - 1) - Mathf.FloorToInt(worldPos.y);
             return new Vector2Int(tileX, tileY);
+        }
+
+        private void SpawnTileParticles(int tileX, int tileY, byte tileType)
+        {
+            Vector3 worldPos = LevelToWorld(tileX, tileY);
+            int epoch = _levelData?.ID.Epoch ?? 0;
+            Color tileColor = PlaceholderAssets.GetTileParticleColor(tileType, epoch);
+
+            int count = Random.Range(3, 6);
+            for (int i = 0; i < count; i++)
+            {
+                var go = new GameObject("TileParticle");
+                go.transform.position = worldPos + new Vector3(
+                    Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f), 0f);
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetParticleSprite();
+                sr.color = tileColor;
+                sr.sortingOrder = 15;
+                go.transform.localScale = Vector3.one * Random.Range(0.15f, 0.35f);
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 4f;
+                float angle = Random.Range(30f, 150f) * Mathf.Deg2Rad; // Bias upward
+                rb.linearVelocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * Random.Range(2f, 5f);
+
+                Object.Destroy(go, 0.6f);
+            }
         }
 
         private void BuildTileAssets()

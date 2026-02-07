@@ -16,6 +16,10 @@ Tracks each WebGL deployment to GitHub Pages. The build number displayed on the 
 | 005 | 0.1.0 | 2026-02-05 | Boss AI fixes, death effects |
 | 006 | 0.1.0 | 2026-02-05 | Game modes (Campaign, Streak, FreePlay), achievements UI, continue system, settings menu |
 | 007 | 0.2.0 | 2026-02-06 | Audio volume normalization, build ID on title screen |
+| 008 | 0.3.0 | 2026-02-06 | Expert review: 5-component scoring, 6-slot weapons, hazard system, tutorial, difficulty curve, boss tuning |
+| 009 | 0.4.0 | 2026-02-06 | Expert review cycle 2: limited auto-select, Quick Draw, archaeology scoring, arena pillars, hazard rebalance, tutorial wall-jump optional |
+| 010 | 0.5.0 | 2026-02-06 | Performance pass: cached physics/refs, batched geometry, debounced saves, enemy registry. Visual: parallax backgrounds, screen flash, squash/stretch. Features: ability system (double jump, air dash) |
+| 011 | 0.5.0 | 2026-02-06 | Documentation cleanup, build ID display fix, compilation error fixes |
 
 ---
 

@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: 2026-02-04 | **Status**: Active
+**Last Updated**: 2026-02-07 | **Version**: v0.5.0 build 011
 
 ---
 
@@ -8,8 +8,9 @@
 
 | Document | Purpose |
 |----------|---------|
-| [README.md](README.md) | Project overview, tech stack, targets, team roles |
-| [PROJECT-LAUNCH-CHECKLIST.md](PROJECT-LAUNCH-CHECKLIST.md) | Phase-by-phase checklist for the entire project lifecycle |
+| [README.md](README.md) | Project overview, tech stack, targets, deployment guide |
+| [GAME-DESIGN-REVIEW.md](GAME-DESIGN-REVIEW.md) | Comprehensive game design document for expert review (v0.5.0) |
+| [BUILD-LOG.md](BUILD-LOG.md) | WebGL deployment log with version, date, and change notes |
 
 ---
 
@@ -17,14 +18,31 @@
 
 | Document | Purpose | Status |
 |----------|---------|--------|
+| [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) | Directory layout, naming conventions, dual-project sync | Active |
 | [docs/Training-Plan.md](docs/Training-Plan.md) | 10-module expert training curriculum (6 phases) | Active |
-| [docs/Development-Roadmap.md](docs/Development-Roadmap.md) | 16-week timeline, milestones, risk mitigation | Active |
-| [docs/Engine-Selection-Rubric.md](docs/Engine-Selection-Rubric.md) | Engine evaluation and selection (Unity 2022 LTS) | Complete |
-| [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) | Directory layout, naming conventions, collaboration | Active |
+| [docs/Training-Plan-Addendum.md](docs/Training-Plan-Addendum.md) | Creativity, fun, and expert feedback addendum | Active |
+| [docs/Implementation-Plan-v0.4.0.md](docs/Implementation-Plan-v0.4.0.md) | Final implementation plan for v0.4.0 (8 sprints, approved) | Implemented |
+| [docs/Implementation-Plan-v0.6.0.md](docs/Implementation-Plan-v0.6.0.md) | Implementation plan for v0.6.0 "Make It Fun" (9 sprints) | Awaiting Approval |
 
 ---
 
-## Generative Level System (Critical)
+## Expert Review Process
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [docs/Expert-Review-Process.md](docs/Expert-Review-Process.md) | Consolidated workflow, roles, scope, quality standards, scheduling | Active |
+| [docs/Expert-Review-Templates.md](docs/Expert-Review-Templates.md) | Intake form, sprint review, change proposal, decision log templates | Active |
+| [docs/Expert-Review-Report-v0.3.0.md](docs/Expert-Review-Report-v0.3.0.md) | Expert review findings and recommendations (cycle 2) | Active |
+| [docs/Expert-Review-Response-v0.3.0.md](docs/Expert-Review-Response-v0.3.0.md) | Implementation response with proposed approaches | Active |
+| [docs/Expert-Review-Response-v0.3.0-Expert-Reply.md](docs/Expert-Review-Response-v0.3.0-Expert-Reply.md) | Expert reply approving/refining approaches | Active |
+| [docs/Expert-Review-Report-v0.3.0-Memory-Addendum.md](docs/Expert-Review-Report-v0.3.0-Memory-Addendum.md) | MEMORY.md consistency audit | Active |
+| [docs/Expert-Review-Change-Log.md](docs/Expert-Review-Change-Log.md) | Log of all review-driven changes | Active |
+| [docs/Expert-Feedback-Log.md](docs/Expert-Feedback-Log.md) | Structured log of review entries with findings and owners | Active |
+| [docs/Expert-Review-Report-v0.5.0.md](docs/Expert-Review-Report-v0.5.0.md) | Comprehensive deep review (code + design + fun + creativity) — cycle 3 | Active |
+
+---
+
+## Generative Level System
 
 | Document | Purpose | Status |
 |----------|---------|--------|
@@ -38,12 +56,23 @@
 
 | Document | Topic | Status |
 |----------|-------|--------|
-| [docs/Module-1-Assessment-Criteria.md](docs/Module-1-Assessment-Criteria.md) | retro Design Fundamentals | Complete |
+| [docs/Module-1-Assessment-Criteria.md](docs/Module-1-Assessment-Criteria.md) | Retro Design Fundamentals | Complete |
 | [docs/Module-2-Assessment-Criteria.md](docs/Module-2-Assessment-Criteria.md) | Mobile Game Development (iOS) | Complete |
 | [docs/Module-3-Assessment-Criteria.md](docs/Module-3-Assessment-Criteria.md) | Game Design & Gamification | Complete |
 | [docs/Module-4-Assessment-Criteria.md](docs/Module-4-Assessment-Criteria.md) | Side-Scrolling Mechanics | Complete |
 | [docs/Module-5-Assessment-Criteria.md](docs/Module-5-Assessment-Criteria.md) | Mobile UX & Accessibility | Complete |
-| [docs/Module-6-Assessment-Criteria.md](docs/Module-6-Assessment-Criteria.md) | retro Audio & Aesthetics | Complete |
+| [docs/Module-6-Assessment-Criteria.md](docs/Module-6-Assessment-Criteria.md) | Retro Audio & Aesthetics | Complete |
+
+---
+
+## Reviewer Competency
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [docs/Reviewer-Competency-Track.md](docs/Reviewer-Competency-Track.md) | Competency tracking across 12 domains | Active |
+| [docs/Reviewer-Competency-Rubrics.md](docs/Reviewer-Competency-Rubrics.md) | Scoring rubrics for competency evaluation | Active |
+| [docs/Reviewer-Competency-Templates.md](docs/Reviewer-Competency-Templates.md) | Evidence artifact templates | Active |
+| [docs/Reviewer-Competency-Results.md](docs/Reviewer-Competency-Results.md) | Assessment results record | Active |
 
 ---
 
@@ -51,33 +80,21 @@
 
 The game is playable at **[https://adamhardin.github.io/EpochBreaker/](https://adamhardin.github.io/EpochBreaker/)**
 
-The deployment process is documented in [README.md](README.md#play-in-browser). Key files:
-
 | File | Purpose |
 |------|---------|
-| [.github/workflows/deploy-webgl.yml](.github/workflows/deploy-webgl.yml) | GitHub Actions workflow — deploys `gh-pages` branch to GitHub Pages |
+| [.github/workflows/deploy-webgl.yml](.github/workflows/deploy-webgl.yml) | GitHub Actions workflow for gh-pages deployment |
 | [EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs](EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs) | Custom build script for headless WebGL builds |
-| [EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html](EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html) | Custom HTML template (landscape 16:9, dark theme, loading bar) |
-| [EpochBreaker/Assets/Plugins/WebGL/ClipboardPlugin.jslib](EpochBreaker/Assets/Plugins/WebGL/ClipboardPlugin.jslib) | JavaScript bridge for clipboard access on WebGL |
+| [EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html](EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html) | Custom HTML template (landscape 16:9, dark theme) |
 
 ---
 
-## Build Tracking
+## Archived Documents
 
-| Document | Purpose |
-|----------|---------|
-| [BUILD-LOG.md](BUILD-LOG.md) | Sequential build log with version, date, and change notes for each WebGL deployment |
+Historical documents moved to `docs/archive/`. Kept for reference only.
 
----
-
-## Documents To Be Created During Development
-
-| Document | Purpose | When |
-|----------|---------|------|
-| Architecture-Overview.md | System design and component interactions | Week 5 |
-| Implementation-Guide.md | Step-by-step code implementation | Week 5-8 |
-| Performance-Optimization-Guide.md | Profiling and tuning | Week 9-12 |
-| Progress-Log.md | Weekly status updates | Ongoing |
-| Known-Issues-Tracker.md | Bug database | Ongoing |
-| Performance-Benchmarks.md | Runtime performance metrics | Ongoing |
-| Architecture-Decisions.md | ADR log | As needed |
+| Document | Reason |
+|----------|--------|
+| docs/archive/Expert-Review-Report-v0.2.0.md | Superseded by v0.3.0 review |
+| docs/archive/Development-Roadmap-Original.md | Stale timeline; development tracked via implementation plans |
+| docs/archive/Engine-Selection-Rubric.md | Decision locked (Unity 6000.3.6f1) |
+| docs/archive/PROJECT-LAUNCH-CHECKLIST.md | Stale checklist; work tracked via sprint plans |

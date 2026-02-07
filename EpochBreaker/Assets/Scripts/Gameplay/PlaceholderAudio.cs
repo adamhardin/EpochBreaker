@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using EpochBreaker.Generative;
 
 namespace EpochBreaker.Gameplay
 {
@@ -247,6 +248,174 @@ namespace EpochBreaker.Gameplay
             AddTone(buf, chordStart, chordDur, _C4, _C4, Wave.Triangle, 0.12f, 0.01f, 0.15f);
             var clip = MakeClip("SFX_LevelComplete", buf);
             _cache["sfx_level_complete"] = clip;
+            return clip;
+        }
+
+        /// <summary>Get weapon-type-specific fire SFX.</summary>
+        public static AudioClip GetWeaponFireSFX(WeaponType type)
+        {
+            string key = $"sfx_fire_{type}";
+            if (_cache.TryGetValue(key, out var c)) return c;
+
+            AudioClip clip;
+            switch (type)
+            {
+                case WeaponType.Piercer:
+                    clip = MakePiercerSFX();
+                    break;
+                case WeaponType.Spreader:
+                    clip = MakeSpreaderSFX();
+                    break;
+                case WeaponType.Chainer:
+                    clip = MakeChainerSFX();
+                    break;
+                case WeaponType.Slower:
+                    clip = MakeSlowerSFX();
+                    break;
+                case WeaponType.Cannon:
+                    clip = MakeCannonSFX();
+                    break;
+                default:
+                    return GetShootSFX(); // Bolt uses default
+            }
+            _cache[key] = clip;
+            return clip;
+        }
+
+        private static AudioClip MakePiercerSFX()
+        {
+            // Sharp, high-pitched whistle — piercing bolt
+            var buf = MakeBuffer(0.10f);
+            AddTone(buf, 0f, 0.10f, 1800f, 600f, Wave.Sawtooth, 0.02f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.05f, 2400f, 1200f, Wave.Square, 0.01f, 0.001f, 0.01f);
+            return MakeClip("SFX_Fire_Piercer", buf);
+        }
+
+        private static AudioClip MakeSpreaderSFX()
+        {
+            // Short burst — shotgun-like spread
+            var buf = MakeBuffer(0.10f);
+            AddTone(buf, 0f, 0.06f, 800f, 200f, Wave.Noise, 0.12f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.04f, 600f, 300f, Wave.Square, 0.08f, 0.001f, 0.01f);
+            return MakeClip("SFX_Fire_Spreader", buf);
+        }
+
+        private static AudioClip MakeChainerSFX()
+        {
+            // Electric zap — chain lightning
+            var buf = MakeBuffer(0.12f);
+            AddTone(buf, 0f, 0.08f, 1500f, 800f, Wave.Square, 0.02f, 0.001f, 0.015f);
+            AddTone(buf, 0.02f, 0.06f, 2000f, 1000f, Wave.Noise, 0.06f, 0.001f, 0.02f);
+            AddTone(buf, 0.06f, 0.06f, 600f, 400f, Wave.Triangle, 0.04f, 0.001f, 0.02f);
+            return MakeClip("SFX_Fire_Chainer", buf);
+        }
+
+        private static AudioClip MakeSlowerSFX()
+        {
+            // Low warble — slow/freeze effect
+            var buf = MakeBuffer(0.15f);
+            AddTone(buf, 0f, 0.15f, 400f, 200f, Wave.Triangle, 0.15f, 0.01f, 0.04f);
+            AddTone(buf, 0.02f, 0.10f, 300f, 150f, Wave.Square, 0.05f, 0.005f, 0.03f);
+            return MakeClip("SFX_Fire_Slower", buf);
+        }
+
+        private static AudioClip MakeCannonSFX()
+        {
+            // Heavy boom — cannon blast
+            var buf = MakeBuffer(0.25f);
+            AddTone(buf, 0f, 0.15f, 120f, 40f, Wave.Triangle, 0.30f, 0.001f, 0.05f);
+            AddTone(buf, 0f, 0.08f, 500f, 200f, Wave.Noise, 0.20f, 0.001f, 0.03f);
+            AddTone(buf, 0.02f, 0.10f, 100f, 50f, Wave.Square, 0.15f, 0.005f, 0.04f);
+            return MakeClip("SFX_Fire_Cannon", buf);
+        }
+
+        /// <summary>Overheat warning — cannon overheated.</summary>
+        public static AudioClip GetOverheatSFX()
+        {
+            if (_cache.TryGetValue("sfx_overheat", out var c)) return c;
+            var buf = MakeBuffer(0.4f);
+            // Hissing steam
+            AddTone(buf, 0f, 0.3f, 800f, 400f, Wave.Noise, 0.15f, 0.01f, 0.1f);
+            // Warning descending tone
+            AddTone(buf, 0.05f, 0.25f, 600f, 200f, Wave.Square, 0.1f, 0.01f, 0.05f);
+            var clip = MakeClip("SFX_Overheat", buf);
+            _cache["sfx_overheat"] = clip;
+            return clip;
+        }
+
+        /// <summary>Chain arc zap — chain lightning jump.</summary>
+        public static AudioClip GetChainArcSFX()
+        {
+            if (_cache.TryGetValue("sfx_chain_arc", out var c)) return c;
+            var buf = MakeBuffer(0.08f);
+            AddTone(buf, 0f, 0.06f, 2000f, 800f, Wave.Noise, 0.08f, 0.001f, 0.02f);
+            AddTone(buf, 0.01f, 0.05f, 1200f, 600f, Wave.Square, 0.04f, 0.001f, 0.015f);
+            var clip = MakeClip("SFX_ChainArc", buf);
+            _cache["sfx_chain_arc"] = clip;
+            return clip;
+        }
+
+        /// <summary>Debris crash — falling blocks impact.</summary>
+        public static AudioClip GetDebrisSFX()
+        {
+            if (_cache.TryGetValue("sfx_debris", out var c)) return c;
+            var buf = MakeBuffer(0.3f);
+            AddTone(buf, 0f, 0.15f, 150f, 40f, Wave.Triangle, 0.25f, 0.001f, 0.05f);
+            AddTone(buf, 0f, 0.1f, 400f, 200f, Wave.Noise, 0.20f, 0.001f, 0.04f);
+            AddTone(buf, 0.05f, 0.2f, 100f, 30f, Wave.Square, 0.10f, 0.01f, 0.05f);
+            var clip = MakeClip("SFX_Debris", buf);
+            _cache["sfx_debris"] = clip;
+            return clip;
+        }
+
+        /// <summary>Gas hiss — poison cloud released.</summary>
+        public static AudioClip GetGasHissSFX()
+        {
+            if (_cache.TryGetValue("sfx_gas", out var c)) return c;
+            var buf = MakeBuffer(0.4f);
+            AddTone(buf, 0f, 0.4f, 600f, 300f, Wave.Noise, 0.12f, 0.02f, 0.1f);
+            AddTone(buf, 0.05f, 0.3f, 200f, 100f, Wave.Triangle, 0.05f, 0.01f, 0.05f);
+            var clip = MakeClip("SFX_GasHiss", buf);
+            _cache["sfx_gas"] = clip;
+            return clip;
+        }
+
+        /// <summary>Fire whoosh — fire hazard released.</summary>
+        public static AudioClip GetFireSFX()
+        {
+            if (_cache.TryGetValue("sfx_fire", out var c)) return c;
+            var buf = MakeBuffer(0.3f);
+            AddTone(buf, 0f, 0.2f, 800f, 200f, Wave.Noise, 0.15f, 0.005f, 0.06f);
+            AddTone(buf, 0f, 0.15f, 300f, 100f, Wave.Sawtooth, 0.10f, 0.005f, 0.04f);
+            var clip = MakeClip("SFX_Fire", buf);
+            _cache["sfx_fire"] = clip;
+            return clip;
+        }
+
+        /// <summary>Spike scrape — metal spikes emerge.</summary>
+        public static AudioClip GetSpikeSFX()
+        {
+            if (_cache.TryGetValue("sfx_spike", out var c)) return c;
+            var buf = MakeBuffer(0.2f);
+            AddTone(buf, 0f, 0.1f, 1500f, 800f, Wave.Sawtooth, 0.08f, 0.001f, 0.02f);
+            AddTone(buf, 0.03f, 0.15f, 400f, 200f, Wave.Noise, 0.10f, 0.005f, 0.04f);
+            var clip = MakeClip("SFX_Spike", buf);
+            _cache["sfx_spike"] = clip;
+            return clip;
+        }
+
+        /// <summary>Soft scraping loop — wall-slide contact.</summary>
+        public static AudioClip GetWallSlideSFX()
+        {
+            if (_cache.TryGetValue("sfx_wall_slide", out var c)) return c;
+            var buf = MakeBuffer(0.3f);
+            // Gritty scraping: filtered noise with low-frequency modulation
+            AddTone(buf, 0f, 0.3f, 200f, 250f, Wave.Noise, 0.08f, 0.01f, 0.01f);
+            AddTone(buf, 0f, 0.3f, 80f, 100f, Wave.Triangle, 0.06f, 0.01f, 0.01f);
+            // Crossfade for seamless loop
+            ApplyLoopFade(buf);
+            var clip = MakeClip("SFX_WallSlide", buf);
+            _cache["sfx_wall_slide"] = clip;
             return clip;
         }
 

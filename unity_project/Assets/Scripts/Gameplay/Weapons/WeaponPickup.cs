@@ -4,12 +4,13 @@ using EpochBreaker.Generative;
 namespace EpochBreaker.Gameplay
 {
     /// <summary>
-    /// Collectable weapon upgrade. Upgrades the player's weapon tier on contact.
+    /// Collectable weapon pickup. Grants the player a weapon type at a given tier.
     /// Bobs and pulses to attract attention.
     /// </summary>
     public class WeaponPickup : MonoBehaviour
     {
         public WeaponTier Tier { get; set; }
+        public WeaponType Type { get; set; } = WeaponType.Bolt;
 
         private Vector3 _basePosition;
 
@@ -36,11 +37,11 @@ namespace EpochBreaker.Gameplay
             var weapon = other.GetComponent<WeaponSystem>();
             if (weapon != null)
             {
-                weapon.UpgradeWeapon(Tier);
+                weapon.AcquireWeapon(Type, Tier);
             }
 
             if (GameManager.Instance != null)
-                GameManager.Instance.CollectWeapon(Tier);
+                GameManager.Instance.CollectWeapon(Type, Tier);
 
             AudioManager.PlaySFX(PlaceholderAudio.GetWeaponPickupSFX());
             Destroy(gameObject);

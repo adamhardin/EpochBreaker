@@ -1,613 +1,241 @@
 # Project Directory Structure & File Guide
 
+**Last Updated**: 2026-02-06 | **Version**: 2.0 | **Status**: Active
+
+---
+
 ## Overview
 
-This document describes the complete directory structure for the retro Mobile Game project and provides guidance on file organization throughout development.
+Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 2022.3 LTS. All visual and audio assets are procedurally generated at runtime — there are no imported sprites, textures, or audio files.
 
 ---
 
-## Current Structure
+## Project Locations
+
+| Location | Purpose |
+|----------|---------|
+| `EpochBreaker/` | Full Unity project (opened in Unity Editor) |
+| `unity_project/` | Source files only (Assets + Packages), no Unity metadata |
+
+Both locations must stay in sync. When editing scripts, update both.
+
+---
+
+## Current Structure (v0.3.0)
 
 ```
-Retro Mobile Game/
-├── README.md                          ← START HERE (project overview)
+16 Bit Mobile Game/
+├── README.md
+├── GAME-DESIGN-REVIEW.md                 ← Expert review document
+├── DOCUMENTATION-INDEX.md                ← Index of all docs
+├── BUILD-LOG.md                          ← WebGL deployment log
+├── PROJECT-LAUNCH-CHECKLIST.md
 ├── .gitignore
+│
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                    (GitHub Actions CI/CD pipeline)
+│       └── deploy-webgl.yml              (GitHub Actions: WebGL → GitHub Pages)
 │
-└── docs/                             ← ALL DOCUMENTATION
-    ├── Training-Plan.md              (Expert training curriculum)
-    ├── Development-Roadmap.md        (16-week timeline, milestones)
-    ├── Engine-Selection-Rubric.md    (Engine evaluation & selection)
-    │
-    ├── Level-Generation-Technical-Spec.md      ⭐ CRITICAL
-    │                                  (Complete level gen architecture)
-    ├── Level-Generation-Research-Guide.md      ⭐ CRITICAL
-    │                                  (Research, algorithms, code examples)
-    ├── Validation-QA-Suite.md        ⭐ CRITICAL
-    │                                  (Testing framework for gen system)
-    │
-    ├── Module-1-Assessment-Criteria.md
-    │   (retro Design Fundamentals)
-    ├── Module-2-Assessment-Criteria.md
-    │   (Mobile Game Development)
-    ├── Module-3-Assessment-Criteria.md (COMING SOON)
-    │   (Game Design & Gamification)
-    ├── Module-4-Assessment-Criteria.md (COMING SOON)
-    │   (Side-Scrolling Mechanics)
-    ├── Module-5-Assessment-Criteria.md (COMING SOON)
-    │   (Mobile UX & Accessibility)
-    ├── Module-6-Assessment-Criteria.md (COMING SOON)
-    │   (retro Audio & Aesthetics)
-    │
-    ├── LIVING DOCUMENTS (Updated weekly)
-    ├── Progress-Log.md               (Weekly status updates)
-    ├── Known-Issues-Tracker.md       (Bug database)
-    ├── Performance-Benchmarks.md     (Performance metrics)
-    ├── Architecture-Decisions.md     (ADR log)
-    ├── Design-Changes-Log.md         (Design iterations)
-    │
-    ├── IMPLEMENTATION GUIDES (Created during development)
-    ├── Architecture-Overview.md      (System design)
-    ├── Implementation-Guide.md       (Step-by-step coding)
-    ├── Performance-Optimization-Guide.md
-    ├── App-Store-Launch-Checklist.md
-    ├── Testing-Protocol.md           (QA procedures)
-    │
-    ├── REFERENCE & TEMPLATES
-    ├── design_template.md            (Level design document template)
-    ├── code_review_template.md       (Code review checklist)
-    ├── test_report_template.md       (QA test report template)
-    │
-    ├── archive/                      (Obsolete documents)
-    │   └── [old versions, previous iterations]
-    │
-    └── images/                       (Screenshots, diagrams, reference)
-        ├── ui-mockups/
-        ├── architecture-diagrams/
-        └── 16bit-references/
-
-
-🎮 SOURCE CODE (Created Week 5+)
-├── unity_project/
+├── docs/                                 ← All documentation
+│   ├── Expert-Review-Report.md           (Latest expert review findings)
+│   ├── Expert-Review-Change-Log.md       (Changes from review sprints)
+│   ├── Development-Review-Workflow.md    (Review cadence and roles)
+│   ├── Expert-Review-*.md                (Review process documents)
+│   ├── Development-Roadmap.md            (Timeline, milestones)
+│   ├── PROJECT-STRUCTURE.md              ← THIS FILE
+│   ├── Training-Plan.md                  (Training curriculum)
+│   ├── Level-Generation-Technical-Spec.md
+│   ├── Level-Generation-Research-Guide.md
+│   ├── Validation-QA-Suite.md
+│   └── Module-*-Assessment-Criteria.md   (6 training modules)
+│
+├── EpochBreaker/                         ← FULL UNITY PROJECT
 │   ├── Assets/
-│   │   ├── Scripts/
-│   │   │   ├── Generative/          (Level generation system)
-│   │   │   │   ├── LevelGenerator.cs
-│   │   │   │   ├── XORShift64.cs    (PRNG)
-│   │   │   │   ├── LevelValidator.cs
-│   │   │   │   └── LevelSerializer.cs
+│   │   ├── Scripts/                      ← ALL SOURCE CODE
+│   │   │   ├── Generative/              (Pure C#, no Unity deps)
+│   │   │   │   ├── LevelData.cs         (Tile types, zone types, level schema)
+│   │   │   │   ├── LevelGenerator.cs    (Procedural level generation)
+│   │   │   │   ├── LevelID.cs           (Level code system: E-XXXXXXXX)
+│   │   │   │   ├── LevelValidator.cs    (Structural validation)
+│   │   │   │   ├── XORShift64.cs        (Deterministic PRNG)
+│   │   │   │   ├── DifficultyProfile.cs (Epoch-based difficulty scaling)
+│   │   │   │   └── TutorialLevelBuilder.cs (3 hardcoded tutorial levels)
 │   │   │   │
-│   │   │   ├── Gameplay/            (Core game mechanics)
-│   │   │   │   ├── PlayerController.cs
-│   │   │   │   ├── EnemyAI.cs
-│   │   │   │   ├── PhysicsEngine.cs
-│   │   │   │   └── CollisionDetection.cs
+│   │   │   ├── Gameplay/                (Unity MonoBehaviours)
+│   │   │   │   ├── GameManager.cs       (Singleton, game state, scoring)
+│   │   │   │   ├── PlayerController.cs  (Movement, wall-slide, stomp)
+│   │   │   │   ├── LevelLoader.cs       (Instantiates level from LevelData)
+│   │   │   │   ├── TilemapRenderer.cs   (Renders tiles, destruction)
+│   │   │   │   ├── CameraController.cs  (Follow cam, ortho size 7)
+│   │   │   │   ├── InputManager.cs      (Input System wrapper)
+│   │   │   │   ├── HealthSystem.cs      (Player HP, damage, respawn)
+│   │   │   │   ├── HazardSystem.cs      (Environmental hazard effects)
+│   │   │   │   ├── TutorialManager.cs   (Step-based tutorial progression)
+│   │   │   │   ├── CheckpointManager.cs (Checkpoint tracking)
+│   │   │   │   ├── CheckpointTrigger.cs (Checkpoint collision)
+│   │   │   │   ├── AchievementManager.cs (30 achievements, persistence)
+│   │   │   │   ├── AudioManager.cs      (Music + 8-channel SFX pool)
+│   │   │   │   ├── PlaceholderAssets.cs (Runtime sprite generation)
+│   │   │   │   ├── PlaceholderAudio.cs  (Runtime audio synthesis)
+│   │   │   │   ├── RewardPickup.cs      (Collectible items)
+│   │   │   │   ├── ExtraLifePickup.cs   (1-up pickup)
+│   │   │   │   ├── GoalTrigger.cs       (Level end trigger)
+│   │   │   │   └── BuildInfo.cs         (Version/build tracking)
 │   │   │   │
-│   │   │   ├── UI/                  (User interface)
-│   │   │   │   ├── MenuManager.cs
-│   │   │   │   ├── HUD.cs
-│   │   │   │   └── TouchInput.cs
+│   │   │   ├── Gameplay/Enemies/        (Enemy system)
+│   │   │   │   ├── EnemyBase.cs         (4 behaviors, epoch scaling)
+│   │   │   │   ├── Boss.cs              (3-phase boss, DPS cap)
+│   │   │   │   └── BossArenaTrigger.cs  (Boss activation zone)
 │   │   │   │
-│   │   │   ├── Audio/               (Sound design)
-│   │   │   │   ├── AudioManager.cs
-│   │   │   │   └── SoundEffects.cs
+│   │   │   ├── Gameplay/Weapons/        (Weapon system)
+│   │   │   │   ├── WeaponSystem.cs      (6-slot, auto-select, cycling)
+│   │   │   │   ├── WeaponData.cs        (Stats database, heat system)
+│   │   │   │   ├── WeaponPickup.cs      (Weapon acquisition)
+│   │   │   │   └── Projectile.cs        (Pierce, chain, slow, heat)
 │   │   │   │
-│   │   │   ├── iOS/                 (iOS-specific)
-│   │   │   │   ├── GameKitManager.cs
-│   │   │   │   ├── CloudSaveManager.cs
-│   │   │   │   └── HapticManager.cs
+│   │   │   ├── UI/                      (In Assembly-CSharp)
+│   │   │   │   ├── TitleScreenUI.cs     (Main menu, settings, modes)
+│   │   │   │   ├── GameplayHUD.cs       (HP, timer, weapon, relics)
+│   │   │   │   ├── LevelCompleteUI.cs   (5-component score breakdown)
+│   │   │   │   ├── PauseMenuUI.cs
+│   │   │   │   ├── GameOverUI.cs
+│   │   │   │   ├── TouchControlsUI.cs   (On-screen buttons)
+│   │   │   │   ├── TutorialHintUI.cs    (Floating tutorial hints)
+│   │   │   │   ├── AchievementsUI.cs    (Achievement display)
+│   │   │   │   ├── CelebrationUI.cs     (Unlock celebrations)
+│   │   │   │   └── LegendsUI.cs         (Leaderboard/legends)
 │   │   │   │
-│   │   │   └── Tests/               (Unit & integration tests)
-│   │   │       ├── GenerationTests.cs
-│   │   │       ├── DeterminismTests.cs
-│   │   │       ├── PerformanceTests.cs
-│   │   │       └── ValidationTests.cs
+│   │   │   ├── Editor/                  (Editor-only, auto-detected)
+│   │   │   │   ├── ProjectSetup.cs      (Menu: Epoch Breaker > Setup)
+│   │   │   │   ├── WebGLBuildScript.cs  (Headless WebGL builds)
+│   │   │   │   └── QA/
+│   │   │   │       ├── EditorQAWindow.cs
+│   │   │   │       ├── EditorQASettings.cs
+│   │   │   │       └── QAValidationRunner.cs
+│   │   │   │
+│   │   │   └── Tests/
+│   │   │       ├── Editor/              (NUnit bridge wrappers)
+│   │   │       │   ├── TestRunner.cs
+│   │   │       │   ├── NUnitBridgeBase.cs
+│   │   │       │   ├── XORShift64Tests.cs + Bridge
+│   │   │       │   ├── LevelIDTests.cs + Bridge
+│   │   │       │   └── LevelGeneratorTests.cs + Bridge
+│   │   │       │
+│   │   │       └── PlayMode/            (Runtime tests)
+│   │   │           ├── HealthSystemTests.cs
+│   │   │           ├── GameManagerTests.cs
+│   │   │           ├── EnemyBaseTests.cs
+│   │   │           ├── WeaponSystemTests.cs
+│   │   │           ├── IntegrationTests.cs
+│   │   │           └── TestHelpers.cs
 │   │   │
-│   │   ├── Prefabs/                 (Game object templates)
-│   │   │   ├── Player.prefab
-│   │   │   ├── Enemy.prefab
-│   │   │   ├── Level.prefab
-│   │   │   └── UI/
+│   │   ├── Resources/
+│   │   │   └── EpochBreakerInput.inputactions (Input System asset)
 │   │   │
-│   │   ├── Scenes/                  (Game scenes)
-│   │   │   ├── MainMenu.unity
-│   │   │   ├── GameLevel.unity
-│   │   │   ├── GameOver.unity
-│   │   │   └── Settings.unity
+│   │   ├── Plugins/WebGL/
+│   │   │   └── ClipboardPlugin.jslib    (JS clipboard bridge)
 │   │   │
-│   │   ├── Sprites/                 (Pixel art)
-│   │   │   ├── Player/
-│   │   │   │   ├── player_idle.png
-│   │   │   │   ├── player_walk.png
-│   │   │   │   ├── player_jump.png
-│   │   │   │   └── ...
-│   │   │   │
-│   │   │   ├── Enemies/
-│   │   │   │   ├── slime.png
-│   │   │   │   ├── goblin.png
-│   │   │   │   ├── skeleton.png
-│   │   │   │   └── boss.png
-│   │   │   │
-│   │   │   ├── Tilesets/            (Biome-specific)
-│   │   │   │   ├── forest.png
-│   │   │   │   ├── cavern.png
-│   │   │   │   ├── sky.png
-│   │   │   │   └── volcanic.png
-│   │   │   │
-│   │   │   └── UI/
-│   │   │       ├── buttons/
-│   │   │       ├── icons/
-│   │   │       └── backgrounds/
+│   │   ├── WebGLTemplates/EpochBreaker/
+│   │   │   └── index.html               (Custom WebGL template)
 │   │   │
-│   │   ├── Audio/                   (Sound files)
-│   │   │   ├── Music/
-│   │   │   │   ├── level_intro.ogg
-│   │   │   │   ├── level_loop.ogg
-│   │   │   │   ├── boss_theme.ogg
-│   │   │   │   └── ...
-│   │   │   │
-│   │   │   └── SFX/
-│   │   │       ├── jump.wav
-│   │   │       ├── land.wav
-│   │   │       ├── enemy_hit.wav
-│   │   │       ├── health_pickup.wav
-│   │   │       └── ...
-│   │   │
-│   │   ├── Resources/               (Unity resources)
-│   │   │   ├── LevelConfigs/
-│   │   │   │   ├── difficulty_1.json
-│   │   │   │   ├── difficulty_2.json
-│   │   │   │   └── biomes.json
-│   │   │   │
-│   │   │   └── Palettes/
-│   │   │       ├── forest.palette
-│   │   │       ├── cavern.palette
-│   │   │       └── ...
-│   │   │
-│   │   └── Materials/               (Shaders, materials)
-│   │       ├── PixelArt.shader
-│   │       └── ParallaxScroll.shader
+│   │   └── Scenes/
+│   │       └── Bootstrap.unity           (Single scene, all runtime)
 │   │
-│   ├── ProjectSettings/
 │   ├── Packages/
-│   ├── Library/
-│   └── Build/                       (iOS builds)
-│       ├── Development/
-│       └── Release/
+│   │   └── manifest.json                (URP, 2D, Input System, TMP, Test Framework)
+│   │
+│   └── ProjectSettings/                 (Unity project settings)
 │
-├── xcode_project/
-│   └── (Auto-generated by Unity iOS build)
-│
-├── tests/                           (QA test data & procedures)
-│   ├── determinism_tests.md
-│   ├── performance_tests.md
-│   ├── gameplay_tests.md
-│   ├── test_devices.md              (Device matrix)
-│   └── test_results/                (Ongoing results)
-│
-├── marketing/                       (App Store materials)
-│   ├── screenshots/                 (Promotional images)
-│   ├── video/                       (Preview video)
-│   ├── descriptions.txt             (App store copy)
-│   └── privacy_policy.md
-│
-└── archive/                         (Previous versions, prototypes)
-    └── v0.1/
-        └── [early prototypes]
+└── unity_project/                        ← SOURCE FILES MIRROR
+    ├── Assets/                           (Same Scripts/ structure as above)
+    └── Packages/
+        └── manifest.json
 ```
 
 ---
 
-## File Guidelines
+## Assembly Structure
 
-### Documentation Files (.md)
-
-**Naming Convention**: `[Title]-[Descriptor].md`
-
-**Examples**:
-- `Training-Plan.md`
-- `Level-Generation-Technical-Spec.md`
-- `Module-1-Assessment-Criteria.md`
-
-**Structure**:
-```markdown
-# Title
-
-## Overview (1 paragraph)
-
-## Section 1
-...
-
-## Section 2
-...
-
-### Subsection 2.1
-...
-
-## References
-- Link 1
-- Link 2
+| Assembly | Directory | References | Notes |
+|----------|-----------|------------|-------|
+| `EpochBreaker.Generative` | Scripts/Generative/ | None | `noEngineReferences: true` |
+| `EpochBreaker.Gameplay` | Scripts/Gameplay/ | Generative | Unity MonoBehaviours |
+| Assembly-CSharp | Scripts/UI/ | Gameplay (auto) | No asmdef, default assembly |
+| `EpochBreaker.Tests.Editor` | Scripts/Tests/Editor/ | Generative, NUnit | Editor-only |
+| `EpochBreaker.Tests.PlayMode` | Scripts/Tests/PlayMode/ | Gameplay, Generative, TestRunner | Cross-platform |
 
 ---
-Last Updated: YYYY-MM-DD
-Status: [Draft|Active|Complete|Archived]
-Version: X.Y
+
+## Dual-Project Sync Workflow
+
+The project exists in two locations. **Both must stay in sync.**
+
+| Location | Contains | Used For |
+|----------|----------|----------|
+| `EpochBreaker/` | Full Unity project (Scripts + ProjectSettings + Library) | Opening in Unity Editor, building |
+| `unity_project/` | Source files only (Assets/Scripts + Packages) | Git-friendly mirror, no Unity metadata |
+
+### Sync Procedure
+
+After editing any `.cs` file in `EpochBreaker/Assets/Scripts/`:
+
+```bash
+# From the project root (16 Bit Mobile Game/)
+cp -R EpochBreaker/Assets/Scripts/ unity_project/Assets/Scripts/
 ```
 
-**Status Indicators**:
-- `Draft`: Work in progress, not for public use
-- `Active`: Current, maintained, reference material
-- `Complete`: Finished, no major changes expected
-- `Archived`: Superseded by newer version
+### Checklist Before Committing
 
-### Code Files (.cs)
+- [ ] All modified `.cs` files exist in both `EpochBreaker/Assets/Scripts/` and `unity_project/Assets/Scripts/`
+- [ ] No Unity metadata (`.meta`, `Library/`, `Temp/`) in `unity_project/`
+- [ ] `Packages/manifest.json` matches in both locations
 
-**Naming Convention**: `PascalCase.cs` matching class name
+### When Sync Is NOT Needed
 
-**Structure**:
-```csharp
-using UnityEngine;
-using System;
+- Changes to `ProjectSettings/`, `Scenes/`, `Resources/`, `Plugins/`, `WebGLTemplates/` — these only exist in `EpochBreaker/`
+- Documentation files at the project root or in `docs/`
 
-/// <summary>
-/// Brief description of what this class does.
-/// </summary>
-public class MyClassName : MonoBehaviour
-{
-    [SerializeField] private int exampleField;
-    
-    public void PublicMethod()
-    {
-        // Implementation
-    }
-    
-    private void PrivateMethod()
-    {
-        // Implementation
-    }
-}
+---
+
+## Coordinate System
+
+LevelData and Unity use **inverted Y axes**. This is the most common source of bugs in level tooling.
+
+```
+LevelData (generation):         Unity (rendering):
+y=0  ████████ TOP (sky)         y=15 ████████ TOP (sky)
+y=1  ████████                   y=14 ████████
+ .       .                       .       .
+ .       .                       .       .
+y=14 ▓▓▓▓▓▓▓▓                  y=1  ▓▓▓▓▓▓▓▓
+y=15 ▓▓▓▓▓▓▓▓ BOTTOM (ground)  y=0  ▓▓▓▓▓▓▓▓ BOTTOM (ground)
 ```
 
-**Documentation**:
-- XML comments for public methods
-- Inline comments for complex logic
-- No commented-out code (use Git history)
+**Conversion formula**: `unityY = (HeightTiles - 1) - dataY`
 
-### Test Files (.cs)
+**Tile array indexing**: `Tiles[dataY * WidthTiles + x]` (row-major, LevelData coordinates)
 
-**Naming Convention**: `[TargetClass]Tests.cs`
+### Conversion Checklist
 
-**Examples**:
-- `LevelGeneratorTests.cs`
-- `DeterminismTests.cs`
-- `PerformanceTests.cs`
+When writing code that bridges generation and rendering:
 
-**Structure**:
-```csharp
-using UnityEngine.TestTools;
-using NUnit.Framework;
-
-public class LevelGeneratorTests
-{
-    [Test]
-    public void TestSpecificBehavior()
-    {
-        // Arrange
-        var generator = new LevelGenerator();
-        
-        // Act
-        var result = generator.GenerateLevel(seed: 12345);
-        
-        // Assert
-        Assert.NotNull(result);
-    }
-}
-```
-
-### Asset Files
-
-**Sprites**: 
-- Name format: `[character]_[action]_[frame].png`
-- Example: `player_walk_01.png`, `slime_idle_01.png`
-- Keep palette-optimized (retro constraints)
-
-**Audio**:
-- Format: .ogg (compressed) or .wav (for editing)
-- Name format: `[type]_[action].ogg`
-- Example: `sfx_jump.ogg`, `music_boss_theme.ogg`
-
-**Tilesets**:
-- Name format: `[biome]_tileset.png`
-- Size: 256x256 or 512x512
-- Document palette in JSON
-
-### Configuration Files
-
-**JSON Configs**:
-```json
-{
-  "version": "1.0",
-  "biome_id": 0,
-  "biome_name": "Forest",
-  "enemy_types": ["slime", "goblin"],
-  "difficulty_range": [1, 5]
-}
-```
-
-**Always include**:
-- Version number
-- Descriptive comments
-- Validation schema
+- [ ] Am I reading from `LevelData`? Use `dataY` directly for array access
+- [ ] Am I placing a Unity GameObject? Convert: `unityY = (HeightTiles - 1) - dataY`
+- [ ] Am I reading a Unity position back to LevelData? Convert: `dataY = (HeightTiles - 1) - unityY`
+- [ ] Ground height range: data y=10-14 maps to Unity y=1-5
 
 ---
 
-## When to Create New Files
+## Key Design Notes
 
-### DO Create New Files For:
-- ✅ Major system component (Gameplay, UI, Audio)
-- ✅ New assessment module
-- ✅ Implementation guide
-- ✅ Test suite (per system)
-- ✅ Major design change log
-
-### DON'T Create New Files For:
-- ❌ Minor updates to existing docs (edit in place)
-- ❌ Temporary notes (use Slack/GitHub discussions)
-- ❌ Code that should be in existing module
-- ❌ Duplicate information (link instead)
+- **Engine**: Unity 6000.3.6f1 (upgraded from 2022.3 LTS)
+- **No imported assets**: All sprites and audio are generated at runtime via `PlaceholderAssets.cs` and `PlaceholderAudio.cs`
+- **Single scene**: Everything runs from `Bootstrap.unity`. UI and game objects are created programmatically
+- **GameManager reflection**: Uses reflection for UI `AddComponent` calls to avoid circular dependency between Gameplay and UI assemblies
+- **WebGL deployment**: GitHub Actions builds and deploys to GitHub Pages automatically
 
 ---
 
-## File Lifecycle
-
-### Stage 1: Creation
-- Create in feature branch: `docs/[title]` or `feature/[name]`
-- Use template if available
-- Add header with status: `Draft`
-
-### Stage 2: Development
-- Update frequently
-- Keep status as `Active` once shared with team
-- Note changes in header
-
-### Stage 3: Completion
-- Status → `Complete`
-- Final review by 2+ team members
-- Merge to main branch
-
-### Stage 4: Maintenance
-- Update with project changes
-- Keep last-updated date current
-- Link from related documents
-
-### Stage 5: Archival
-- Move to `/docs/archive/`
-- Keep version number in filename
-- Document reason for archival
-- Link from successor document
-
----
-
-## Quick Reference: Important Files
-
-| File | Purpose | Owner | Update Frequency |
-|------|---------|-------|------------------|
-| README.md | Project overview | PM | Weekly |
-| Training-Plan.md | Curriculum | Design Lead | As needed |
-| Development-Roadmap.md | Timeline & milestones | PM | Weekly |
-| Level-Generation-Technical-Spec.md | Gen system specs | Tech Lead | As needed |
-| Validation-QA-Suite.md | Testing framework | QA Lead | As needed |
-| Progress-Log.md | Status updates | PM | Weekly |
-| Known-Issues-Tracker.md | Bug database | QA Lead | Daily |
-| Architecture-Decisions.md | Technical decisions | Tech Lead | As needed |
-
----
-
-## Collaboration Best Practices
-
-### Before Creating a New Document
-1. Check if it already exists (search in `/docs/`)
-2. Consider if it should be a section in existing document
-3. Link from README if it's important
-
-### Writing Documentation
-1. Use clear, concise language
-2. Include examples and code snippets
-3. Link to related documents
-4. Keep it DRY (Don't Repeat Yourself)
-5. Add version control info
-
-### Updating Documentation
-1. Note the change in the document
-2. Update "Last Updated" date
-3. Increment version if major change
-4. Link from changelog if applicable
-5. Mention in team standup if significant
-
-### Managing Old Versions
-1. Don't delete old docs (Git history tracks them)
-2. Archive superseded docs in `/archive/`
-3. Add note: "This document has been superseded by [new-doc].md"
-4. Keep for reference (learning from past decisions)
-
----
-
-## Tools & Integration
-
-### GitHub Integration
-- Documents tracked in Git
-- Pull requests for significant changes
-- Branch protection on main
-- Auto-generated docs index (optional)
-
-### Search & Navigation
-- Use `README.md` as hub
-- Breadcrumb navigation in headers
-- Cross-linking between related docs
-- Consistent naming conventions
-
-### Automation (Future)
-- GitHub Actions to validate markdown
-- Auto-generate table of contents
-- PDF export for distribution
-- Version tagging for releases
-
----
-
-## Examples
-
-### Creating a New Assessment Module
-
-**File**: `Module-X-Assessment-Criteria.md`
-
-**Template**:
-```markdown
-# Module X: [Title] - Assessment Criteria
-
-## Module Overview
-[1-2 paragraphs]
-
-## Learning Objectives
-- Objective 1
-- Objective 2
-- ...
-
-## Assessment X.1: [Name]
-### Objective
-[Clear statement of what learner must demonstrate]
-
-### Requirements
-[Technical specs and design specs]
-
-### Success Criteria
-- ✅ Criterion 1
-- ✅ Criterion 2
-
-### Deliverables
-[List of files/artifacts]
-
-### Evaluation Rubric
-[Scoring table]
-
-**Pass Threshold**: [Score]
-
----
-
-## Module Completion Checklist
-- [ ] Assessment X.1 (PASS)
-- [ ] Assessment X.2 (PASS)
-- ...
-```
-
-### Creating a Living Document
-
-**File**: `Known-Issues-Tracker.md`
-
-**Template**:
-```markdown
-# Known Issues Tracker
-
-**Last Updated**: 2026-02-04
-**Total Open Issues**: 0
-**Critical**: 0 | **High**: 0 | **Medium**: 0 | **Low**: 0
-
-## Open Issues
-
-### [Priority] [Component]: [Issue Title]
-- **ID**: #123
-- **Status**: Open / In Progress / Resolved
-- **Reporter**: [Name]
-- **Date**: YYYY-MM-DD
-- **Description**: [Details]
-- **Impact**: [User/system impact]
-- **Assigned To**: [Name]
-
-## Resolved Issues (Archive)
-[Previous issues...]
-```
-
----
-
-## File Size Guidelines
-
-| File Type | Max Size | Notes |
-|-----------|----------|-------|
-| Markdown docs | 50 KB | Break into sections if larger |
-| Code files | 500 lines | Consider splitting if larger |
-| Test files | 300 lines | One test class per file |
-| Images | 500 KB | Compress sprites & diagrams |
-| JSON configs | 100 KB | Validate syntax |
-
----
-
-## Deprecation & Cleanup
-
-### When to Deprecate
-1. Document has been superseded
-2. Information is no longer accurate
-3. Better version exists
-4. No longer relevant to project
-
-### Deprecation Process
-1. Add notice at top of document
-2. Link to replacement/successor
-3. Move to `/archive/` folder
-4. Keep in Git history
-5. Note deprecation date
-
-**Example Notice**:
-```
-⚠️ **DEPRECATED**: This document has been superseded by 
-[New-Document.md](New-Document.md). 
-See that document for current information.
-
-*Last used: 2026-02-04 | Archived: 2026-03-15*
-```
-
----
-
-## Version Control Conventions
-
-### Commit Messages for Documentation
-```
-docs: [type] - [brief description]
-
-Examples:
-  docs: training - add Module 3 assessment criteria
-  docs: spec - update level generation algorithm
-  docs: roadmap - adjust timeline based on prototyping
-  docs: archive - move deprecated architecture doc
-```
-
-### Pull Request Template
-```markdown
-## Changes
-[What changed and why]
-
-## Related Issues
-Closes #[issue number]
-
-## Validation
-- [ ] All links working
-- [ ] No spelling/grammar errors
-- [ ] Consistent with style guide
-- [ ] Code examples tested (if applicable)
-```
-
----
-
-## Support & Questions
-
-**Question about file organization?** Ask in #documentation Slack channel.
-
-**Found outdated information?** Create an issue with tag `documentation`.
-
-**Have a better structure idea?** Propose in team meeting.
-
----
-
-**Version**: 1.0  
-**Last Updated**: 2026-02-04  
+**Version**: 2.1
+**Last Updated**: 2026-02-06
 **Status**: Active

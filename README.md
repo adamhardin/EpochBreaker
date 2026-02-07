@@ -67,13 +67,13 @@ Character and world evolve through all of human civilization:
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Engine | Unity 2022 LTS | Best balance of 2D support, dev velocity, community resources |
+| Engine | Unity 6000.3.6f1 | Best balance of 2D support, dev velocity, community resources |
 | Language | C# | Unity native |
 | PRNG | xorshift64* | Fast, deterministic, no platform-specific behavior |
 | Generation | Hybrid (PRNG terrain + grammar pacing + constraint validation) | Natural layouts with guaranteed playability |
 | iOS Target | iOS 15+ | Modern APIs, reasonable install base |
 | Minimum Device | iPhone 11 | 60 fps baseline target |
-| Audio | FMOD Studio | Professional audio integration |
+| Audio | Runtime-generated | All audio synthesized via AudioClip.Create() — zero imported assets |
 
 ---
 
@@ -98,41 +98,19 @@ Character and world evolve through all of human civilization:
 ```
 README.md                           <- You are here
 DOCUMENTATION-INDEX.md              <- Full document navigation
-PROJECT-LAUNCH-CHECKLIST.md         <- Phase-by-phase checklist
+GAME-DESIGN-REVIEW.md              <- Comprehensive design doc for expert review
+BUILD-LOG.md                        <- WebGL deployment history
 docs/
-  Training-Plan.md                  <- 10-module expert training curriculum
-  Development-Roadmap.md            <- Timeline, milestones
-  Engine-Selection-Rubric.md        <- Engine evaluation (Unity selected)
   PROJECT-STRUCTURE.md              <- Directory layout, conventions
   Level-Generation-Technical-Spec.md <- Generation architecture (CRITICAL)
   Level-Generation-Research-Guide.md <- Algorithm research & code examples
   Validation-QA-Suite.md            <- Test cases for gen system
-training/
-  module3/                          <- Game Design & Gamification
-    progression_system_design.md    <- 10-era progression system
-    monetization_strategy.md
-    retention_features_spec.md
-    difficulty_curve_spec.md
-    reward_system_spec.md
-  module4/                          <- Core Mechanics
-    combat_system_spec.md           <- Weapon attachment & auto-fire system
-    enemy_archetypes.md             <- Era-based enemy designs
-    boss_patterns.md                <- Era-based boss encounters
-    hazard_catalog.md               <- Destructible environment system
-    physics_spec.md
-    camera_system_spec.md
-  module5/                          <- Mobile UX
-    control_layout_spec.md          <- Two-thumb D-pad + buttons layout
-    ui_layout_spec.md
-    onboarding_flow.md
-    accessibility_spec.md
-    interruption_handling_spec.md
-  module6/                          <- Art & Audio
-    tileset_spec.md                 <- Era-based visual themes
-    animation_spec.md
-    music_spec.md                   <- Era-evolving soundtrack
-    sfx_spec.md                     <- Weapon & destruction SFX
-    parallax_spec.md
+  Expert-Review-Process.md          <- Consolidated review workflow
+  Expert-Review-Templates.md        <- Review intake & decision templates
+  Expert-Review-Report-v0.3.0.md    <- Latest expert review findings
+  Implementation-Plan-v0.4.0.md     <- Finalized implementation plan
+  Training-Plan.md                  <- 10-module expert training curriculum
+  archive/                          <- Historical docs (engine rubric, old roadmap, etc.)
 ```
 
 ---
@@ -217,5 +195,6 @@ The GitHub Actions workflow automatically deploys whenever the `gh-pages` branch
 
 ## Status
 
-**Current phase:** Playable prototype with 10 eras, 3 game modes, procedural levels
-**Last updated:** 2026-02-05
+**Current version:** v0.5.0 build 011
+**Current phase:** Playable prototype with 10 eras, 3 game modes, procedural levels, parallax backgrounds, ability system
+**Last updated:** 2026-02-06

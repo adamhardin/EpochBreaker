@@ -234,6 +234,9 @@ namespace EpochBreaker.Gameplay
         private Dictionary<RewardType, int> _rewardCounts = new Dictionary<RewardType, int>();
         private Dictionary<WeaponTier, int> _weaponCounts = new Dictionary<WeaponTier, int>();
 
+        // Combat tracking
+        public int ShotsFired { get; private set; }
+
         private bool _timerRunning;
 
         private LevelLoader _levelLoader;
@@ -268,6 +271,7 @@ namespace EpochBreaker.Gameplay
             _levelLoader = gameObject.AddComponent<LevelLoader>();
             gameObject.AddComponent<AudioManager>();
             gameObject.AddComponent<AchievementManager>();
+            gameObject.AddComponent<TutorialManager>();
 
             // Ensure EventSystem exists for UI interaction (using new Input System)
             if (FindAnyObjectByType<EventSystem>() == null)
@@ -365,6 +369,7 @@ namespace EpochBreaker.Gameplay
                     AudioManager.PlayMusic(PlaceholderAudio.GetGameplayMusic());
                     CreateHUD();
                     SaveSession(); // Persist so player can continue later
+                    ScreenFlash.Flash(Color.white, 0.4f); // Level start flash
                     break;
                 case GameState.Paused:
                     Time.timeScale = 0f;
@@ -374,18 +379,30 @@ namespace EpochBreaker.Gameplay
                     Time.timeScale = 1f;
                     _timerRunning = false;
                     _levelCompleteTime = Time.unscaledTime;
+
+                    // Compute 5-component score
                     TimeScore = CalculateScore(LevelElapsedTime);
-                    Score = TimeScore + ItemBonusScore + EnemyBonusScore;
+                    CombatMasteryScore = CalculateCombatMastery();
+                    ExplorationScore = CalculateExploration();
+                    PreservationScore = CalculatePreservation();
+                    Score = TimeScore + ItemBonusScore + EnemyBonusScore
+                          + CombatMasteryScore + ExplorationScore + PreservationScore;
                     TotalScore += Score;
                     SaveLevelToHistory();
 
+                    // Record wall-jump count from player for achievements
+                    var playerCtrl = FindAnyObjectByType<PlayerController>();
+                    if (playerCtrl != null)
+                        AchievementManager.Instance?.RecordWallJumps(playerCtrl.WallJumpsThisLevel);
+
                     // Record achievement progress
-                    int stars = GetStarRating(LevelElapsedTime);
+                    int stars = GetStarRating(Score);
                     AchievementManager.Instance?.RecordLevelComplete(
                         CurrentLevelID.Epoch, LevelElapsedTime, Score, stars);
 
                     AudioManager.StopMusic();
                     AudioManager.PlaySFX(PlaceholderAudio.GetLevelCompleteSFX());
+                    ScreenFlash.Flash(new Color(1f, 0.95f, 0.8f), 0.6f); // Gold flash
                     CreateLevelComplete();
                     break;
 
@@ -436,6 +453,12 @@ namespace EpochBreaker.Gameplay
                 CurrentEpoch = 0;
                 GlobalLives = 2;
                 CurrentLevelID = LevelID.GenerateRandom(0);
+
+                // Start tutorial if not yet completed
+                if (!TutorialManager.IsTutorialCompleted() && TutorialManager.Instance != null)
+                {
+                    TutorialManager.Instance.StartTutorial();
+                }
             }
 
             TransitionTo(GameState.Loading);
@@ -477,6 +500,17 @@ namespace EpochBreaker.Gameplay
 
         public void NextLevel()
         {
+            // Handle tutorial progression
+            if (TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive)
+            {
+                if (!TutorialManager.Instance.AdvanceToNextLevel())
+                {
+                    // Tutorial complete — continue to Campaign epoch 0
+                }
+                TransitionTo(GameState.Loading);
+                return;
+            }
+
             if (CurrentGameMode == GameMode.Campaign)
             {
                 CampaignEpoch++;
@@ -549,10 +583,14 @@ namespace EpochBreaker.Gameplay
 
         private void StartLevel()
         {
+            // Clear static caches from previous level
+            Projectile.ClearCachedRefs();
+            EnemyBase.ClearRegistry();
+
             LevelNumber++;
             DeathsThisLevel = 0;
-            // Per-level lives: in FreePlay, reset each level; in Campaign/Streak, use GlobalLives
-            LivesRemaining = (CurrentGameMode == GameMode.FreePlay) ? DEATHS_PER_LEVEL : DEATHS_PER_LEVEL;
+            // Per-level lives: in FreePlay, reset each level; in Campaign/Streak, deducted from GlobalLives
+            LivesRemaining = DEATHS_PER_LEVEL;
 
             // Generate level ID based on game mode
             if (CurrentLevelID.Seed == 0)
@@ -569,12 +607,37 @@ namespace EpochBreaker.Gameplay
             EnemiesKilled = 0;
             RewardsCollected = 0;
             WeaponsCollected = 0;
+            ShotsFired = 0;
+            BlocksDestroyed = 0;
+            RelicsDestroyed = 0;
             ItemBonusScore = 0;
             EnemyBonusScore = 0;
             TimeScore = 0;
+            CombatMasteryScore = 0;
+            ExplorationScore = 0;
+            PreservationScore = 0;
+            HiddenContentDiscovered = 0;
+            TotalHiddenContent = 0;
+            SecretAreasFound = 0;
+            TotalRelics = 0;
+            BossDefeated = false;
+            BestNoDamageStreak = 0;
+            _noDamageKillStreak = 0;
             _rewardCounts.Clear();
             _weaponCounts.Clear();
-            _levelLoader.LoadLevel(CurrentLevelID);
+
+            // Load tutorial level or normal level
+            if (TutorialManager.Instance != null && TutorialManager.Instance.IsTutorialActive)
+                _levelLoader.LoadTutorialLevel(TutorialManager.Instance.CurrentTutorialLevel);
+            else
+                _levelLoader.LoadLevel(CurrentLevelID);
+
+            // Set level totals from metadata
+            if (CurrentLevel != null)
+            {
+                TotalHiddenContent = CountHiddenContent(CurrentLevel);
+                TotalRelics = CurrentLevel.Metadata.TotalRelics;
+            }
 
             // Initialize achievements for this level
             if (CurrentLevel != null && AchievementManager.Instance != null)
@@ -588,23 +651,97 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Calculate score from elapsed time. Faster = higher score.
-        /// 0s = 10000, ~200s = 100 (minimum).
+        /// Calculate speed score from elapsed time. Faster = higher score.
+        /// Max 5000 (instant), minimum 500. Halved from v1 to balance with other components.
         /// </summary>
         public static int CalculateScore(float elapsed)
         {
-            return Mathf.Max(100, 10000 - (int)(elapsed * 50f));
+            return Mathf.Max(500, 5000 - (int)(elapsed * 25f));
         }
 
         /// <summary>
-        /// Get star rating from elapsed time.
-        /// 3 stars: under 60s, 2 stars: under 120s, 1 star: completed.
+        /// Get star rating based on total score.
+        /// Theoretical max ~19000. 3 stars >= 68%, 2 stars >= 39%, 1 star = completed.
         /// </summary>
-        public static int GetStarRating(float elapsed)
+        public static int GetStarRating(int score)
         {
-            if (elapsed < 60f) return 3;
-            if (elapsed < 120f) return 2;
+            if (score >= 13000) return 3;
+            if (score >= 7500) return 2;
             return 1;
+        }
+
+        /// <summary>
+        /// Calculate combat mastery score (max 5000).
+        /// Components: kill efficiency, no-damage streak, boss defeat.
+        /// </summary>
+        private int CalculateCombatMastery()
+        {
+            int score = 0;
+
+            // Kill efficiency: kills/shots ratio × 2000, capped at 2000
+            if (ShotsFired > 0)
+                score += Mathf.Min(2000, (int)((float)EnemiesKilled / ShotsFired * 2000f));
+            else if (EnemiesKilled > 0)
+                score += 2000; // Stomped all enemies with no shots = perfect efficiency
+
+            // No-damage kill streak: best streak × 150, capped at 1500
+            score += Mathf.Min(1500, BestNoDamageStreak * 150);
+
+            // Boss defeat bonus
+            if (BossDefeated) score += 1500;
+
+            return Mathf.Min(5000, score);
+        }
+
+        /// <summary>
+        /// Calculate exploration score (max 4000).
+        /// Components: hidden content discovery, secret areas.
+        /// </summary>
+        private int CalculateExploration()
+        {
+            int score = 0;
+
+            // Hidden content ratio: discovered/total × 2500
+            if (TotalHiddenContent > 0)
+                score += (int)((float)HiddenContentDiscovered / TotalHiddenContent * 2500f);
+
+            // Secret areas: 300 each, capped at 1500
+            score += Mathf.Min(1500, SecretAreasFound * 300);
+
+            return Mathf.Min(4000, score);
+        }
+
+        /// <summary>
+        /// Calculate archaeology score (max 2000).
+        /// Based on relics recovered (preserved relic tiles).
+        /// </summary>
+        private int CalculatePreservation()
+        {
+            int score = 0;
+
+            // Relics recovered: (preserved / total) × 2000
+            if (TotalRelics > 0)
+            {
+                int preserved = TotalRelics - RelicsDestroyed;
+                score += (int)((float)Mathf.Max(0, preserved) / TotalRelics * 2000f);
+            }
+
+            return Mathf.Min(2000, score);
+        }
+
+        /// <summary>
+        /// Count tiles with hidden content in a level.
+        /// </summary>
+        private static int CountHiddenContent(LevelData level)
+        {
+            if (level.Layout.Destructibles == null) return 0;
+            int count = 0;
+            for (int i = 0; i < level.Layout.Destructibles.Length; i++)
+            {
+                if (level.Layout.Destructibles[i].HiddenContent != HiddenContentType.None)
+                    count++;
+            }
+            return count;
         }
 
         /// <summary>
@@ -626,30 +763,51 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Record a weapon pickup. Returns the bonus score awarded (base * multiplier).
+        /// Record a weapon pickup with full type info. Returns the bonus score awarded.
         /// </summary>
-        public int CollectWeapon(WeaponTier tier)
+        public int CollectWeapon(WeaponType type, WeaponTier tier)
         {
             WeaponsCollected++;
             _weaponCounts.TryGetValue(tier, out int prev);
             int count = prev + 1;
             _weaponCounts[tier] = count;
 
-            int baseValue = GetWeaponBaseValue(tier);
+            int baseValue = WeaponDatabase.GetPickupScoreValue(type, tier);
             int bonus = baseValue * count;
             ItemBonusScore += bonus;
 
             AchievementManager.Instance?.RecordItemCollected();
             AchievementManager.Instance?.RecordWeaponAcquired(tier);
+            AchievementManager.Instance?.RecordWeaponTypeAcquired(type);
             return bonus;
         }
 
         /// <summary>
+        /// Legacy weapon collect method for backward compatibility.
+        /// </summary>
+        public int CollectWeapon(WeaponTier tier)
+        {
+            return CollectWeapon(WeaponType.Bolt, tier);
+        }
+
+        /// <summary>
+        /// Record a shot fired (for combat efficiency tracking).
+        /// </summary>
+        public void RecordShotFired()
+        {
+            ShotsFired++;
+        }
+
+        /// <summary>
         /// Record an enemy kill. Returns the bonus score awarded (100 * kill count).
+        /// Also tracks no-damage kill streak for combat mastery scoring.
         /// </summary>
         public int RecordEnemyKill()
         {
             EnemiesKilled++;
+            _noDamageKillStreak++;
+            BestNoDamageStreak = Mathf.Max(BestNoDamageStreak, _noDamageKillStreak);
+
             int bonus = 100 * EnemiesKilled;
             EnemyBonusScore += bonus;
 
@@ -657,20 +815,67 @@ namespace EpochBreaker.Gameplay
             return bonus;
         }
 
+        // Destruction tracking
+        public int BlocksDestroyed { get; private set; }
+        public int RelicsDestroyed { get; private set; }
+
+        // Sprint 4: Extended scoring — 5-component system
+        public int CombatMasteryScore { get; private set; }
+        public int ExplorationScore { get; private set; }
+        public int PreservationScore { get; private set; }
+        public int HiddenContentDiscovered { get; private set; }
+        public int TotalHiddenContent { get; private set; }
+        public int SecretAreasFound { get; private set; }
+        public int TotalRelics { get; private set; }
+        public bool BossDefeated { get; private set; }
+        public int BestNoDamageStreak { get; private set; }
+        public int CurrentNoDamageStreak => _noDamageKillStreak;
+        private int _noDamageKillStreak;
+
         /// <summary>
         /// Record a destructible block being destroyed (for achievements).
         /// </summary>
         public void RecordBlockDestroyed()
         {
+            BlocksDestroyed++;
             AchievementManager.Instance?.RecordBlockDestroyed();
         }
 
         /// <summary>
-        /// Record that the player took damage (for achievements).
+        /// Record a relic tile being destroyed (lost preservation score).
+        /// </summary>
+        public void RecordRelicDestroyed()
+        {
+            RelicsDestroyed++;
+        }
+
+        /// <summary>
+        /// Record that the player took damage (for achievements and scoring).
+        /// Resets no-damage kill streak for combat mastery.
         /// </summary>
         public void RecordPlayerDamage()
         {
+            _noDamageKillStreak = 0;
             AchievementManager.Instance?.RecordDamageTaken();
+        }
+
+        /// <summary>
+        /// Record discovering hidden content in a destructible tile.
+        /// </summary>
+        public void RecordHiddenContentFound(HiddenContentType type)
+        {
+            HiddenContentDiscovered++;
+            if (type == HiddenContentType.Secret)
+                SecretAreasFound++;
+        }
+
+        /// <summary>
+        /// Record boss defeated (1500 combat mastery bonus).
+        /// </summary>
+        public void RecordBossDefeated()
+        {
+            BossDefeated = true;
+            AchievementManager.Instance?.RecordBossDefeated();
         }
 
         /// <summary>
@@ -701,15 +906,12 @@ namespace EpochBreaker.Gameplay
             }
         }
 
-        private static int GetWeaponBaseValue(WeaponTier tier)
+        /// <summary>
+        /// Award boss kill score directly without inflating kill streak.
+        /// </summary>
+        public void RecordBossKillScore(int bonus)
         {
-            switch (tier)
-            {
-                case WeaponTier.Starting: return 100;
-                case WeaponTier.Medium: return 200;
-                case WeaponTier.Heavy: return 300;
-                default: return 100;
-            }
+            EnemyBonusScore += bonus;
         }
 
         // =====================================================================
@@ -736,7 +938,7 @@ namespace EpochBreaker.Gameplay
                 Epoch = CurrentLevelID.Epoch,
                 EpochName = CurrentLevelID.EpochName,
                 Score = Score,
-                Stars = GetStarRating(LevelElapsedTime),
+                Stars = GetStarRating(Score),
                 PlayedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
             };
 
@@ -850,6 +1052,11 @@ namespace EpochBreaker.Gameplay
         {
             _hudObj = new GameObject("GameplayHUD");
             AddUI(_hudObj, "EpochBreaker.UI.GameplayHUD");
+
+            // Tutorial hint overlay (only visible during active tutorial)
+            var tutorialHintObj = new GameObject("TutorialHintUI");
+            tutorialHintObj.transform.SetParent(_hudObj.transform);
+            AddUI(tutorialHintObj, "EpochBreaker.UI.TutorialHintUI");
 
             _touchControlsObj = new GameObject("TouchControls");
             AddUI(_touchControlsObj, "EpochBreaker.UI.TouchControlsUI");
@@ -1027,14 +1234,23 @@ namespace EpochBreaker.Gameplay
         /// Add a UI component by type name via reflection.
         /// Avoids compile-time dependency on UI assembly from gameplay assembly.
         /// </summary>
+        private static readonly Dictionary<string, System.Type> _uiTypeCache = new Dictionary<string, System.Type>();
+
         private static void AddUI(GameObject go, string typeName)
         {
-            foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+            if (!_uiTypeCache.TryGetValue(typeName, out var cachedType))
             {
-                var t = asm.GetType(typeName);
-                if (t != null) { go.AddComponent(t); return; }
+                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    cachedType = asm.GetType(typeName);
+                    if (cachedType != null) break;
+                }
+                _uiTypeCache[typeName] = cachedType;
             }
-            Debug.LogWarning($"UI type not found: {typeName}");
+            if (cachedType != null)
+                go.AddComponent(cachedType);
+            else
+                Debug.LogWarning($"UI type not found: {typeName}");
         }
     }
 }

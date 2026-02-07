@@ -23,20 +23,40 @@ namespace EpochBreaker.Gameplay
 
         // Movement
         private float _moveSpeed = 2.5f;
+        private float _baseMoveSpeed = 2.5f;
         private int _direction = 1;
         private float _arenaMinX;
         private float _arenaMaxX;
 
         // Combat
         private float _attackCooldown = 2.0f;
+        private float _baseAttackCooldown = 2.0f;
         private float _attackTimer;
         private float _chargeSpeed = 6f;
+        private float _baseChargeSpeed = 6f;
         private bool _isCharging;
         private float _chargeTimer;
         private const float CHARGE_DURATION = 0.8f;
 
+        // Slow effect
+        private float _slowFactor = 1f;
+        private float _slowTimer;
+        private Color _baseColor = Color.white;
+
         // Phase system (changes behavior at health thresholds)
         private int _currentPhase = 1;
+
+        // DPS cap and phase timing
+        private float _phaseTimer; // Time spent in current phase
+        private const float MIN_PHASE_DURATION = 5f; // Minimum seconds per phase
+        private float _recentDamage; // Damage taken recently, decays continuously
+        private const float MAX_DPS = 15f; // Max damage per second
+
+        // Arena pillar shelter (Phase 3 mechanic replacing shield)
+        private bool _isSheltered; // Boss is behind a pillar, immune to damage
+        private ArenaPillar _currentPillar; // Pillar the boss is sheltering behind
+        private float _shelterTimer; // Timer until next shelter attempt
+        private const float SHELTER_INTERVAL = 6f; // Seconds between shelter attempts
 
         public void Initialize(BossType type, LevelRenderer tilemapRenderer, float arenaMinX, float arenaMaxX)
         {
@@ -45,15 +65,53 @@ namespace EpochBreaker.Gameplay
             _arenaMinX = arenaMinX;
             _arenaMaxX = arenaMaxX;
 
-            // Boss health scales with era (type value 0-9)
-            // Much higher than regular enemies to make bosses feel like a real fight
+            // Use DifficultyProfile for epoch-scaled boss HP
             int era = (int)type;
-            MaxHealth = 100 + era * 20; // 100-280 HP based on era
+            var diff = Generative.DifficultyProfile.GetParams(era);
+            MaxHealth = diff.BossHp;
             Health = MaxHealth;
 
             // Movement speed increases slightly with era
             _moveSpeed = 2.0f + era * 0.15f;
+            _baseMoveSpeed = _moveSpeed;
             _chargeSpeed = 5f + era * 0.3f;
+            _baseChargeSpeed = _chargeSpeed;
+
+            _baseAttackCooldown = _attackCooldown;
+            _phaseTimer = 0f;
+            _recentDamage = 0f;
+            _isSheltered = false;
+            _currentPillar = null;
+            _shelterTimer = SHELTER_INTERVAL;
+        }
+
+        /// <summary>
+        /// Fully reset boss state (called on player respawn in boss arena).
+        /// </summary>
+        public void ResetBoss()
+        {
+            if (IsDead) return;
+
+            Health = MaxHealth;
+            _currentPhase = 1;
+            _phaseTimer = 0f;
+            _recentDamage = 0f;
+            _isSheltered = false;
+            _currentPillar = null;
+            _shelterTimer = SHELTER_INTERVAL;
+            _slowTimer = 0f;
+            _slowFactor = 1f;
+            _moveSpeed = _baseMoveSpeed;
+            _chargeSpeed = _baseChargeSpeed;
+            _attackCooldown = _baseAttackCooldown;
+            _isCharging = false;
+            _chargeTimer = 0f;
+            _attackTimer = _baseAttackCooldown; // Full cooldown before first attack
+            IsActive = false;
+
+            if (_sr != null)
+                _sr.color = Color.white;
+            _baseColor = Color.white;
         }
 
         private void Start()
@@ -61,6 +119,12 @@ namespace EpochBreaker.Gameplay
             _rb = GetComponent<Rigidbody2D>();
             _sr = GetComponent<SpriteRenderer>();
             _playerTransform = GameObject.FindWithTag("Player")?.transform;
+            EnemyBase.Register(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            EnemyBase.Unregister(gameObject);
         }
 
         /// <summary>
@@ -79,6 +143,12 @@ namespace EpochBreaker.Gameplay
         {
             if (IsDead || !IsActive) return;
             if (GameManager.Instance?.CurrentState != GameState.Playing) return;
+
+            // Lazy re-find player if reference was lost (e.g., player respawn)
+            if (_playerTransform == null)
+                _playerTransform = GameObject.FindWithTag("Player")?.transform;
+
+            UpdateSlow();
 
             // Check for phase transitions
             UpdatePhase();
@@ -100,17 +170,26 @@ namespace EpochBreaker.Gameplay
 
         private void UpdatePhase()
         {
+            _phaseTimer += Time.fixedDeltaTime;
+
+            // Continuous DPS decay: damage falls off smoothly over 1 second
+            // Prevents burst exploit at fixed-window boundaries
+            _recentDamage = Mathf.Max(0f, _recentDamage - MAX_DPS * Time.fixedDeltaTime);
+
             float healthPercent = (float)Health / MaxHealth;
 
-            if (healthPercent <= 0.33f && _currentPhase < 3)
-            {
-                _currentPhase = 3;
-                OnPhaseChange(3);
-            }
-            else if (healthPercent <= 0.66f && _currentPhase < 2)
+            // Enforce minimum phase duration before transitioning (sequential: 1→2→3)
+            if (_currentPhase == 1 && healthPercent <= 0.66f && _phaseTimer >= MIN_PHASE_DURATION)
             {
                 _currentPhase = 2;
+                _phaseTimer = 0f;
                 OnPhaseChange(2);
+            }
+            else if (_currentPhase == 2 && healthPercent <= 0.33f && _phaseTimer >= MIN_PHASE_DURATION)
+            {
+                _currentPhase = 3;
+                _phaseTimer = 0f;
+                OnPhaseChange(3);
             }
         }
 
@@ -213,7 +292,7 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Phase 3: Desperate, constant attacks
+        /// Phase 3: Desperate, constant attacks. Periodically shelters behind arena pillars.
         /// </summary>
         private void UpdatePhase3()
         {
@@ -225,7 +304,47 @@ namespace EpochBreaker.Gameplay
                 return;
             }
 
-            // Aggressively chase
+            // Shelter logic: periodically hide behind nearest pillar
+            if (_isSheltered)
+            {
+                // Defensive: if pillar reference became invalid, break shelter
+                if (_currentPillar == null || _currentPillar.IsDestroyed)
+                {
+                    _isSheltered = false;
+                    _currentPillar = null;
+                    _shelterTimer = SHELTER_INTERVAL;
+                    // Fall through to normal Phase 3 behavior
+                }
+                else
+                {
+                    // While sheltered: stationary, still shoots
+                    _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y);
+
+                    // Shelter tint
+                    if (_sr != null)
+                        _sr.color = new Color(0.5f, 0.7f, 1f); // Blue shield visual
+
+                    // Still shoot while sheltered
+                    _attackTimer -= Time.fixedDeltaTime;
+                    if (_attackTimer <= 0f && _playerTransform != null)
+                    {
+                        ShootAtPlayer();
+                        _attackTimer = _attackCooldown * 0.7f;
+                    }
+                    return;
+                }
+            }
+
+            // Try to shelter behind a pillar periodically
+            _shelterTimer -= Time.fixedDeltaTime;
+            if (_shelterTimer <= 0f)
+            {
+                _shelterTimer = SHELTER_INTERVAL;
+                TryShelterBehindPillar();
+                if (_isSheltered) return;
+            }
+
+            // Normal Phase 3: aggressively chase
             if (_playerTransform != null)
             {
                 float dir = Mathf.Sign(_playerTransform.position.x - transform.position.x);
@@ -254,6 +373,69 @@ namespace EpochBreaker.Gameplay
                     StartCharge();
                 }
                 _attackTimer = _attackCooldown * 0.5f;
+            }
+        }
+
+        /// <summary>
+        /// Find and move to the nearest standing arena pillar.
+        /// </summary>
+        private void TryShelterBehindPillar()
+        {
+            var pillars = FindObjectsByType<ArenaPillar>(FindObjectsSortMode.None);
+            if (pillars == null || pillars.Length == 0) return;
+
+            ArenaPillar nearest = null;
+            float nearestDist = float.MaxValue;
+
+            foreach (var pillar in pillars)
+            {
+                if (pillar.IsDestroyed) continue;
+                float dist = Mathf.Abs(pillar.transform.position.x - transform.position.x);
+                if (dist < nearestDist)
+                {
+                    nearestDist = dist;
+                    nearest = pillar;
+                }
+            }
+
+            if (nearest == null) return;
+
+            // Snap to pillar position (behind it relative to player)
+            _currentPillar = nearest;
+            _isSheltered = true;
+
+            float pillarX = nearest.transform.position.x;
+            if (_playerTransform != null)
+            {
+                float playerDir = Mathf.Sign(_playerTransform.position.x - pillarX);
+                // Move to opposite side of pillar from player, clamped to arena
+                float shelterX = pillarX - playerDir * 1.5f;
+                shelterX = Mathf.Clamp(shelterX, _arenaMinX + 2f, _arenaMaxX - 2f);
+                transform.position = new Vector3(
+                    shelterX,
+                    transform.position.y,
+                    transform.position.z);
+            }
+        }
+
+        /// <summary>
+        /// Called by ArenaPillar when it is destroyed.
+        /// Breaks shelter and resumes normal Phase 3 behavior.
+        /// </summary>
+        public void OnPillarDestroyed(ArenaPillar pillar)
+        {
+            if (_currentPillar == pillar)
+            {
+                _isSheltered = false;
+                _currentPillar = null;
+                _shelterTimer = SHELTER_INTERVAL;
+
+                // Reset visual
+                if (_sr != null)
+                {
+                    float tint = 1f - (_currentPhase - 1) * 0.15f;
+                    _sr.color = new Color(1f, tint, tint);
+                }
             }
         }
 
@@ -368,14 +550,57 @@ namespace EpochBreaker.Gameplay
             proj.Initialize(direction, 5f, 2, true); // 2 damage for boss projectiles
         }
 
+        /// <summary>
+        /// Apply a slow effect. Bosses resist slow somewhat (caller should reduce factor).
+        /// </summary>
+        public void ApplySlow(float factor, float duration)
+        {
+            _slowFactor = Mathf.Min(_slowFactor, factor);
+            _slowTimer = Mathf.Max(_slowTimer, duration);
+            _moveSpeed = _baseMoveSpeed * _slowFactor;
+            _chargeSpeed = _baseChargeSpeed * _slowFactor;
+
+            // Blue-purple tint to indicate slowed
+            _baseColor = new Color(0.6f, 0.5f, 1f);
+        }
+
+        private void UpdateSlow()
+        {
+            if (_slowTimer <= 0f) return;
+
+            _slowTimer -= Time.fixedDeltaTime;
+            if (_slowTimer <= 0f)
+            {
+                _slowFactor = 1f;
+                _moveSpeed = _baseMoveSpeed;
+                _chargeSpeed = _baseChargeSpeed;
+                _baseColor = Color.white;
+            }
+        }
+
         public void TakeDamage(int amount)
         {
             // Boss is immune to damage until activated
             if (IsDead || !IsActive) return;
 
+            // Sheltered behind pillar: immune to damage
+            if (_isSheltered && _currentPillar != null && !_currentPillar.IsDestroyed)
+                return;
+
+            // DPS cap: ignore excess damage beyond MAX_DPS per second
+            if (_recentDamage >= MAX_DPS)
+                return;
+            float remaining = MAX_DPS - _recentDamage;
+            amount = Mathf.Min(amount, (int)remaining);
+            if (amount <= 0) return;
+            _recentDamage += amount;
+
             Health -= amount;
 
             AudioManager.PlaySFX(PlaceholderAudio.GetEnemyHitSFX());
+
+            // Screen shake scales with damage
+            CameraController.Instance?.Shake(0.05f * amount, 0.15f);
 
             // Flash white
             if (_sr != null)
@@ -393,7 +618,9 @@ namespace EpochBreaker.Gameplay
             if (_sr != null)
             {
                 float tint = 1f - (_currentPhase - 1) * 0.15f;
-                _sr.color = new Color(1f, tint, tint);
+                Color phaseColor = new Color(1f, tint, tint);
+                // Blend phase color with slow tint
+                _sr.color = _slowTimer > 0f ? Color.Lerp(phaseColor, _baseColor, 0.5f) : phaseColor;
             }
         }
 
@@ -403,13 +630,17 @@ namespace EpochBreaker.Gameplay
 
             if (GameManager.Instance != null)
             {
-                // Record boss kill (counts as multiple kills for achievements)
-                for (int i = 0; i < 5; i++)
-                    GameManager.Instance.RecordEnemyKill();
+                // Record boss defeat for scoring and achievements
+                GameManager.Instance.RecordBossDefeated();
+
+                // Boss kill awards score directly (500 bonus) without inflating kill streak
+                GameManager.Instance.EnemiesKilled++;
+                GameManager.Instance.RecordBossKillScore(500);
             }
 
-            // Epic boss death sound
+            // Epic boss death sound + big shake
             AudioManager.PlaySFX(PlaceholderAudio.GetBossDeathSFX());
+            CameraController.Instance?.Shake(0.3f, 0.5f);
 
             // Stop movement
             if (_rb != null)
@@ -467,6 +698,9 @@ namespace EpochBreaker.Gameplay
 
         private void OnCollisionEnter2D(Collision2D collision)
         {
+            // No collision effects when dead or inactive
+            if (IsDead || !IsActive) return;
+
             // Boss damages player on contact
             if (collision.gameObject.CompareTag("Player"))
             {
@@ -477,8 +711,10 @@ namespace EpochBreaker.Gameplay
                 }
             }
             // Reverse direction when hitting a wall/obstacle (prevents getting stuck)
-            else if (!collision.gameObject.CompareTag("Player"))
+            else
             {
+                // Don't reverse on pillar contact — boss should walk through/past pillars
+                if (collision.gameObject.GetComponent<ArenaPillar>() != null) return;
                 _direction = -_direction;
                 if (_isCharging) EndCharge();
             }

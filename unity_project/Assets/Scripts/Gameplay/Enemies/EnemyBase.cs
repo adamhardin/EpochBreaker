@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using EpochBreaker.Generative;
 
 namespace EpochBreaker.Gameplay
@@ -9,6 +10,13 @@ namespace EpochBreaker.Gameplay
     /// </summary>
     public class EnemyBase : MonoBehaviour
     {
+        // Static registry of all active enemies (avoids FindGameObjectsWithTag allocations)
+        private static readonly List<GameObject> s_activeEnemies = new List<GameObject>();
+        public static IReadOnlyList<GameObject> ActiveEnemies => s_activeEnemies;
+        public static void ClearRegistry() => s_activeEnemies.Clear();
+        public static void Register(GameObject go) => s_activeEnemies.Add(go);
+        public static void Unregister(GameObject go) => s_activeEnemies.Remove(go);
+
         public EnemyType Type { get; private set; }
         public EnemyBehavior Behavior { get; private set; }
         public int Health { get; private set; } = 3;
@@ -17,15 +25,23 @@ namespace EpochBreaker.Gameplay
         private int _patrolMinX;
         private int _patrolMaxX;
         private float _moveSpeed = 2f;
+        private float _baseMoveSpeed = 2f;
         private int _direction = 1;
         private Rigidbody2D _rb;
         private SpriteRenderer _sr;
         private LevelRenderer _tilemapRenderer;
         private Transform _playerTransform;
+        private Color _baseColor = Color.white;
+        private Color _originalColor = Color.white;
+
+        // Slow effect
+        private float _slowFactor = 1f;
+        private float _slowTimer;
 
         // Chase behavior
         private float _chaseRange = 8f;
         private float _chaseSpeed = 3.5f;
+        private float _baseChaseSpeed = 3.5f;
 
         // Shooter behavior
         private float _shootCooldown = 1.5f;
@@ -45,12 +61,23 @@ namespace EpochBreaker.Gameplay
             _patrolMaxX = data.PatrolMaxX;
             _tilemapRenderer = tilemapRenderer;
 
-            // Scale health with difficulty weight
-            Health = Mathf.Max(1, Mathf.RoundToInt(data.DifficultyWeight));
+            // Apply difficulty scaling from epoch profile
+            int era = (int)data.Type / 3;
+            var diff = Generative.DifficultyProfile.GetParams(era);
+
+            // Scale health with difficulty weight × HP multiplier
+            Health = Mathf.Max(1, Mathf.RoundToInt(data.DifficultyWeight * diff.EnemyHpMultiplier * 3f));
+
+            // Scale movement speed
+            _moveSpeed *= diff.EnemySpeedMultiplier;
+            _chaseSpeed *= diff.EnemySpeedMultiplier;
 
             // Shooter enemies are slower but shoot
             if (Behavior == EnemyBehavior.Stationary)
                 _moveSpeed = 0f;
+
+            _baseMoveSpeed = _moveSpeed;
+            _baseChaseSpeed = _chaseSpeed;
 
             if (Behavior == EnemyBehavior.Flying)
             {
@@ -64,7 +91,15 @@ namespace EpochBreaker.Gameplay
         {
             _rb = GetComponent<Rigidbody2D>();
             _sr = GetComponent<SpriteRenderer>();
+            if (_sr != null)
+                _originalColor = _sr.color;
             _playerTransform = GameObject.FindWithTag("Player")?.transform;
+            Register(gameObject);
+        }
+
+        private void OnDestroy()
+        {
+            Unregister(gameObject);
         }
 
         private void FixedUpdate()
@@ -78,6 +113,9 @@ namespace EpochBreaker.Gameplay
                 if (_rb != null) _rb.linearVelocity = new Vector2(0, _rb.linearVelocity.y);
                 return;
             }
+
+            // Update slow effect
+            UpdateSlow();
 
             switch (Behavior)
             {
@@ -229,6 +267,38 @@ namespace EpochBreaker.Gameplay
             proj.Initialize(dir, 6f, 1, true);
         }
 
+        /// <summary>
+        /// Apply a slow effect that reduces movement speed for a duration.
+        /// Stacks by refreshing duration; takes the strongest slow factor.
+        /// </summary>
+        public void ApplySlow(float factor, float duration)
+        {
+            _slowFactor = Mathf.Min(_slowFactor, factor);
+            _slowTimer = Mathf.Max(_slowTimer, duration);
+            _moveSpeed = _baseMoveSpeed * _slowFactor;
+            _chaseSpeed = _baseChaseSpeed * _slowFactor;
+
+            // Blue tint to indicate slowed
+            if (_sr != null)
+                _baseColor = new Color(0.5f, 0.7f, 1f);
+        }
+
+        private void UpdateSlow()
+        {
+            if (_slowTimer <= 0f) return;
+
+            _slowTimer -= Time.fixedDeltaTime;
+            if (_slowTimer <= 0f)
+            {
+                _slowFactor = 1f;
+                _moveSpeed = _baseMoveSpeed;
+                _chaseSpeed = _baseChaseSpeed;
+                _baseColor = _originalColor;
+                if (_sr != null)
+                    _sr.color = _originalColor;
+            }
+        }
+
         public void TakeDamage(int amount)
         {
             if (IsDead) return;
@@ -251,7 +321,7 @@ namespace EpochBreaker.Gameplay
         private void ResetColor()
         {
             if (_sr != null)
-                _sr.color = Color.white;
+                _sr.color = _baseColor;
         }
 
         private void Die()
@@ -262,6 +332,12 @@ namespace EpochBreaker.Gameplay
                 GameManager.Instance.RecordEnemyKill();
 
             AudioManager.PlaySFX(PlaceholderAudio.GetEnemyDieSFX());
+
+            // Screen shake on enemy death
+            CameraController.Instance?.Shake(0.08f, 0.12f);
+
+            // Spawn death particles
+            SpawnDeathParticles();
 
             // Simple death: destroy after brief delay
             if (_rb != null)
@@ -274,6 +350,44 @@ namespace EpochBreaker.Gameplay
                 _sr.color = new Color(1f, 1f, 1f, 0.3f);
 
             Destroy(gameObject, 0.3f);
+        }
+
+        private void SpawnDeathParticles()
+        {
+            int era = (int)Type / 3;
+            Color particleColor = PlaceholderAssets.GetEraBodyColor(era);
+
+            // Death flash (bright, short-lived)
+            var flashGO = new GameObject("DeathFlash");
+            flashGO.transform.position = transform.position;
+            var flashSR = flashGO.AddComponent<SpriteRenderer>();
+            flashSR.sprite = PlaceholderAssets.GetParticleSprite();
+            flashSR.color = new Color(1f, 1f, 0.9f, 0.9f);
+            flashSR.sortingOrder = 16;
+            flashGO.transform.localScale = Vector3.one * 1.5f;
+            Destroy(flashGO, 0.06f);
+
+            // Burst particles
+            int count = Random.Range(5, 8);
+            for (int i = 0; i < count; i++)
+            {
+                var go = new GameObject("EnemyDeathParticle");
+                go.transform.position = transform.position + new Vector3(
+                    Random.Range(-0.2f, 0.2f), Random.Range(-0.2f, 0.2f), 0f);
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetParticleSprite();
+                sr.color = new Color(particleColor.r, particleColor.g, particleColor.b, 0.8f);
+                sr.sortingOrder = 15;
+                go.transform.localScale = Vector3.one * Random.Range(0.15f, 0.45f);
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = Random.Range(2f, 4f);
+                float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
+                float speed = Random.Range(3f, 7f);
+                rb.linearVelocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * speed;
+
+                Destroy(go, Random.Range(0.4f, 0.7f));
+            }
         }
     }
 }

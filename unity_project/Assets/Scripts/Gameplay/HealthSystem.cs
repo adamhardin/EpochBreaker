@@ -25,6 +25,7 @@ namespace EpochBreaker.Gameplay
 
         private PlayerController _player;
         private SpriteRenderer _spriteRenderer;
+        private bool _deathProcessing;
 
         private void Awake()
         {
@@ -76,6 +77,13 @@ namespace EpochBreaker.Gameplay
             OnDamage?.Invoke();
             AudioManager.PlaySFX(PlaceholderAudio.GetPlayerHurtSFX());
 
+            // Screen shake on player damage
+            CameraController.Instance?.Shake(0.15f, 0.2f);
+
+            // Brief white flash before i-frame flashing
+            if (_spriteRenderer != null)
+                _spriteRenderer.color = Color.white;
+
             // Notify achievement system that player took damage
             GameManager.Instance?.RecordPlayerDamage();
 
@@ -109,6 +117,7 @@ namespace EpochBreaker.Gameplay
         {
             CurrentHealth = MaxHealth;
             IsInvulnerable = false;
+            _deathProcessing = false;
             if (_spriteRenderer != null)
                 _spriteRenderer.color = Color.white;
             OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
@@ -116,6 +125,9 @@ namespace EpochBreaker.Gameplay
 
         private void Die()
         {
+            if (_deathProcessing) return;
+            _deathProcessing = true;
+
             OnDeath?.Invoke();
 
             // Play death sound
@@ -191,6 +203,18 @@ namespace EpochBreaker.Gameplay
                 _player.IsAlive = true;
                 ResetHealth();
                 GrantSpawnProtection();
+
+                // Reset boss if player respawns in boss arena
+                var loader = GameManager.Instance?.GetComponent<LevelLoader>();
+                if (loader != null && loader.CurrentBoss != null)
+                {
+                    loader.CurrentBoss.ResetBoss();
+                    loader.RespawnArenaPillars();
+
+                    // Re-enable arena trigger so boss reactivates on re-entry
+                    var trigger = FindAnyObjectByType<BossArenaTrigger>();
+                    trigger?.ResetTrigger();
+                }
             }
         }
 
