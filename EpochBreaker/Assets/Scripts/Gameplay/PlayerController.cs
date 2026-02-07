@@ -346,14 +346,14 @@ namespace EpochBreaker.Gameplay
                 : transform.position.x - _collider.size.x * 0.4f;
             Vector3 dustPos = new Vector3(wallX, transform.position.y + _collider.offset.y, 0f);
 
-            var dustGO = new GameObject("WallDust");
+            var dustGO = ObjectPool.GetFlash();
             dustGO.transform.position = dustPos;
-            var sr = dustGO.AddComponent<SpriteRenderer>();
+            var sr = dustGO.GetComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetProjectileSprite(Generative.WeaponTier.Starting);
             sr.color = new Color(0.8f, 0.8f, 0.7f, 0.5f);
             sr.sortingOrder = 5;
             dustGO.transform.localScale = Vector3.one * 0.3f;
-            Destroy(dustGO, 0.2f);
+            dustGO.GetComponent<PoolTimer>().StartTimer(0.2f);
         }
 
         /// <summary>

@@ -247,22 +247,22 @@ namespace EpochBreaker.Gameplay
             int count = Random.Range(3, 6);
             for (int i = 0; i < count; i++)
             {
-                var go = new GameObject("TileParticle");
+                var go = ObjectPool.GetParticle();
                 go.transform.position = worldPos + new Vector3(
                     Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f), 0f);
 
-                var sr = go.AddComponent<SpriteRenderer>();
+                var sr = go.GetComponent<SpriteRenderer>();
                 sr.sprite = PlaceholderAssets.GetParticleSprite();
                 sr.color = tileColor;
                 sr.sortingOrder = 15;
                 go.transform.localScale = Vector3.one * Random.Range(0.15f, 0.35f);
 
-                var rb = go.AddComponent<Rigidbody2D>();
+                var rb = go.GetComponent<Rigidbody2D>();
                 rb.gravityScale = 4f;
                 float angle = Random.Range(30f, 150f) * Mathf.Deg2Rad; // Bias upward
                 rb.linearVelocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * Random.Range(2f, 5f);
 
-                Object.Destroy(go, 0.6f);
+                go.GetComponent<PoolTimer>().StartTimer(0.6f);
             }
         }
 

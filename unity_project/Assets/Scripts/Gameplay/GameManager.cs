@@ -583,7 +583,8 @@ namespace EpochBreaker.Gameplay
 
         private void StartLevel()
         {
-            // Clear static caches from previous level
+            // Clear static caches and return all pooled objects from previous level
+            ObjectPool.ReturnAll();
             Projectile.ClearCachedRefs();
             EnemyBase.ClearRegistry();
 

@@ -245,25 +245,19 @@ namespace EpochBreaker.Gameplay
             Vector2 dir = ((Vector2)_playerTransform.position - (Vector2)transform.position).normalized;
             Vector3 spawnPos = transform.position + (Vector3)(dir * 1.0f);
 
-            var projGO = new GameObject("EnemyProjectile");
+            var projGO = ObjectPool.GetProjectile();
             projGO.transform.position = spawnPos;
-            projGO.layer = LayerMask.NameToLayer("Default");
 
-            var sr = projGO.AddComponent<SpriteRenderer>();
+            var sr = projGO.GetComponent<SpriteRenderer>();
             int era = (int)Type / 3;
             sr.sprite = PlaceholderAssets.GetProjectileSprite(WeaponTier.Starting, era);
             sr.color = new Color(1f, 0.5f, 0.5f); // Tinted red to distinguish from player projectiles
             sr.sortingOrder = 11;
 
-            var rb = projGO.AddComponent<Rigidbody2D>();
-            rb.bodyType = RigidbodyType2D.Kinematic;
-            rb.gravityScale = 0f;
-
-            var col = projGO.AddComponent<CircleCollider2D>();
+            var col = projGO.GetComponent<CircleCollider2D>();
             col.radius = 0.2f;
-            col.isTrigger = true;
 
-            var proj = projGO.AddComponent<Projectile>();
+            var proj = projGO.GetComponent<Projectile>();
             proj.Initialize(dir, 6f, 1, true);
         }
 
@@ -358,35 +352,35 @@ namespace EpochBreaker.Gameplay
             Color particleColor = PlaceholderAssets.GetEraBodyColor(era);
 
             // Death flash (bright, short-lived)
-            var flashGO = new GameObject("DeathFlash");
+            var flashGO = ObjectPool.GetFlash();
             flashGO.transform.position = transform.position;
-            var flashSR = flashGO.AddComponent<SpriteRenderer>();
+            var flashSR = flashGO.GetComponent<SpriteRenderer>();
             flashSR.sprite = PlaceholderAssets.GetParticleSprite();
             flashSR.color = new Color(1f, 1f, 0.9f, 0.9f);
             flashSR.sortingOrder = 16;
             flashGO.transform.localScale = Vector3.one * 1.5f;
-            Destroy(flashGO, 0.06f);
+            flashGO.GetComponent<PoolTimer>().StartTimer(0.06f);
 
             // Burst particles
             int count = Random.Range(5, 8);
             for (int i = 0; i < count; i++)
             {
-                var go = new GameObject("EnemyDeathParticle");
+                var go = ObjectPool.GetParticle();
                 go.transform.position = transform.position + new Vector3(
                     Random.Range(-0.2f, 0.2f), Random.Range(-0.2f, 0.2f), 0f);
-                var sr = go.AddComponent<SpriteRenderer>();
+                var sr = go.GetComponent<SpriteRenderer>();
                 sr.sprite = PlaceholderAssets.GetParticleSprite();
                 sr.color = new Color(particleColor.r, particleColor.g, particleColor.b, 0.8f);
                 sr.sortingOrder = 15;
                 go.transform.localScale = Vector3.one * Random.Range(0.15f, 0.45f);
 
-                var rb = go.AddComponent<Rigidbody2D>();
+                var rb = go.GetComponent<Rigidbody2D>();
                 rb.gravityScale = Random.Range(2f, 4f);
                 float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
                 float speed = Random.Range(3f, 7f);
                 rb.linearVelocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * speed;
 
-                Destroy(go, Random.Range(0.4f, 0.7f));
+                go.GetComponent<PoolTimer>().StartTimer(Random.Range(0.4f, 0.7f));
             }
         }
     }

@@ -536,26 +536,20 @@ namespace EpochBreaker.Gameplay
         {
             Vector3 spawnPos = transform.position + (Vector3)(direction * 1.5f);
 
-            var projGO = new GameObject("BossProjectile");
+            var projGO = ObjectPool.GetProjectile();
             projGO.transform.position = spawnPos;
-            projGO.layer = LayerMask.NameToLayer("Default");
 
-            var sr = projGO.AddComponent<SpriteRenderer>();
+            var sr = projGO.GetComponent<SpriteRenderer>();
             int era = (int)Type;
             sr.sprite = PlaceholderAssets.GetProjectileSprite(WeaponTier.Heavy, era);
             sr.color = new Color(1f, 0.4f, 0.9f); // Purple-pink tint for boss
             sr.sortingOrder = 11;
             projGO.transform.localScale = new Vector3(1.5f, 1.5f, 1f); // Larger projectiles
 
-            var rb = projGO.AddComponent<Rigidbody2D>();
-            rb.bodyType = RigidbodyType2D.Kinematic;
-            rb.gravityScale = 0f;
-
-            var col = projGO.AddComponent<CircleCollider2D>();
+            var col = projGO.GetComponent<CircleCollider2D>();
             col.radius = 0.3f;
-            col.isTrigger = true;
 
-            var proj = projGO.AddComponent<Projectile>();
+            var proj = projGO.GetComponent<Projectile>();
             proj.Initialize(direction, 5f, 2, true); // 2 damage for boss projectiles
         }
 

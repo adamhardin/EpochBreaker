@@ -44,6 +44,15 @@ namespace EpochBreaker.Gameplay
             _speed = speed;
             _damage = damage;
             _isEnemyProjectile = isEnemyProjectile;
+            _lifetime = 3f;
+            _hitEnemies?.Clear();
+            PierceRemaining = 0;
+            ChainRemaining = 0;
+            ChainRange = 0f;
+            SlowDuration = 0f;
+            SlowFactor = 1f;
+            BreaksAllMaterials = false;
+            WeaponTier = WeaponTier.Starting;
         }
 
         private void Update()
@@ -52,7 +61,7 @@ namespace EpochBreaker.Gameplay
 
             _lifetime -= Time.deltaTime;
             if (_lifetime <= 0f)
-                Destroy(gameObject);
+                ObjectPool.Return(gameObject);
         }
 
         private void OnTriggerEnter2D(Collider2D other)
@@ -65,7 +74,7 @@ namespace EpochBreaker.Gameplay
                     var health = other.GetComponent<HealthSystem>();
                     if (health != null)
                         health.TakeDamage(_damage, transform.position);
-                    Destroy(gameObject);
+                    ObjectPool.Return(gameObject);
                 }
             }
             else
@@ -91,7 +100,7 @@ namespace EpochBreaker.Gameplay
                         return;
                     }
 
-                    Destroy(gameObject);
+                    ObjectPool.Return(gameObject);
                     return;
                 }
 
@@ -128,7 +137,7 @@ namespace EpochBreaker.Gameplay
                             return; // Don't destroy
                         }
 
-                        Destroy(gameObject);
+                        ObjectPool.Return(gameObject);
                         return;
                     }
 
@@ -156,11 +165,11 @@ namespace EpochBreaker.Gameplay
                             return;
                         }
 
-                        Destroy(gameObject);
+                        ObjectPool.Return(gameObject);
                         return;
                     }
 
-                    Destroy(gameObject);
+                    ObjectPool.Return(gameObject);
                     return;
                 }
 
@@ -168,7 +177,7 @@ namespace EpochBreaker.Gameplay
                 if (!other.isTrigger)
                 {
                     TryDestroyTile();
-                    Destroy(gameObject);
+                    ObjectPool.Return(gameObject);
                 }
             }
         }
@@ -199,24 +208,19 @@ namespace EpochBreaker.Gameplay
             {
                 // Spawn chain arc projectile
                 Vector2 dir = ((Vector2)closestEnemy.transform.position - (Vector2)fromPos).normalized;
-                var chainGO = new GameObject("ChainProjectile");
+                var chainGO = ObjectPool.GetProjectile();
                 chainGO.transform.position = fromPos;
 
-                var sr = chainGO.AddComponent<SpriteRenderer>();
+                var sr = chainGO.GetComponent<SpriteRenderer>();
                 sr.sprite = PlaceholderAssets.GetProjectileSprite(WeaponTier);
                 sr.color = new Color(0.5f, 0.8f, 1f, 0.8f); // Electric blue
                 sr.sortingOrder = 11;
                 chainGO.transform.localScale = Vector3.one * 0.8f;
 
-                var rb = chainGO.AddComponent<Rigidbody2D>();
-                rb.bodyType = RigidbodyType2D.Kinematic;
-                rb.gravityScale = 0f;
-
-                var col = chainGO.AddComponent<CircleCollider2D>();
+                var col = chainGO.GetComponent<CircleCollider2D>();
                 col.radius = 0.15f;
-                col.isTrigger = true;
 
-                var chainProj = chainGO.AddComponent<Projectile>();
+                var chainProj = chainGO.GetComponent<Projectile>();
                 int chainDamage = Mathf.Max(1, (int)(_damage * 0.5f));
                 chainProj.Initialize(dir, _speed * 1.5f, chainDamage, false);
                 chainProj.WeaponTier = WeaponTier;

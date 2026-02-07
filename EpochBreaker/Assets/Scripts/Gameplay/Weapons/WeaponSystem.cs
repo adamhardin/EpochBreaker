@@ -285,16 +285,16 @@ namespace EpochBreaker.Gameplay
             Vector3 flashPos = transform.position + (Vector3)(dir * 0.7f);
             flashPos.y += 0.75f;
 
-            var go = new GameObject("MuzzleFlash");
+            var go = ObjectPool.GetFlash();
             go.transform.position = flashPos;
 
-            var sr = go.AddComponent<SpriteRenderer>();
+            var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetParticleSprite();
             sr.color = GetWeaponColor(ActiveWeaponType) * 2f; // Bright flash
             sr.sortingOrder = 12;
             go.transform.localScale = Vector3.one * 0.5f;
 
-            Destroy(go, 0.06f);
+            go.GetComponent<PoolTimer>().StartTimer(0.06f);
         }
 
         private void SpawnProjectile(Vector2 dir, WeaponStats stats, int damage, int epoch)
@@ -302,10 +302,10 @@ namespace EpochBreaker.Gameplay
             Vector3 spawnPos = transform.position + (Vector3)(dir * 0.6f);
             spawnPos.y += 0.75f;
 
-            var projGO = new GameObject("PlayerProjectile");
+            var projGO = ObjectPool.GetProjectile();
             projGO.transform.position = spawnPos;
 
-            var sr = projGO.AddComponent<SpriteRenderer>();
+            var sr = projGO.GetComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetProjectileSprite(ActiveWeaponTier, epoch);
             sr.sortingOrder = 11;
 
@@ -321,15 +321,10 @@ namespace EpochBreaker.Gameplay
             // Color tint per weapon type
             sr.color = GetWeaponColor(ActiveWeaponType);
 
-            var rb = projGO.AddComponent<Rigidbody2D>();
-            rb.bodyType = RigidbodyType2D.Kinematic;
-            rb.gravityScale = 0f;
-
-            var col = projGO.AddComponent<CircleCollider2D>();
+            var col = projGO.GetComponent<CircleCollider2D>();
             col.radius = 0.15f;
-            col.isTrigger = true;
 
-            var proj = projGO.AddComponent<Projectile>();
+            var proj = projGO.GetComponent<Projectile>();
             proj.Initialize(dir, stats.ProjectileSpeed, damage, false);
             proj.WeaponTier = ActiveWeaponTier;
             proj.PierceRemaining = stats.PierceCount;
