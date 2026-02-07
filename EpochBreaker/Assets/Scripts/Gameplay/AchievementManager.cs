@@ -114,7 +114,9 @@ namespace EpochBreaker.Gameplay
         private HashSet<Generative.WeaponTier> _weaponsAcquired;
         private HashSet<Generative.WeaponType> _weaponTypesAcquired;
         private bool _tookHazardDamage;
+        private int _levelHazardTiles;
         private bool _cannonOverheated;
+        private int _cannonShotsFired;
         private int _chainKillBest;
         private bool _usedNonCannonOnBoss;
 
@@ -161,7 +163,7 @@ namespace EpochBreaker.Gameplay
         /// <summary>
         /// Initialize achievements for a new level.
         /// </summary>
-        public void StartLevel(int totalDestructibleBlocks, int totalItems)
+        public void StartLevel(int totalDestructibleBlocks, int totalItems, int totalHazardTiles = 0)
         {
             _levelBlocksDestroyed = 0;
             _levelTotalBlocks = totalDestructibleBlocks;
@@ -174,7 +176,9 @@ namespace EpochBreaker.Gameplay
             _recentBlockDestroyCount = 0;
             _levelWallJumps = 0;
             _tookHazardDamage = false;
+            _levelHazardTiles = totalHazardTiles;
             _cannonOverheated = false;
+            _cannonShotsFired = 0;
             _chainKillBest = 0;
             _usedNonCannonOnBoss = false;
             _weaponsAcquired.Clear();
@@ -308,6 +312,14 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
+        /// Called when the Cannon fires a shot.
+        /// </summary>
+        public void RecordCannonShot()
+        {
+            _cannonShotsFired++;
+        }
+
+        /// <summary>
         /// Called when the Cannon overheats.
         /// </summary>
         public void RecordCannonOverheat()
@@ -390,13 +402,13 @@ namespace EpochBreaker.Gameplay
                 }
             }
 
-            // Hazard Dodger: no hazard damage taken
-            if (!_tookHazardDamage)
+            // Hazard Dodger: no hazard damage taken — only counts if level had 5+ hazard tiles
+            if (!_tookHazardDamage && _levelHazardTiles >= 5)
                 TryUnlock(AchievementType.HazardDodger);
 
             // Cool Under Pressure: completed without overheating Cannon
-            // Only relevant if player acquired and used Cannon
-            if (_weaponTypesAcquired.Contains(Generative.WeaponType.Cannon) && !_cannonOverheated)
+            // Only counts if Cannon was fired 3+ times
+            if (_weaponTypesAcquired.Contains(Generative.WeaponType.Cannon) && !_cannonOverheated && _cannonShotsFired >= 3)
                 TryUnlock(AchievementType.CoolUnderPressure);
 
             SaveAchievements();

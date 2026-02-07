@@ -40,8 +40,12 @@ namespace EpochBreaker.Gameplay
                 weapon.AcquireWeapon(Type, Tier);
             }
 
+            int bonus = 0;
             if (GameManager.Instance != null)
-                GameManager.Instance.CollectWeapon(Type, Tier);
+                bonus = GameManager.Instance.CollectWeapon(Type, Tier);
+
+            if (bonus > 0)
+                GameManager.ShowScorePopup(transform.position, bonus);
 
             AudioManager.PlaySFX(PlaceholderAudio.GetWeaponPickupSFX());
             Destroy(gameObject);

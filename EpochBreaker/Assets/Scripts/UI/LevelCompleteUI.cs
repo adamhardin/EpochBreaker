@@ -248,7 +248,19 @@ namespace EpochBreaker.UI
             CreateStatRow(_detailsPanel.transform, "Enemies", enemyStr, dRowY,
                 enemies > 0 ? statColor : new Color(0.5f, 0.5f, 0.6f));
 
-            _detailsPanel.SetActive(false);
+            // Tip based on lowest scoring component
+            string tip = GetTipForLowestComponent(timeScore, itemBonus + enemyBonus,
+                combatMastery, exploration, preservation);
+            if (!string.IsNullOrEmpty(tip))
+            {
+                CreateSmallText(_detailsPanel.transform, $"Tip: {tip}", dRowY - 30f,
+                    new Color(0.6f, 0.8f, 0.5f));
+            }
+
+            // First completion: auto-expand details
+            bool isFirst = gm?.IsFirstCompletion ?? false;
+            _detailsExpanded = isFirst;
+            _detailsPanel.SetActive(isFirst);
 
             // Items panel (right side)
             CreateItemsPanel(canvasGO.transform, gm);
@@ -545,6 +557,30 @@ namespace EpochBreaker.UI
             textRect.sizeDelta = Vector2.zero;
 
             return btn;
+        }
+
+        private static string GetTipForLowestComponent(int time, int items, int combat, int exploration, int preservation)
+        {
+            var scores = new (string tip, int value)[]
+            {
+                ("Go faster! Speed is a big part of your score.", time),
+                ("Collect more items and defeat more enemies.", items),
+                ("Aim for kill streaks without taking damage.", combat),
+                ("Explore hidden areas to boost your score.", exploration),
+                ("Preserve relic tiles by avoiding collateral damage.", preservation),
+            };
+
+            int minVal = int.MaxValue;
+            string bestTip = "";
+            foreach (var s in scores)
+            {
+                if (s.value < minVal)
+                {
+                    minVal = s.value;
+                    bestTip = s.tip;
+                }
+            }
+            return bestTip;
         }
 
         private static int GetBestScoreForLevel(string levelCode)

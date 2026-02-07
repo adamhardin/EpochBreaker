@@ -303,7 +303,10 @@ namespace EpochBreaker.Gameplay
 
             // Apply heat for Cannon
             if (ActiveWeaponType == WeaponType.Cannon)
+            {
                 _heatSystem.AddHeat();
+                AchievementManager.Instance?.RecordCannonShot();
+            }
 
             // Muzzle flash
             SpawnMuzzleFlash(baseDir);

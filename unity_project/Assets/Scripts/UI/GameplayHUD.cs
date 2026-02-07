@@ -46,12 +46,34 @@ namespace EpochBreaker.UI
         private float _bossBarFlashTimer;
         private int _lastBossHealth = -1;
 
+        // Score popups (pooled)
+        private const int POPUP_POOL_SIZE = 6;
+        private Text[] _popupTexts;
+        private float[] _popupTimers;
+        private Vector3[] _popupWorldPositions;
+
+        // Combo counter
+        private Text _comboText;
+
+        // Achievement toast
+        private Text _achievementText;
+        private float _achievementTimer;
+        private System.Collections.Generic.Queue<string> _achievementQueue
+            = new System.Collections.Generic.Queue<string>();
+
         private const int MAX_HEARTS = 5;
 
         private void Start()
         {
             CreateUI();
             FindPlayerHealth();
+
+            // Subscribe to score popup events
+            Gameplay.GameManager.OnScorePopup += HandleScorePopup;
+
+            // Subscribe to achievement unlock events
+            if (Gameplay.AchievementManager.Instance != null)
+                Gameplay.AchievementManager.Instance.OnAchievementUnlocked += HandleAchievementUnlock;
         }
 
         private void Update()
@@ -68,6 +90,9 @@ namespace EpochBreaker.UI
             UpdateQuickDraw();
             UpdateAutoSelectReason();
             UpdateDpsCapFeedback();
+            UpdateScorePopups();
+            UpdateComboCounter();
+            UpdateAchievementToast();
         }
 
         private void FindPlayerHealth()
@@ -90,6 +115,11 @@ namespace EpochBreaker.UI
         {
             if (_healthSystem != null)
                 _healthSystem.OnHealthChanged -= UpdateHearts;
+
+            Gameplay.GameManager.OnScorePopup -= HandleScorePopup;
+
+            if (Gameplay.AchievementManager.Instance != null)
+                Gameplay.AchievementManager.Instance.OnAchievementUnlocked -= HandleAchievementUnlock;
         }
 
         private void CreateUI()
@@ -263,6 +293,43 @@ namespace EpochBreaker.UI
                 livesRect.pivot = new Vector2(0, 1);
                 livesRect.anchoredPosition = new Vector2(20, livesY);
             }
+
+            // Score popup pool
+            _popupTexts = new Text[POPUP_POOL_SIZE];
+            _popupTimers = new float[POPUP_POOL_SIZE];
+            _popupWorldPositions = new Vector3[POPUP_POOL_SIZE];
+            for (int i = 0; i < POPUP_POOL_SIZE; i++)
+            {
+                var popGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+                _popupTexts[i] = popGO.GetComponent<Text>();
+                _popupTexts[i].fontSize = 22;
+                _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, 0f);
+                var popRect = popGO.GetComponent<RectTransform>();
+                popRect.sizeDelta = new Vector2(200, 30);
+            }
+
+            // Combo counter (center of screen, below crosshair area)
+            var comboGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+            _comboText = comboGO.GetComponent<Text>();
+            _comboText.fontSize = 36;
+            _comboText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var comboRect = comboGO.GetComponent<RectTransform>();
+            comboRect.anchorMin = new Vector2(0.5f, 0.5f);
+            comboRect.anchorMax = new Vector2(0.5f, 0.5f);
+            comboRect.pivot = new Vector2(0.5f, 0.5f);
+            comboRect.anchoredPosition = new Vector2(0, -150);
+
+            // Achievement toast (slide from top)
+            var achGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+            _achievementText = achGO.GetComponent<Text>();
+            _achievementText.fontSize = 20;
+            _achievementText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var achRect = achGO.GetComponent<RectTransform>();
+            achRect.anchorMin = new Vector2(0.5f, 1);
+            achRect.anchorMax = new Vector2(0.5f, 1);
+            achRect.pivot = new Vector2(0.5f, 1);
+            achRect.sizeDelta = new Vector2(400, 30);
+            achRect.anchoredPosition = new Vector2(0, 40); // Starts off-screen above
 
             // Boss health bar (hidden by default, shown when boss is active)
             CreateBossBar(canvasGO.transform);
@@ -793,6 +860,114 @@ namespace EpochBreaker.UI
             rect.sizeDelta = new Vector2(300, 30);
 
             return go;
+        }
+
+        private void HandleScorePopup(Vector3 worldPos, int score)
+        {
+            // Find an available popup slot
+            for (int i = 0; i < POPUP_POOL_SIZE; i++)
+            {
+                if (_popupTimers[i] <= 0f)
+                {
+                    _popupTexts[i].text = $"+{score}";
+                    _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, 1f);
+                    _popupTimers[i] = 1f;
+                    _popupWorldPositions[i] = worldPos + new Vector3(0, 0.5f, 0);
+                    return;
+                }
+            }
+        }
+
+        private void UpdateScorePopups()
+        {
+            if (_popupTexts == null) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            for (int i = 0; i < POPUP_POOL_SIZE; i++)
+            {
+                if (_popupTimers[i] > 0f)
+                {
+                    _popupTimers[i] -= Time.deltaTime;
+                    _popupWorldPositions[i] += new Vector3(0, 1.5f * Time.deltaTime, 0); // Drift up
+
+                    // Convert world → screen → canvas position
+                    Vector3 screenPos = cam.WorldToScreenPoint(_popupWorldPositions[i]);
+                    if (screenPos.z < 0) { _popupTimers[i] = 0f; continue; }
+
+                    var rect = _popupTexts[i].GetComponent<RectTransform>();
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                        _canvas.GetComponent<RectTransform>(), screenPos, null, out Vector2 localPos);
+                    rect.anchoredPosition = localPos;
+                    rect.anchorMin = new Vector2(0.5f, 0.5f);
+                    rect.anchorMax = new Vector2(0.5f, 0.5f);
+
+                    float alpha = Mathf.Clamp01(_popupTimers[i] / 0.4f);
+                    float scale = 1f + (1f - Mathf.Clamp01(_popupTimers[i])) * 0.3f;
+                    _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, alpha);
+                    _popupTexts[i].transform.localScale = new Vector3(scale, scale, 1f);
+                }
+                else
+                {
+                    _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, 0f);
+                }
+            }
+        }
+
+        private void UpdateComboCounter()
+        {
+            if (_comboText == null) return;
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            int combo = gm.ComboCount;
+            if (combo >= 2)
+            {
+                _comboText.text = $"x{combo} COMBO";
+                int fontSize = Mathf.Min(48, 30 + combo * 3);
+                _comboText.fontSize = fontSize;
+                _comboText.color = new Color(1f, 0.85f, 0.2f, 0.9f);
+            }
+            else
+            {
+                _comboText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            }
+        }
+
+        private void HandleAchievementUnlock(Gameplay.AchievementType type)
+        {
+            string name = Gameplay.AchievementManager.GetAchievementName(type);
+            _achievementQueue.Enqueue(name);
+        }
+
+        private void UpdateAchievementToast()
+        {
+            if (_achievementText == null) return;
+
+            if (_achievementTimer > 0f)
+            {
+                _achievementTimer -= Time.deltaTime;
+
+                // Slide in from top (y: 40 → -10)
+                float slideIn = Mathf.Clamp01(1f - (_achievementTimer - 2.5f) / 0.5f);
+                float slideOut = Mathf.Clamp01(_achievementTimer / 0.5f);
+                float y = Mathf.Lerp(40f, -10f, slideIn);
+                float alpha = slideOut;
+
+                var rect = _achievementText.GetComponent<RectTransform>();
+                rect.anchoredPosition = new Vector2(0, y);
+                _achievementText.color = new Color(1f, 0.85f, 0.2f, alpha);
+            }
+            else if (_achievementQueue.Count > 0)
+            {
+                string name = _achievementQueue.Dequeue();
+                _achievementText.text = $"ACHIEVEMENT: {name}";
+                _achievementTimer = 3f;
+            }
+            else
+            {
+                _achievementText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            }
         }
 
         private void CreatePauseButton(Transform parent)

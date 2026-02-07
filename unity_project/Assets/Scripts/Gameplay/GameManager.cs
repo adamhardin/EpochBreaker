@@ -271,6 +271,22 @@ namespace EpochBreaker.Gameplay
         // Combat tracking
         public int ShotsFired { get; private set; }
 
+        // Combo system: kills within 2s build a multiplier, reset on damage
+        public int ComboCount { get; private set; }
+        private float _comboTimer;
+        private const float COMBO_WINDOW = 2f;
+
+        // Score popup event: (world position, score value)
+        public static event Action<Vector3, int> OnScorePopup;
+
+        /// <summary>
+        /// Show a floating score popup at a world position.
+        /// </summary>
+        public static void ShowScorePopup(Vector3 worldPos, int score)
+        {
+            OnScorePopup?.Invoke(worldPos, score);
+        }
+
         private bool _timerRunning;
 
         private LevelLoader _levelLoader;
@@ -348,6 +364,13 @@ namespace EpochBreaker.Gameplay
                 case GameState.Playing:
                     if (_timerRunning)
                         LevelElapsedTime += Time.deltaTime;
+                    // Combo decay
+                    if (_comboTimer > 0f)
+                    {
+                        _comboTimer -= Time.deltaTime;
+                        if (_comboTimer <= 0f)
+                            ComboCount = 0;
+                    }
                     if (InputManager.PausePressed)
                         PauseGame();
                     break;
@@ -658,6 +681,8 @@ namespace EpochBreaker.Gameplay
             BossDefeated = false;
             BestNoDamageStreak = 0;
             _noDamageKillStreak = 0;
+            ComboCount = 0;
+            _comboTimer = 0f;
             _rewardCounts.Clear();
             _weaponCounts.Clear();
 
@@ -679,7 +704,8 @@ namespace EpochBreaker.Gameplay
             {
                 int totalDestructibles = CurrentLevel.Metadata.TotalDestructibleTiles;
                 int totalItems = CurrentLevel.Metadata.TotalRewards + CurrentLevel.Metadata.TotalWeaponDrops;
-                AchievementManager.Instance.StartLevel(totalDestructibles, totalItems);
+                int totalHazards = CurrentLevel.Metadata.TotalHazards;
+                AchievementManager.Instance.StartLevel(totalDestructibles, totalItems, totalHazards);
             }
 
             TransitionTo(GameState.Playing);
@@ -843,6 +869,13 @@ namespace EpochBreaker.Gameplay
             _noDamageKillStreak++;
             BestNoDamageStreak = Mathf.Max(BestNoDamageStreak, _noDamageKillStreak);
 
+            // Combo: kills within 2s build multiplier
+            if (_comboTimer > 0f)
+                ComboCount++;
+            else
+                ComboCount = 1;
+            _comboTimer = COMBO_WINDOW;
+
             int bonus = 100 * EnemiesKilled;
             EnemyBonusScore += bonus;
 
@@ -863,6 +896,7 @@ namespace EpochBreaker.Gameplay
         public int SecretAreasFound { get; private set; }
         public int TotalRelics { get; private set; }
         public bool BossDefeated { get; private set; }
+        public bool IsFirstCompletion { get; private set; }
         public int BestNoDamageStreak { get; private set; }
         public int CurrentNoDamageStreak => _noDamageKillStreak;
         private int _noDamageKillStreak;
@@ -891,6 +925,8 @@ namespace EpochBreaker.Gameplay
         public void RecordPlayerDamage()
         {
             _noDamageKillStreak = 0;
+            ComboCount = 0;
+            _comboTimer = 0f;
             AchievementManager.Instance?.RecordDamageTaken();
         }
 
@@ -966,6 +1002,7 @@ namespace EpochBreaker.Gameplay
             // Check if this code already exists (update it if so)
             string code = CurrentLevelID.ToCode();
             int existingIdx = history.Entries.FindIndex(e => e.Code == code);
+            IsFirstCompletion = existingIdx < 0;
 
             var entry = new LevelHistoryEntry
             {

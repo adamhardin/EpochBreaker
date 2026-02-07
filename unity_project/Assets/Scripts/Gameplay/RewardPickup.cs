@@ -56,8 +56,12 @@ namespace EpochBreaker.Gameplay
                 }
             }
 
+            int bonus = 0;
             if (GameManager.Instance != null)
-                GameManager.Instance.CollectReward(Type);
+                bonus = GameManager.Instance.CollectReward(Type);
+
+            if (bonus > 0)
+                GameManager.ShowScorePopup(transform.position, bonus);
 
             AudioManager.PlaySFX(PlaceholderAudio.GetRewardPickupSFX());
             Destroy(gameObject);

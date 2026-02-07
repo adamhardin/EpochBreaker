@@ -328,8 +328,13 @@ namespace EpochBreaker.Gameplay
         {
             IsDead = true;
 
+            int bonus = 0;
             if (GameManager.Instance != null)
-                GameManager.Instance.RecordEnemyKill();
+                bonus = GameManager.Instance.RecordEnemyKill();
+
+            // Score popup at enemy position
+            if (bonus > 0)
+                GameManager.ShowScorePopup(transform.position, bonus);
 
             AudioManager.PlaySFX(PlaceholderAudio.GetEnemyDieSFX());
 
