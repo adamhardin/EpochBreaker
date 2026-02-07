@@ -41,6 +41,18 @@ namespace EpochBreaker.Gameplay
         public string LastAutoSelectReason { get; private set; } = "";
         public float AutoSelectReasonTimer { get; private set; }
 
+        /// <summary>Number of distinct weapon types the player has collected.</summary>
+        public int AcquiredWeaponCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < SLOT_COUNT; i++)
+                    if (_slots[i].Acquired) count++;
+                return count;
+            }
+        }
+
         private void Awake()
         {
             _player = GetComponent<PlayerController>();

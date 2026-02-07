@@ -75,6 +75,12 @@ namespace EpochBreaker.Gameplay
         // Era-based behavior ratios (set in Initialize)
         private float _shootChance = 0.4f; // Chance to shoot vs charge in Phase 2+
 
+        // Boss variant: era-specific behavior
+        private BossVariant _variant;
+        private int _maxPhases;
+        private float _minionTimer;
+        private float _shockwaveTimer;
+
         public void Initialize(BossType type, LevelRenderer tilemapRenderer, float arenaMinX, float arenaMaxX)
         {
             Type = type;
@@ -105,6 +111,18 @@ namespace EpochBreaker.Gameplay
                 _shootChance = 0.65f;  // 65% shoot, 35% charge
             else
                 _shootChance = 0.5f;   // Era 9: balanced (teleport handled separately)
+
+            // Set boss variant based on era
+            _variant = (BossVariant)era;
+            _maxPhases = era <= 2 ? 2 : (era == 9 ? 4 : 3);
+
+            // Era 0-2: simple bosses (2 phases only)
+            if (era == 0) _shootChance = 0f; // charge-only
+            if (era <= 2)
+            {
+                _attackCooldown *= 1.3f; // slower cooldowns for early eras
+                _baseAttackCooldown = _attackCooldown;
+            }
 
             _phaseTimer = 0f;
             _recentDamage = 0f;
@@ -137,7 +155,12 @@ namespace EpochBreaker.Gameplay
             _isCharging = false;
             _chargeTimer = 0f;
             _attackTimer = _baseAttackCooldown; // Full cooldown before first attack
+            _minionTimer = 0f;
+            _shockwaveTimer = 0f;
             IsActive = false;
+
+            int era = (int)Type;
+            _maxPhases = era <= 2 ? 2 : (era == 9 ? 4 : 3);
 
             if (_sr != null)
                 _sr.color = Color.white;
@@ -180,6 +203,11 @@ namespace EpochBreaker.Gameplay
 
             UpdateSlow();
 
+            if (_minionTimer > 0f)
+                _minionTimer -= Time.fixedDeltaTime;
+            if (_shockwaveTimer > 0f)
+                _shockwaveTimer -= Time.fixedDeltaTime;
+
             // Phase invulnerability timer
             if (_phaseInvulnTimer > 0f)
                 _phaseInvulnTimer -= Time.fixedDeltaTime;
@@ -199,6 +227,18 @@ namespace EpochBreaker.Gameplay
                 case 3:
                     UpdatePhase3();
                     break;
+                case 4:
+                    UpdatePhase4();
+                    break;
+            }
+
+            // Boss breathing: scale pulse, faster in later phases
+            if (!IsDead)
+            {
+                float breathSpeed = 1.5f + (_currentPhase - 1) * 0.5f;
+                float breathAmount = 0.02f + (_currentPhase - 1) * 0.01f;
+                float breath = 1f + Mathf.Sin(Time.time * breathSpeed) * breathAmount;
+                transform.localScale = new Vector3(breath, breath, 1f);
             }
         }
 
@@ -212,18 +252,51 @@ namespace EpochBreaker.Gameplay
 
             float healthPercent = (float)Health / MaxHealth;
 
-            // Enforce minimum phase duration before transitioning (sequential: 1→2→3)
-            if (_currentPhase == 1 && healthPercent <= 0.66f && _phaseTimer >= MIN_PHASE_DURATION)
+            // Phase thresholds based on max phases
+            if (_maxPhases == 2)
             {
-                _currentPhase = 2;
-                _phaseTimer = 0f;
-                OnPhaseChange(2);
+                if (_currentPhase == 1 && healthPercent <= 0.50f && _phaseTimer >= MIN_PHASE_DURATION)
+                {
+                    _currentPhase = 2;
+                    _phaseTimer = 0f;
+                    OnPhaseChange(2);
+                }
             }
-            else if (_currentPhase == 2 && healthPercent <= 0.33f && _phaseTimer >= MIN_PHASE_DURATION)
+            else if (_maxPhases == 3)
             {
-                _currentPhase = 3;
-                _phaseTimer = 0f;
-                OnPhaseChange(3);
+                if (_currentPhase == 1 && healthPercent <= 0.66f && _phaseTimer >= MIN_PHASE_DURATION)
+                {
+                    _currentPhase = 2;
+                    _phaseTimer = 0f;
+                    OnPhaseChange(2);
+                }
+                else if (_currentPhase == 2 && healthPercent <= 0.33f && _phaseTimer >= MIN_PHASE_DURATION)
+                {
+                    _currentPhase = 3;
+                    _phaseTimer = 0f;
+                    OnPhaseChange(3);
+                }
+            }
+            else if (_maxPhases == 4)
+            {
+                if (_currentPhase == 1 && healthPercent <= 0.75f && _phaseTimer >= MIN_PHASE_DURATION)
+                {
+                    _currentPhase = 2;
+                    _phaseTimer = 0f;
+                    OnPhaseChange(2);
+                }
+                else if (_currentPhase == 2 && healthPercent <= 0.50f && _phaseTimer >= MIN_PHASE_DURATION)
+                {
+                    _currentPhase = 3;
+                    _phaseTimer = 0f;
+                    OnPhaseChange(3);
+                }
+                else if (_currentPhase == 3 && healthPercent <= 0.25f && _phaseTimer >= MIN_PHASE_DURATION)
+                {
+                    _currentPhase = 4;
+                    _phaseTimer = 0f;
+                    OnPhaseChange(4);
+                }
             }
         }
 
@@ -253,6 +326,30 @@ namespace EpochBreaker.Gameplay
             _moveSpeed = _baseMoveSpeed * _phaseSpeedMultiplier * _slowFactor;
             _chargeSpeed = _baseChargeSpeed * _phaseSpeedMultiplier * _slowFactor;
             _attackCooldown *= 0.8f;
+
+            // Tempo increase per phase (handled by AudioManager era parameterization)
+
+            // Flash white then transition to new color over 0.5s
+            StartCoroutine(PhaseTransitionFlash(newPhase));
+        }
+
+        private System.Collections.IEnumerator PhaseTransitionFlash(int phase)
+        {
+            if (_sr == null) yield break;
+
+            Color startColor = Color.white;
+            float tint = 1f - (phase - 1) * 0.15f;
+            Color endColor = new Color(1f, tint, tint);
+
+            _sr.color = startColor;
+            float elapsed = 0f;
+            while (elapsed < 0.5f)
+            {
+                elapsed += Time.deltaTime;
+                _sr.color = Color.Lerp(startColor, endColor, elapsed / 0.5f);
+                yield return null;
+            }
+            _sr.color = endColor;
         }
 
         /// <summary>
@@ -287,8 +384,10 @@ namespace EpochBreaker.Gameplay
                 float distToPlayer = Mathf.Abs(_playerTransform.position.x - transform.position.x);
                 if (distToPlayer < 12f)
                 {
-                    // Late-era bosses sometimes shoot even in Phase 1
-                    if (Random.value < _shootChance * 0.5f)
+                    // Era-specific Phase 1 attacks
+                    if (_variant == BossVariant.Primitive)
+                        StartCharge(); // Era 0: charge-only
+                    else if (Random.value < _shootChance * 0.5f)
                         ShootAtPlayer();
                     else
                         StartCharge();
@@ -330,7 +429,12 @@ namespace EpochBreaker.Gameplay
             _attackTimer -= Time.fixedDeltaTime;
             if (_attackTimer <= 0f && _playerTransform != null)
             {
-                if (Random.value < _shootChance)
+                // Era-specific Phase 2 attacks
+                if (_variant == BossVariant.Medieval && Random.value < 0.3f)
+                    GroundSlamShockwave();
+                else if (_variant == BossVariant.Renaissance && Random.value < 0.25f)
+                    TeleportDash();
+                else if (Random.value < _shootChance)
                     ShootAtPlayer();
                 else
                     StartCharge();
@@ -410,11 +514,67 @@ namespace EpochBreaker.Gameplay
             _attackTimer -= Time.fixedDeltaTime;
             if (_attackTimer <= 0f && _playerTransform != null)
             {
-                if (Random.value < _shootChance)
+                // Era-specific Phase 3 attacks
+                if (_variant == BossVariant.Industrial && _minionTimer <= 0f)
+                {
+                    SummonMinions();
+                    _minionTimer = 15f; // 15s between summons
+                }
+                else if (_variant == BossVariant.Medieval && Random.value < 0.4f)
+                    GroundSlamShockwave();
+                else if (_variant == BossVariant.Renaissance && Random.value < 0.3f)
+                    TeleportDash();
+                else if (Random.value < _shootChance)
                     ShootSpread();
                 else
                     StartCharge();
                 _attackTimer = _attackCooldown * 0.5f;
+            }
+        }
+
+        /// <summary>
+        /// Phase 4: The Architect (Era 9 only). Fast pattern with all mechanics.
+        /// </summary>
+        private void UpdatePhase4()
+        {
+            if (_rb == null) return;
+
+            if (_isCharging)
+            {
+                UpdateCharge();
+                return;
+            }
+
+            // Very aggressive chase
+            if (_playerTransform != null)
+            {
+                float dir = Mathf.Sign(_playerTransform.position.x - transform.position.x);
+                float targetX = transform.position.x + dir * _moveSpeed * Time.fixedDeltaTime;
+                if (targetX < _arenaMinX + 2) dir = 1;
+                if (targetX > _arenaMaxX - 2) dir = -1;
+
+                _rb.linearVelocity = new Vector2(dir * _moveSpeed * 1.8f, _rb.linearVelocity.y);
+
+                if (_sr != null)
+                    _sr.flipX = dir < 0;
+            }
+
+            // Rapid mixed attacks
+            _attackTimer -= Time.fixedDeltaTime;
+            if (_attackTimer <= 0f && _playerTransform != null)
+            {
+                float roll = Random.value;
+                if (roll < 0.2f)
+                    GroundSlamShockwave();
+                else if (roll < 0.35f)
+                    TeleportDash();
+                else if (roll < 0.55f)
+                    ShootSpread();
+                else if (roll < 0.75f)
+                    StartCharge();
+                else
+                    ShootAtPlayer();
+                _attackTimer = _attackCooldown * 0.35f;
             }
         }
 
@@ -568,6 +728,150 @@ namespace EpochBreaker.Gameplay
             SpawnProjectile(baseDir);
             SpawnProjectile(RotateVector(baseDir, spreadAngle));
             SpawnProjectile(RotateVector(baseDir, -spreadAngle));
+        }
+
+        /// <summary>
+        /// Era 3: Ground-slam shockwave. Creates a visual shockwave that damages the player.
+        /// </summary>
+        private void GroundSlamShockwave()
+        {
+            if (_playerTransform == null) return;
+
+            AudioManager.PlaySFX(PlaceholderAudio.GetStompSFX());
+            CameraController.Instance?.AddTrauma(0.4f);
+
+            // Spawn visual shockwave particles expanding outward
+            for (int i = -3; i <= 3; i++)
+            {
+                var go = ObjectPool.GetParticle();
+                go.transform.position = new Vector3(
+                    transform.position.x + i * 2f,
+                    transform.position.y - 1f, 0f);
+                var sr = go.GetComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetParticleSprite();
+                sr.color = new Color(1f, 0.6f, 0.2f, 0.8f);
+                sr.sortingOrder = 12;
+                go.transform.localScale = Vector3.one * 0.8f;
+
+                var rb = go.GetComponent<Rigidbody2D>();
+                rb.gravityScale = 0f;
+                rb.linearVelocity = new Vector2(i * 3f, 0.5f);
+                go.GetComponent<PoolTimer>().StartTimer(0.6f);
+            }
+
+            // Check if player is on the ground nearby
+            if (_playerTransform != null)
+            {
+                float dist = Mathf.Abs(_playerTransform.position.x - transform.position.x);
+                if (dist < 8f)
+                {
+                    var health = _playerTransform.GetComponent<HealthSystem>();
+                    if (health != null)
+                    {
+                        // Only damage if player is on the ground (within 2 units Y)
+                        float yDiff = Mathf.Abs(_playerTransform.position.y - transform.position.y);
+                        if (yDiff < 2f)
+                            health.TakeDamage(1, transform.position);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Era 4: Teleport dash. Boss teleports to the opposite side of the arena.
+        /// </summary>
+        private void TeleportDash()
+        {
+            if (_playerTransform == null) return;
+
+            // Flash effect at old position
+            var flashGO = ObjectPool.GetFlash();
+            flashGO.transform.position = transform.position;
+            var flashSR = flashGO.GetComponent<SpriteRenderer>();
+            flashSR.sprite = PlaceholderAssets.GetParticleSprite();
+            flashSR.color = new Color(0.6f, 0.4f, 1f, 0.9f);
+            flashSR.sortingOrder = 16;
+            flashGO.transform.localScale = Vector3.one * 3f;
+            flashGO.GetComponent<PoolTimer>().StartTimer(0.15f);
+
+            // Teleport to opposite side of arena from player
+            float playerX = _playerTransform.position.x;
+            float arenaCenter = (_arenaMinX + _arenaMaxX) / 2f;
+            float newX = playerX > arenaCenter
+                ? _arenaMinX + 3f
+                : _arenaMaxX - 3f;
+
+            transform.position = new Vector3(newX, transform.position.y, transform.position.z);
+
+            // Flash effect at new position
+            var flashGO2 = ObjectPool.GetFlash();
+            flashGO2.transform.position = transform.position;
+            var flashSR2 = flashGO2.GetComponent<SpriteRenderer>();
+            flashSR2.sprite = PlaceholderAssets.GetParticleSprite();
+            flashSR2.color = new Color(0.6f, 0.4f, 1f, 0.9f);
+            flashSR2.sortingOrder = 16;
+            flashGO2.transform.localScale = Vector3.one * 3f;
+            flashGO2.GetComponent<PoolTimer>().StartTimer(0.15f);
+
+            CameraController.Instance?.AddTrauma(0.2f);
+            AudioManager.PlaySFX(PlaceholderAudio.GetChargeWindupSFX());
+        }
+
+        /// <summary>
+        /// Era 5: Summon 2 minion enemies in the arena.
+        /// </summary>
+        private void SummonMinions()
+        {
+            AudioManager.PlaySFX(PlaceholderAudio.GetBossRoarSFX());
+            CameraController.Instance?.AddTrauma(0.3f);
+
+            for (int i = 0; i < 2; i++)
+            {
+                float spawnX = _arenaMinX + 4f + i * ((_arenaMaxX - _arenaMinX - 8f));
+                Vector3 spawnPos = new Vector3(spawnX, transform.position.y, 0f);
+
+                var go = new GameObject($"BossMinion_{i}");
+                go.transform.position = spawnPos;
+                go.tag = "Enemy";
+
+                var sr = go.AddComponent<SpriteRenderer>();
+                int era = (int)Type;
+                sr.sprite = PlaceholderAssets.GetEnemySprite((EnemyType)(era * 3), EnemyBehavior.Chase);
+                sr.sortingOrder = 9;
+                sr.color = new Color(1f, 0.8f, 0.8f); // Slightly red tint
+                go.transform.localScale = Vector3.one * 0.7f; // Smaller than normal
+
+                var rb = go.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 3f;
+                rb.freezeRotation = true;
+
+                var col = go.AddComponent<BoxCollider2D>();
+                col.size = new Vector2(0.8f, 1f);
+                col.offset = new Vector2(0f, 0.5f);
+
+                var enemy = go.AddComponent<EnemyBase>();
+                var data = new EnemyData
+                {
+                    Type = (EnemyType)(era * 3),
+                    Behavior = EnemyBehavior.Chase,
+                    TileX = (int)spawnX,
+                    TileY = 0,
+                    PatrolMinX = (int)_arenaMinX + 2,
+                    PatrolMaxX = (int)_arenaMaxX - 2,
+                    DifficultyWeight = 0.5f // Weaker than normal enemies
+                };
+                enemy.Initialize(data, _tilemapRenderer);
+
+                // Spawn flash
+                var flash = ObjectPool.GetFlash();
+                flash.transform.position = spawnPos;
+                var fsr = flash.GetComponent<SpriteRenderer>();
+                fsr.sprite = PlaceholderAssets.GetParticleSprite();
+                fsr.color = new Color(1f, 1f, 0.5f, 0.8f);
+                fsr.sortingOrder = 16;
+                flash.transform.localScale = Vector3.one * 2f;
+                flash.GetComponent<PoolTimer>().StartTimer(0.2f);
+            }
         }
 
         private Vector2 RotateVector(Vector2 v, float angle)

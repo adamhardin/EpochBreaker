@@ -231,6 +231,7 @@ When writing code that bridges generation and rendering:
 - **Engine**: Unity 6000.3.6f1 (upgraded from 2022.3 LTS)
 - **No imported assets**: All sprites and audio are generated at runtime via `PlaceholderAssets.cs` and `PlaceholderAudio.cs`
 - **Single scene**: Everything runs from `Bootstrap.unity`. UI and game objects are created programmatically
+- **UI viewport bounds**: Reference resolution 1920x1080, CanvasScaler matchWidthOrHeight=0.5. Safe area is **±480 vertical / ±900 horizontal** from center (60px margin from viewport edge for badges/overflow). When repositioning any UI container, verify `anchoredPosition.Y + height/2 ≤ 480`. This is a recurring source of bugs.
 - **GameManager reflection**: Uses reflection for UI `AddComponent` calls to avoid circular dependency between Gameplay and UI assemblies
 - **WebGL deployment**: GitHub Actions builds and deploys to GitHub Pages automatically
 

@@ -170,22 +170,30 @@ namespace EpochBreaker.Generative
         }
 
         /// <summary>
+        /// Get the display name for a given epoch number.
+        /// </summary>
+        public static string GetEpochName(int epoch)
+        {
+            return epoch switch
+            {
+                0 => "Stone Age",
+                1 => "Bronze Age",
+                2 => "Classical",
+                3 => "Medieval",
+                4 => "Renaissance",
+                5 => "Industrial",
+                6 => "Modern",
+                7 => "Digital",
+                8 => "Spacefaring",
+                9 => "Transcendent",
+                _ => "Unknown"
+            };
+        }
+
+        /// <summary>
         /// Get the display name for the current epoch.
         /// </summary>
-        public string EpochName => Epoch switch
-        {
-            0 => "Stone Age",
-            1 => "Bronze Age",
-            2 => "Classical",
-            3 => "Medieval",
-            4 => "Renaissance",
-            5 => "Industrial",
-            6 => "Modern",
-            7 => "Digital",
-            8 => "Spacefaring",
-            9 => "Transcendent",
-            _ => "Unknown"
-        };
+        public string EpochName => GetEpochName(Epoch);
 
         /// <summary>
         /// Get the short epoch prefix (single character).

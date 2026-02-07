@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: 2026-02-07 | **Version**: v0.5.0 build 011
+**Last Updated**: 2026-02-07 | **Version**: v0.9.9 build 023
 
 ---
 
@@ -11,6 +11,8 @@
 | [README.md](README.md) | Project overview, tech stack, targets, deployment guide |
 | [GAME-DESIGN-REVIEW.md](GAME-DESIGN-REVIEW.md) | Comprehensive game design document for expert review (v0.5.0) |
 | [BUILD-LOG.md](BUILD-LOG.md) | WebGL deployment log with version, date, and change notes |
+| [QC-CHECKLIST.md](QC-CHECKLIST.md) | Systematic QC checklist for all screens, buttons, systems, and features |
+| [ROADMAP.md](ROADMAP.md) | Development roadmap with version targets and sprint plans |
 
 ---
 
@@ -39,6 +41,15 @@
 | [docs/Expert-Review-Change-Log.md](docs/Expert-Review-Change-Log.md) | Log of all review-driven changes | Active |
 | [docs/Expert-Feedback-Log.md](docs/Expert-Feedback-Log.md) | Structured log of review entries with findings and owners | Active |
 | [docs/Expert-Review-Report-v0.5.0.md](docs/Expert-Review-Report-v0.5.0.md) | Comprehensive deep review (code + design + fun + creativity) — cycle 3 | Active |
+
+---
+
+## Quality Assurance
+
+| Document | Purpose | Status |
+|----------|---------|--------|
+| [QC-CHECKLIST.md](QC-CHECKLIST.md) | Full QC checklist: 20 sections, 200+ items covering every screen, button, system, and feature | Active |
+| [docs/Validation-QA-Suite.md](docs/Validation-QA-Suite.md) | Level generation validation: 7 test categories, 22+ test cases | Active |
 
 ---
 

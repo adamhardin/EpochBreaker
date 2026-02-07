@@ -804,6 +804,76 @@ namespace EpochBreaker.Gameplay
             return sprite;
         }
 
+        /// <summary>
+        /// Get a tinted version of the player sprite for cosmetic skins.
+        /// Applies a color multiply tint. For Rainbow skin, applies a hue shift.
+        /// Results are cached by skin type.
+        /// </summary>
+        public static Sprite GetTintedPlayerSprite(PlayerSkin skin)
+        {
+            if (skin == PlayerSkin.Default)
+                return GetPlayerSprite();
+
+            string key = $"player_skin_{(int)skin}";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            // Get base sprite pixel data
+            var baseSprite = GetPlayerSprite();
+            int size = baseSprite.texture.width;
+            var basePx = baseSprite.texture.GetPixels();
+
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[basePx.Length];
+
+            if (skin == PlayerSkin.Rainbow)
+            {
+                // Rainbow: hue-shift each pixel based on its position
+                for (int i = 0; i < basePx.Length; i++)
+                {
+                    if (basePx[i].a < 0.01f)
+                    {
+                        px[i] = basePx[i];
+                        continue;
+                    }
+                    int x = i % size;
+                    int y = i / size;
+                    float hueShift = ((x + y) / (float)size) * 360f;
+                    Color.RGBToHSV(basePx[i], out float h, out float s, out float v);
+                    h = (h + hueShift / 360f) % 1f;
+                    s = Mathf.Max(s, 0.4f); // Ensure some saturation
+                    px[i] = Color.HSVToRGB(h, s, v);
+                    px[i].a = basePx[i].a;
+                }
+            }
+            else
+            {
+                // Color multiply tint
+                Color tint = CosmeticManager.GetSkinTint(skin);
+                for (int i = 0; i < basePx.Length; i++)
+                {
+                    if (basePx[i].a < 0.01f)
+                    {
+                        px[i] = basePx[i];
+                        continue;
+                    }
+                    px[i] = new Color(
+                        basePx[i].r * tint.r,
+                        basePx[i].g * tint.g,
+                        basePx[i].b * tint.b,
+                        basePx[i].a
+                    );
+                }
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 128f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
         #endregion
 
         #region Enemies
@@ -3424,6 +3494,27 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
+        /// Get the accent/highlight color for an era, used for special attack effects.
+        /// </summary>
+        public static Color GetEraAccentColor(int era)
+        {
+            return era switch
+            {
+                0 => new Color(0.85f, 0.75f, 0.55f),  // Sandstone
+                1 => new Color(0.85f, 0.65f, 0.25f),  // Bronze
+                2 => new Color(0.80f, 0.30f, 0.20f),  // Roman red
+                3 => new Color(0.55f, 0.55f, 0.60f),  // Iron
+                4 => new Color(0.80f, 0.65f, 0.20f),  // Gold
+                5 => new Color(0.70f, 0.40f, 0.15f),  // Rust
+                6 => new Color(0.90f, 0.70f, 0.10f),  // Warning yellow
+                7 => new Color(0.00f, 1.00f, 0.80f),  // Neon cyan
+                8 => new Color(0.60f, 0.00f, 1.00f),  // Plasma purple
+                9 => new Color(1.00f, 1.00f, 1.00f),  // Pure light
+                _ => Color.yellow,
+            };
+        }
+
+        /// <summary>
         /// Get a color representing a tile type for destruction particles.
         /// </summary>
         public static Color GetTileParticleColor(byte tileType, int epoch)
@@ -3438,6 +3529,219 @@ namespace EpochBreaker.Gameplay
                 TileType.Indestructible => terrain.ground,
                 _ => terrain.surface,
             };
+        }
+
+        #endregion
+
+        #region Animation Frames
+
+        /// <summary>
+        /// Generate player walk cycle (4 frames). Each frame shifts the legs
+        /// to simulate walking by offsetting boot/leg pixel positions.
+        /// </summary>
+        public static Sprite[] GetPlayerWalkFrames()
+        {
+            string key = "player_walk";
+            if (_cache.TryGetValue(key + "_0", out _))
+            {
+                return new Sprite[]
+                {
+                    _cache[key + "_0"], _cache[key + "_1"],
+                    _cache[key + "_2"], _cache[key + "_3"]
+                };
+            }
+
+            // Get base player sprite pixel data as template
+            var baseSprite = GetPlayerSprite();
+            var frames = new Sprite[4];
+
+            int size = 192;
+            // Frame offsets for leg positions (left leg Y offset, right leg Y offset)
+            int[][] legOffsets = new int[][] {
+                new int[] { 4, -4 },   // frame 0: left forward, right back
+                new int[] { 0, 0 },    // frame 1: neutral
+                new int[] { -4, 4 },   // frame 2: right forward, left back
+                new int[] { 0, 0 },    // frame 3: neutral (return)
+            };
+
+            for (int f = 0; f < 4; f++)
+            {
+                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Point;
+                // Copy base sprite pixels
+                var baseTex = baseSprite.texture;
+                var px = baseTex.GetPixels();
+
+                // Shift left boot/leg region (x=48-88, y=0-78) by legOffsets[f][0]
+                ShiftRegion(px, size, 48, 0, 40, 78, 0, legOffsets[f][0]);
+                // Shift right boot/leg region (x=104-144, y=0-78) by legOffsets[f][1]
+                ShiftRegion(px, size, 104, 0, 40, 78, 0, legOffsets[f][1]);
+
+                tex.SetPixels(px);
+                tex.Apply();
+                var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 128f);
+                sprite.name = $"{key}_{f}";
+                _cache[$"{key}_{f}"] = sprite;
+                frames[f] = sprite;
+            }
+            return frames;
+        }
+
+        /// <summary>
+        /// Generate player jump pose (ascending). Arms up, body stretched.
+        /// </summary>
+        public static Sprite[] GetPlayerJumpFrame()
+        {
+            string key = "player_jump";
+            if (_cache.TryGetValue(key, out var cached))
+                return new Sprite[] { cached };
+
+            var baseSprite = GetPlayerSprite();
+            var tex = new Texture2D(192, 192, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = baseSprite.texture.GetPixels();
+
+            // Stretch body slightly (scale Y by moving top up 4px)
+            ShiftRegion(px, 192, 50, 94, 92, 98, 0, 4);
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, 192, 192), new Vector2(0.5f, 0f), 128f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return new Sprite[] { sprite };
+        }
+
+        /// <summary>
+        /// Generate player fall pose (descending). Arms out, legs tucked.
+        /// </summary>
+        public static Sprite[] GetPlayerFallFrame()
+        {
+            string key = "player_fall";
+            if (_cache.TryGetValue(key, out var cached))
+                return new Sprite[] { cached };
+
+            var baseSprite = GetPlayerSprite();
+            var tex = new Texture2D(192, 192, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = baseSprite.texture.GetPixels();
+
+            // Squash body slightly (shift legs up 4px to tuck)
+            ShiftRegion(px, 192, 48, 0, 96, 78, 0, 4);
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, 192, 192), new Vector2(0.5f, 0f), 128f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return new Sprite[] { sprite };
+        }
+
+        /// <summary>
+        /// Generate player wall-slide frames (2 frames with subtle bob).
+        /// </summary>
+        public static Sprite[] GetPlayerWallSlideFrames()
+        {
+            var frames = new Sprite[2];
+            for (int f = 0; f < 2; f++)
+            {
+                string key = $"player_wallslide_{f}";
+                if (_cache.TryGetValue(key, out var cached))
+                {
+                    frames[f] = cached;
+                    continue;
+                }
+
+                var baseSprite = GetPlayerSprite();
+                var tex = new Texture2D(192, 192, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Point;
+                var px = baseSprite.texture.GetPixels();
+
+                // Bob offset: frame 0 = 0, frame 1 = 2px down
+                int bobY = f * -2;
+                ShiftRegion(px, 192, 0, 0, 192, 192, 0, bobY);
+
+                tex.SetPixels(px);
+                tex.Apply();
+                var sprite = Sprite.Create(tex, new Rect(0, 0, 192, 192), new Vector2(0.5f, 0f), 128f);
+                sprite.name = key;
+                _cache[key] = sprite;
+                frames[f] = sprite;
+            }
+            return frames;
+        }
+
+        /// <summary>
+        /// Generate enemy walk frames (2-frame alternation for patrol/chase).
+        /// </summary>
+        public static Sprite[] GetEnemyWalkFrames(EnemyType type, EnemyBehavior behavior)
+        {
+            int era = (int)type / 3;
+            var frames = new Sprite[2];
+            for (int f = 0; f < 2; f++)
+            {
+                string key = $"enemy_walk_{era}_{(int)behavior}_{f}";
+                if (_cache.TryGetValue(key, out var cached))
+                {
+                    frames[f] = cached;
+                    continue;
+                }
+
+                var baseSprite = GetEnemySprite(type, behavior);
+                var tex = new Texture2D(192, 192, TextureFormat.RGBA32, false);
+                tex.filterMode = FilterMode.Point;
+                var px = baseSprite.texture.GetPixels();
+
+                // Alternate leg positions: shift lower body region
+                int legShift = (f == 0) ? 3 : -3;
+                ShiftRegion(px, 192, 50, 0, 92, 80, 0, legShift);
+
+                tex.SetPixels(px);
+                tex.Apply();
+                var sprite = Sprite.Create(tex, new Rect(0, 0, 192, 192), new Vector2(0.5f, 0f), 128f);
+                sprite.name = key;
+                _cache[key] = sprite;
+                frames[f] = sprite;
+            }
+            return frames;
+        }
+
+        /// <summary>
+        /// Shift a rectangular region of pixels by (dx, dy). Clears the vacated area.
+        /// </summary>
+        private static void ShiftRegion(Color[] px, int texW, int x0, int y0, int w, int h, int dx, int dy)
+        {
+            int texH = px.Length / texW;
+            // Copy the region to a temp buffer
+            var temp = new Color[w * h];
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    int srcX = x0 + x;
+                    int srcY = y0 + y;
+                    if ((uint)srcX < (uint)texW && (uint)srcY < (uint)texH)
+                        temp[y * w + x] = px[srcY * texW + srcX];
+                }
+            }
+
+            // Clear original region
+            for (int y = y0; y < y0 + h && y < texH; y++)
+                for (int x = x0; x < x0 + w && x < texW; x++)
+                    if (x >= 0 && y >= 0)
+                        px[y * texW + x] = Color.clear;
+
+            // Write shifted region
+            for (int y = 0; y < h; y++)
+            {
+                for (int x = 0; x < w; x++)
+                {
+                    int dstX = x0 + x + dx;
+                    int dstY = y0 + y + dy;
+                    if ((uint)dstX < (uint)texW && (uint)dstY < (uint)texH)
+                        px[dstY * texW + dstX] = temp[y * w + x];
+                }
+            }
         }
 
         #endregion

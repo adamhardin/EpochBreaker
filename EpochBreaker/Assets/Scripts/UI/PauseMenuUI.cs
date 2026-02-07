@@ -7,12 +7,16 @@ namespace EpochBreaker.UI
 {
     /// <summary>
     /// Pause menu overlay with Resume, Restart, Settings, and Quit buttons.
-    /// Settings sub-panel provides audio volume controls.
+    /// Settings sub-panel provides audio, accessibility, and difficulty controls.
     /// </summary>
     public class PauseMenuUI : MonoBehaviour
     {
         private GameObject _mainContent;
         private GameObject _settingsContent;
+        private GameObject _settingsMenuContent;
+        private GameObject _audioSubPanel;
+        private GameObject _accessibilitySubPanel;
+        private GameObject _difficultySubPanel;
 
         private void Start()
         {
@@ -25,12 +29,36 @@ namespace EpochBreaker.UI
 
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
-                // If settings is open, go back to main pause menu
-                // and consume PausePressed so GameManager doesn't also resume
-                if (_settingsContent != null && _settingsContent.activeSelf)
+                // Navigate back through sub-panel hierarchy
+                if (_accessibilitySubPanel != null && _accessibilitySubPanel.activeSelf)
+                {
+                    _accessibilitySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                    InputManager.PausePressed = false;
+                }
+                else if (_difficultySubPanel != null && _difficultySubPanel.activeSelf)
+                {
+                    _difficultySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                    InputManager.PausePressed = false;
+                }
+                else if (_audioSubPanel != null && _audioSubPanel.activeSelf)
+                {
+                    _audioSubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                    InputManager.PausePressed = false;
+                }
+                else if (_settingsContent != null && _settingsContent.activeSelf)
                 {
                     _settingsContent.SetActive(false);
                     _mainContent.SetActive(true);
+                    InputManager.PausePressed = false;
+                }
+                else
+                {
+                    // No sub-panel open — resume game
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    GameManager.Instance?.ResumeGame();
                     InputManager.PausePressed = false;
                 }
             }
@@ -120,20 +148,73 @@ namespace EpochBreaker.UI
             panelRect.sizeDelta = new Vector2(520, 420);
             panelRect.anchoredPosition = Vector2.zero;
 
+            // ── Settings menu content (main page with category buttons) ──
+            _settingsMenuContent = new GameObject("SettingsMenuContent");
+            _settingsMenuContent.transform.SetParent(panelGO.transform, false);
+            var menuRect = _settingsMenuContent.AddComponent<RectTransform>();
+            menuRect.anchorMin = Vector2.zero;
+            menuRect.anchorMax = Vector2.one;
+            menuRect.sizeDelta = Vector2.zero;
+
             // Settings title
-            CreateText(panelGO.transform, "AUDIO SETTINGS", 36, new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
+            CreateText(_settingsMenuContent.transform, "SETTINGS", 36, new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
 
             // Back button
-            CreateButton(panelGO.transform, "BACK", new Vector2(-190, 170),
+            CreateButton(_settingsMenuContent.transform, "BACK", new Vector2(-190, 170),
                 new Color(0.4f, 0.4f, 0.5f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsContent.SetActive(false);
                     _mainContent.SetActive(true);
                 }, new Vector2(100, 40), 20);
 
+            // Audio button
+            CreateButton(_settingsMenuContent.transform, "AUDIO", new Vector2(0, 70),
+                new Color(0.3f, 0.4f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _audioSubPanel.SetActive(true);
+                }, new Vector2(300, 55));
+
+            // Accessibility button (Sprint 9)
+            CreateButton(_settingsMenuContent.transform, "ACCESSIBILITY", new Vector2(0, 0),
+                new Color(0.3f, 0.45f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _accessibilitySubPanel.SetActive(true);
+                }, new Vector2(300, 48));
+
+            // Difficulty button (Sprint 9)
+            CreateButton(_settingsMenuContent.transform, "DIFFICULTY", new Vector2(0, -60),
+                new Color(0.5f, 0.35f, 0.35f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _difficultySubPanel.SetActive(true);
+                }, new Vector2(300, 48));
+
+            // Hint
+            CreateText(_settingsMenuContent.transform, "Press Esc to go back", 14,
+                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
+
+            // ── Audio sub-panel ──
+            _audioSubPanel = new GameObject("AudioSubPanel");
+            _audioSubPanel.transform.SetParent(panelGO.transform, false);
+            var audioRect = _audioSubPanel.AddComponent<RectTransform>();
+            audioRect.anchorMin = Vector2.zero;
+            audioRect.anchorMax = Vector2.one;
+            audioRect.sizeDelta = Vector2.zero;
+
+            CreateText(_audioSubPanel.transform, "AUDIO", 36, new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
+
+            CreateButton(_audioSubPanel.transform, "BACK", new Vector2(-190, 170),
+                new Color(0.4f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _audioSubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                }, new Vector2(100, 40), 20);
+
             // Divider
             var divGO = new GameObject("Divider");
-            divGO.transform.SetParent(panelGO.transform, false);
+            divGO.transform.SetParent(_audioSubPanel.transform, false);
             var divImg = divGO.AddComponent<Image>();
             divImg.color = new Color(0.3f, 0.3f, 0.4f);
             var divRect = divGO.GetComponent<RectTransform>();
@@ -147,18 +228,151 @@ namespace EpochBreaker.UI
             float sfxVol = AudioManager.Instance != null ? AudioManager.Instance.SFXVolume : 1f;
             float weaponVol = AudioManager.Instance != null ? AudioManager.Instance.WeaponVolume : 1f;
 
-            CreateVolumeSlider(panelGO.transform, "BACKGROUND MUSIC", new Vector2(0, 75), musicVol,
+            CreateVolumeSlider(_audioSubPanel.transform, "BACKGROUND MUSIC", new Vector2(0, 75), musicVol,
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.MusicVolume = val; });
 
-            CreateVolumeSlider(panelGO.transform, "SOUND EFFECTS", new Vector2(0, 0), sfxVol,
+            CreateVolumeSlider(_audioSubPanel.transform, "SOUND EFFECTS", new Vector2(0, 0), sfxVol,
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.SFXVolume = val; });
 
-            CreateVolumeSlider(panelGO.transform, "WEAPON FIRE", new Vector2(0, -75), weaponVol,
+            CreateVolumeSlider(_audioSubPanel.transform, "WEAPON FIRE", new Vector2(0, -75), weaponVol,
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.WeaponVolume = val; });
 
-            // Hint
-            CreateText(panelGO.transform, "Press Esc to go back", 14,
+            CreateText(_audioSubPanel.transform, "Press Esc to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -175));
+
+            _audioSubPanel.SetActive(false);
+
+            // ── Accessibility sub-panel (Sprint 9) ──
+            _accessibilitySubPanel = new GameObject("AccessibilitySubPanel");
+            _accessibilitySubPanel.transform.SetParent(panelGO.transform, false);
+            var accRect = _accessibilitySubPanel.AddComponent<RectTransform>();
+            accRect.anchorMin = Vector2.zero;
+            accRect.anchorMax = Vector2.one;
+            accRect.sizeDelta = Vector2.zero;
+
+            CreateText(_accessibilitySubPanel.transform, "ACCESSIBILITY", 28,
+                new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
+
+            CreateButton(_accessibilitySubPanel.transform, "BACK", new Vector2(-190, 170),
+                new Color(0.4f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _accessibilitySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                }, new Vector2(100, 40), 20);
+
+            // Colorblind mode toggle
+            bool cbInitial = AccessibilityManager.Instance != null &&
+                AccessibilityManager.Instance.ColorblindMode;
+            CreateToggleRow(_accessibilitySubPanel.transform, "COLORBLIND MODE", new Vector2(0, 100), cbInitial,
+                (val) => { if (AccessibilityManager.Instance != null) AccessibilityManager.Instance.ColorblindMode = val; });
+
+            // Screen shake intensity slider
+            float shakeInitial = AccessibilityManager.Instance != null
+                ? AccessibilityManager.Instance.ScreenShakeIntensity : 1f;
+            CreateVolumeSlider(_accessibilitySubPanel.transform, "SCREEN SHAKE", new Vector2(0, 40), shakeInitial,
+                (val) => { if (AccessibilityManager.Instance != null) AccessibilityManager.Instance.ScreenShakeIntensity = val; });
+
+            // Font size slider (0.8 to 1.5 mapped to 0-1 slider)
+            float fontInitial = AccessibilityManager.Instance != null
+                ? (AccessibilityManager.Instance.FontSizeScale - 0.8f) / 0.7f : 0.286f;
+            CreateVolumeSlider(_accessibilitySubPanel.transform, "FONT SIZE", new Vector2(0, -30), fontInitial,
+                (val) => {
+                    float scale = 0.8f + val * 0.7f; // Map 0-1 to 0.8-1.5
+                    if (AccessibilityManager.Instance != null)
+                        AccessibilityManager.Instance.FontSizeScale = scale;
+                });
+
+            // High contrast mode toggle
+            bool hcInitial = AccessibilityManager.Instance != null &&
+                AccessibilityManager.Instance.HighContrastMode;
+            CreateToggleRow(_accessibilitySubPanel.transform, "HIGH CONTRAST", new Vector2(0, -100), hcInitial,
+                (val) => { if (AccessibilityManager.Instance != null) AccessibilityManager.Instance.HighContrastMode = val; });
+
+            CreateText(_accessibilitySubPanel.transform, "Press Esc to go back", 14,
+                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
+
+            _accessibilitySubPanel.SetActive(false);
+
+            // ── Difficulty sub-panel (Sprint 9) ──
+            _difficultySubPanel = new GameObject("DifficultySubPanel");
+            _difficultySubPanel.transform.SetParent(panelGO.transform, false);
+            var diffPanelRect = _difficultySubPanel.AddComponent<RectTransform>();
+            diffPanelRect.anchorMin = Vector2.zero;
+            diffPanelRect.anchorMax = Vector2.one;
+            diffPanelRect.sizeDelta = Vector2.zero;
+
+            CreateText(_difficultySubPanel.transform, "DIFFICULTY", 28,
+                new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
+
+            CreateButton(_difficultySubPanel.transform, "BACK", new Vector2(-190, 170),
+                new Color(0.4f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _difficultySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                }, new Vector2(100, 40), 20);
+
+            // Difficulty description
+            CreateText(_difficultySubPanel.transform,
+                "Changes apply to new games.\nSeparate leaderboards per difficulty.", 16,
+                new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 120));
+
+            // Active difficulty indicator
+            var diffActiveGO = CreateText(_difficultySubPanel.transform, "", 18,
+                new Color(0.9f, 0.85f, 0.5f), new Vector2(0, -140));
+            var diffActiveText = diffActiveGO.GetComponent<Text>();
+            diffActiveGO.GetComponent<RectTransform>().sizeDelta = new Vector2(460, 50);
+
+            System.Action updateDifficultyLabel = () => {
+                if (DifficultyManager.Instance == null) return;
+                var d = DifficultyManager.Instance.CurrentDifficulty;
+                string desc = d switch {
+                    DifficultyLevel.Easy => "EASY: 3 lives/level, fewer enemies, more health",
+                    DifficultyLevel.Hard => "HARD: 1 life/level, more enemies, no health",
+                    _ => "NORMAL: 2 lives/level, standard enemies and health"
+                };
+                diffActiveText.text = desc;
+            };
+            updateDifficultyLabel();
+
+            // Easy button
+            CreateButton(_difficultySubPanel.transform, "EASY", new Vector2(-140, 50),
+                new Color(0.25f, 0.50f, 0.30f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (DifficultyManager.Instance != null)
+                        DifficultyManager.Instance.CurrentDifficulty = DifficultyLevel.Easy;
+                    updateDifficultyLabel();
+                }, new Vector2(130, 55));
+
+            // Normal button
+            CreateButton(_difficultySubPanel.transform, "NORMAL", new Vector2(0, 50),
+                new Color(0.35f, 0.40f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (DifficultyManager.Instance != null)
+                        DifficultyManager.Instance.CurrentDifficulty = DifficultyLevel.Normal;
+                    updateDifficultyLabel();
+                }, new Vector2(130, 55));
+
+            // Hard button
+            CreateButton(_difficultySubPanel.transform, "HARD", new Vector2(140, 50),
+                new Color(0.55f, 0.25f, 0.25f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (DifficultyManager.Instance != null)
+                        DifficultyManager.Instance.CurrentDifficulty = DifficultyLevel.Hard;
+                    updateDifficultyLabel();
+                }, new Vector2(130, 55));
+
+            // Per-mode descriptions
+            CreateText(_difficultySubPanel.transform, "3 deaths/level\n50% enemies\n1.5x health", 13,
+                new Color(0.5f, 0.7f, 0.5f), new Vector2(-140, -20));
+            CreateText(_difficultySubPanel.transform, "2 deaths/level\nStandard\nStandard", 13,
+                new Color(0.6f, 0.6f, 0.8f), new Vector2(0, -20));
+            CreateText(_difficultySubPanel.transform, "1 death/level\n1.5x enemies\nNo health", 13,
+                new Color(0.8f, 0.5f, 0.5f), new Vector2(140, -20));
+
+            CreateText(_difficultySubPanel.transform, "Press Esc to go back", 14,
+                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
+
+            _difficultySubPanel.SetActive(false);
 
             _settingsContent.SetActive(false);
         }
@@ -267,7 +481,7 @@ namespace EpochBreaker.UI
             });
         }
 
-        private void CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position)
+        private GameObject CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position)
         {
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
@@ -284,6 +498,8 @@ namespace EpochBreaker.UI
             rect.anchorMax = new Vector2(0.5f, 0.5f);
             rect.sizeDelta = new Vector2(400, 60);
             rect.anchoredPosition = position;
+
+            return go;
         }
 
         private void CreateButton(Transform parent, string text, Vector2 position,
@@ -320,6 +536,69 @@ namespace EpochBreaker.UI
             textRect.anchorMin = Vector2.zero;
             textRect.anchorMax = Vector2.one;
             textRect.sizeDelta = Vector2.zero;
+        }
+
+        /// <summary>
+        /// Creates a toggle row with a label and ON/OFF button. Used for boolean settings.
+        /// </summary>
+        private void CreateToggleRow(Transform parent, string label, Vector2 position, bool initialValue,
+            System.Action<bool> onValueChanged)
+        {
+            var containerGO = new GameObject("Toggle_" + label);
+            containerGO.transform.SetParent(parent, false);
+            var containerRect = containerGO.AddComponent<RectTransform>();
+            containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            containerRect.sizeDelta = new Vector2(440, 40);
+            containerRect.anchoredPosition = position;
+
+            // Label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(containerGO.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
+            labelImg.preserveAspect = true;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0f, 0.5f);
+            labelRect.anchorMax = new Vector2(0f, 0.5f);
+            labelRect.sizeDelta = new Vector2(label.Length * 12 + 12, 22);
+            labelRect.pivot = new Vector2(0f, 0.5f);
+            labelRect.anchoredPosition = new Vector2(8, 0);
+
+            // Toggle button
+            bool currentValue = initialValue;
+            var btnGO = new GameObject("ToggleBtn");
+            btnGO.transform.SetParent(containerGO.transform, false);
+            var btnImg = btnGO.AddComponent<Image>();
+            btnImg.color = currentValue ? new Color(0.3f, 0.55f, 0.35f) : new Color(0.4f, 0.3f, 0.3f);
+            var btn = btnGO.AddComponent<Button>();
+            btn.targetGraphic = btnImg;
+            var btnRect = btnGO.GetComponent<RectTransform>();
+            btnRect.anchorMin = new Vector2(1f, 0.5f);
+            btnRect.anchorMax = new Vector2(1f, 0.5f);
+            btnRect.pivot = new Vector2(1f, 0.5f);
+            btnRect.sizeDelta = new Vector2(80, 32);
+            btnRect.anchoredPosition = new Vector2(-8, 0);
+
+            var btnTextGO = new GameObject("BtnLabel");
+            btnTextGO.transform.SetParent(btnGO.transform, false);
+            var btnText = btnTextGO.AddComponent<Text>();
+            btnText.text = currentValue ? "ON" : "OFF";
+            btnText.fontSize = 18;
+            btnText.color = Color.white;
+            btnText.alignment = TextAnchor.MiddleCenter;
+            btnText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var btnTextRect = btnTextGO.GetComponent<RectTransform>();
+            btnTextRect.anchorMin = Vector2.zero;
+            btnTextRect.anchorMax = Vector2.one;
+            btnTextRect.sizeDelta = Vector2.zero;
+
+            btn.onClick.AddListener(() => {
+                currentValue = !currentValue;
+                btnText.text = currentValue ? "ON" : "OFF";
+                btnImg.color = currentValue ? new Color(0.3f, 0.55f, 0.35f) : new Color(0.4f, 0.3f, 0.3f);
+                onValueChanged(currentValue);
+            });
         }
     }
 }

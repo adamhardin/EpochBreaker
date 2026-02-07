@@ -5,7 +5,7 @@ namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Manages audio playback. Lives on the GameManager GameObject (DontDestroyOnLoad).
-    /// One looping AudioSource for music, pooled AudioSources for SFX.
+    /// One looping AudioSource for music, one for ambient, pooled AudioSources for SFX.
     /// Uses PlayOneShot to prevent sounds cutting each other off.
     /// Volume settings persisted to PlayerPrefs.
     /// </summary>
@@ -14,6 +14,7 @@ namespace EpochBreaker.Gameplay
         public static AudioManager Instance { get; private set; }
 
         private AudioSource _musicSource;
+        private AudioSource _ambientSource;
         private AudioSource[] _sfxSources;
         private int _sfxIndex;
         private const int SFX_POOL_SIZE = 8;
@@ -25,6 +26,10 @@ namespace EpochBreaker.Gameplay
 
         private const float BASE_MUSIC_VOLUME = 0.15f;
         private const float BASE_SFX_VOLUME = 0.25f;
+        private const float BASE_AMBIENT_VOLUME = 0.08f;
+
+        // Current music variant (Sprint 9: 3 variants per era group)
+        private int _currentMusicVariant = 0;
 
         private const string PREF_MUSIC_VOL = "EpochBreaker_MusicVolume";
         private const string PREF_SFX_VOL = "EpochBreaker_SFXVolume";
@@ -37,6 +42,7 @@ namespace EpochBreaker.Gameplay
             {
                 _musicVolume = Mathf.Clamp01(value);
                 _musicSource.volume = BASE_MUSIC_VOLUME * _musicVolume;
+                _ambientSource.volume = BASE_AMBIENT_VOLUME * _musicVolume;
                 PlayerPrefs.SetFloat(PREF_MUSIC_VOL, _musicVolume);
             }
         }
@@ -65,6 +71,9 @@ namespace EpochBreaker.Gameplay
         private Dictionary<int, float> _lastPlayTime = new Dictionary<int, float>();
         private const float MIN_REPEAT_INTERVAL = 0.05f;
 
+        // Limit concurrent SFX to prevent audio overload / high-pitched artifacts
+        private const int MAX_CONCURRENT_SFX = 4;
+
         private void Awake()
         {
             if (Instance != null && Instance != this)
@@ -84,6 +93,11 @@ namespace EpochBreaker.Gameplay
             _musicSource.volume = BASE_MUSIC_VOLUME * _musicVolume;
             _musicSource.playOnAwake = false;
 
+            _ambientSource = gameObject.AddComponent<AudioSource>();
+            _ambientSource.loop = true;
+            _ambientSource.volume = BASE_AMBIENT_VOLUME * _musicVolume; // Ambient follows music volume
+            _ambientSource.playOnAwake = false;
+
             _sfxSources = new AudioSource[SFX_POOL_SIZE];
             for (int i = 0; i < SFX_POOL_SIZE; i++)
             {
@@ -91,6 +105,11 @@ namespace EpochBreaker.Gameplay
                 _sfxSources[i].volume = BASE_SFX_VOLUME;
                 _sfxSources[i].playOnAwake = false;
             }
+
+            // Runtime low-pass filter on the GameObject to tame high-frequency artifacts
+            // from overlapping procedural square/sawtooth waves
+            var lpf = gameObject.AddComponent<AudioLowPassFilter>();
+            lpf.cutoffFrequency = 2500f;
         }
 
         public static void PlaySFX(AudioClip clip, float volume = 1f)
@@ -105,9 +124,18 @@ namespace EpochBreaker.Gameplay
                 return;
             Instance._lastPlayTime[clipId] = now;
 
+            // Limit concurrent SFX to prevent audio overload
+            int playing = 0;
+            for (int i = 0; i < SFX_POOL_SIZE; i++)
+            {
+                if (Instance._sfxSources[i].isPlaying) playing++;
+            }
+            if (playing >= MAX_CONCURRENT_SFX) return;
+
             var src = Instance._sfxSources[Instance._sfxIndex];
             Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
-            src.PlayOneShot(clip, volume * Instance._sfxVolume);
+            src.pitch = 1f; // Ensure normal pitch for non-pitched SFX
+            src.PlayOneShot(clip, Mathf.Min(volume * Instance._sfxVolume, 0.8f));
         }
 
         public static void PlayWeaponSFX(AudioClip clip, float volume = 1f)
@@ -121,12 +149,19 @@ namespace EpochBreaker.Gameplay
                 return;
             Instance._lastPlayTime[clipId] = now;
 
+            // Limit concurrent SFX
+            int playing = 0;
+            for (int i = 0; i < SFX_POOL_SIZE; i++)
+            {
+                if (Instance._sfxSources[i].isPlaying) playing++;
+            }
+            if (playing >= MAX_CONCURRENT_SFX) return;
+
             var src = Instance._sfxSources[Instance._sfxIndex];
             Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
             // ±10% pitch randomization for weapon fire variety
             src.pitch = Random.Range(0.9f, 1.1f);
-            src.PlayOneShot(clip, volume * Instance._weaponVolume);
-            src.pitch = 1f; // Reset for next use
+            src.PlayOneShot(clip, Mathf.Min(volume * Instance._weaponVolume, 0.8f));
         }
 
         /// <summary>
@@ -143,11 +178,18 @@ namespace EpochBreaker.Gameplay
                 return;
             Instance._lastPlayTime[clipId] = now;
 
+            // Limit concurrent SFX
+            int playing = 0;
+            for (int i = 0; i < SFX_POOL_SIZE; i++)
+            {
+                if (Instance._sfxSources[i].isPlaying) playing++;
+            }
+            if (playing >= MAX_CONCURRENT_SFX) return;
+
             var src = Instance._sfxSources[Instance._sfxIndex];
             Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
             src.pitch = Random.Range(pitchMin, pitchMax);
-            src.PlayOneShot(clip, volume * Instance._sfxVolume);
-            src.pitch = 1f;
+            src.PlayOneShot(clip, Mathf.Min(volume * Instance._sfxVolume, 0.8f));
         }
 
         public static void PlayMusic(AudioClip clip)
@@ -162,6 +204,42 @@ namespace EpochBreaker.Gameplay
         {
             if (Instance == null) return;
             Instance._musicSource.Stop();
+            Instance._ambientSource.Stop();
+        }
+
+        /// <summary>
+        /// Play a randomly selected music variant for the given epoch.
+        /// Sprint 9: 3 variants per era group, randomly selected each level.
+        /// Also starts the era-appropriate ambient audio loop.
+        /// </summary>
+        public static void PlayGameplayMusicWithVariant(int epoch)
+        {
+            if (Instance == null) return;
+            Instance._currentMusicVariant = Random.Range(0, 3);
+            var clip = PlaceholderAudio.GetGameplayMusicVariant(epoch, Instance._currentMusicVariant);
+            PlayMusic(clip);
+            // Start ambient audio
+            PlayAmbient(PlaceholderAudio.GetAmbientLoop(epoch));
+        }
+
+        /// <summary>
+        /// Play ambient audio loop (e.g., wind, machinery, digital hum).
+        /// </summary>
+        public static void PlayAmbient(AudioClip clip)
+        {
+            if (Instance == null || clip == null) return;
+            if (Instance._ambientSource.clip == clip && Instance._ambientSource.isPlaying) return;
+            Instance._ambientSource.clip = clip;
+            Instance._ambientSource.Play();
+        }
+
+        /// <summary>
+        /// Stop only ambient audio (music continues).
+        /// </summary>
+        public static void StopAmbient()
+        {
+            if (Instance == null) return;
+            Instance._ambientSource.Stop();
         }
     }
 }

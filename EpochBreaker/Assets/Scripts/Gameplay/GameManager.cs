@@ -45,6 +45,7 @@ namespace EpochBreaker.Gameplay
         public int Score;
         public int Stars;
         public long PlayedTimestamp; // Unix timestamp
+        public string Source; // Origin: Campaign, Code, Challenge, Daily, Weekly
     }
 
     /// <summary>
@@ -118,6 +119,12 @@ namespace EpochBreaker.Gameplay
             Instance._hitStopCoroutine = Instance.StartCoroutine(Instance.DoHitStop(duration));
         }
 
+        private System.Collections.IEnumerator DelayedCameraIntro()
+        {
+            yield return null; // Wait one frame for physics to settle
+            CameraController.Instance?.StartLevelIntro();
+        }
+
         private System.Collections.IEnumerator DoHitStop(float duration)
         {
             _savedTimeScale = Time.timeScale;
@@ -157,6 +164,11 @@ namespace EpochBreaker.Gameplay
         public int StreakCount { get; private set; } = 0;     // Levels completed in streak mode
         public int DeathsThisLevel { get; private set; } = 0; // Deaths in current level
         public int GlobalLives { get; private set; } = 2;     // Persistent lives across levels
+
+        // Sprint 8: Social & Retention
+        public int FriendChallengeScore { get; private set; } = 0;  // Friend's target score (0 = no challenge)
+        public bool IsGhostReplay { get; private set; } = false;    // True if replaying with ghost overlay
+        public string LevelSource { get; private set; } = "";       // Origin tracking for history
 
         // Settings
         private const string PREF_RANDOMIZE = "EpochBreaker_Randomize";
@@ -332,7 +344,23 @@ namespace EpochBreaker.Gameplay
             _levelLoader = gameObject.AddComponent<LevelLoader>();
             gameObject.AddComponent<AudioManager>();
             gameObject.AddComponent<AchievementManager>();
+            gameObject.AddComponent<CosmeticManager>();
             gameObject.AddComponent<TutorialManager>();
+            gameObject.AddComponent<AccessibilityManager>();
+            gameObject.AddComponent<DifficultyManager>();
+
+            // Persistent background camera — prevents "No cameras rendering" when
+            // scene cameras are destroyed during transitions back to title screen
+            if (Camera.main == null && FindAnyObjectByType<Camera>() == null)
+            {
+                var camGO = new GameObject("BackgroundCamera");
+                camGO.transform.SetParent(transform); // child of GameManager (DontDestroyOnLoad)
+                var cam = camGO.AddComponent<Camera>();
+                cam.clearFlags = CameraClearFlags.SolidColor;
+                cam.backgroundColor = new Color(0.08f, 0.06f, 0.15f); // deep purple
+                cam.depth = -100; // always behind scene cameras
+                cam.cullingMask = 0; // render nothing, just clear the screen
+            }
 
             // Ensure EventSystem exists for UI interaction (using new Input System)
             if (FindAnyObjectByType<EventSystem>() == null)
@@ -434,11 +462,11 @@ namespace EpochBreaker.Gameplay
                 case GameState.Playing:
                     Time.timeScale = 1f;
                     _timerRunning = true;
-                    AudioManager.PlayMusic(PlaceholderAudio.GetGameplayMusic(CurrentEpoch));
+                    AudioManager.PlayGameplayMusicWithVariant(CurrentEpoch);
                     CreateHUD();
                     SaveSession(); // Persist so player can continue later
                     ScreenFlash.Flash(Color.white, 0.4f); // Level start flash
-                    CameraController.Instance?.StartLevelIntro();
+                    StartCoroutine(DelayedCameraIntro());
                     break;
                 case GameState.Paused:
                     Time.timeScale = 0f;
@@ -459,6 +487,31 @@ namespace EpochBreaker.Gameplay
                     TotalScore += Score;
                     SaveLevelToHistory();
 
+                    // Record daily challenge score if applicable
+                    var todayID = DailyChallengeManager.GetTodayLevelID();
+                    if (CurrentLevelID.Seed == todayID.Seed && CurrentLevelID.Epoch == todayID.Epoch)
+                    {
+                        DailyChallengeManager.RecordScore(Score, GetStarRating(Score), LevelElapsedTime);
+                    }
+
+                    // Record weekly challenge score if applicable
+                    var weeklyID = DailyChallengeManager.GetWeeklyLevelID();
+                    if (CurrentLevelID.Seed == weeklyID.Seed && CurrentLevelID.Epoch == weeklyID.Epoch)
+                    {
+                        DailyChallengeManager.RecordWeeklyScore(Score, GetStarRating(Score), LevelElapsedTime);
+                    }
+
+                    // Save ghost replay data
+                    var ghostSystem = FindAnyObjectByType<GhostReplaySystem>();
+                    if (ghostSystem != null && ghostSystem.IsRecording)
+                    {
+                        ghostSystem.StopRecording();
+                        ghostSystem.SaveGhost(CurrentLevelID.ToCode(), Score);
+                    }
+
+                    // Clear ghost replay flag after level completion
+                    IsGhostReplay = false;
+
                     // Record wall-jump count from player for achievements
                     var playerCtrl = FindAnyObjectByType<PlayerController>();
                     if (playerCtrl != null)
@@ -470,7 +523,7 @@ namespace EpochBreaker.Gameplay
                         CurrentLevelID.Epoch, LevelElapsedTime, Score, stars);
 
                     AudioManager.StopMusic();
-                    AudioManager.PlaySFX(PlaceholderAudio.GetLevelCompleteSFX());
+                    AudioManager.PlaySFX(PlaceholderAudio.GetVictoryJingle(stars));
                     ScreenFlash.Flash(new Color(1f, 0.95f, 0.8f), 0.6f); // Gold flash
                     CreateLevelComplete();
                     break;
@@ -507,6 +560,10 @@ namespace EpochBreaker.Gameplay
             _timerRunning = false;
             StreakCount = 0;
             DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = false;
+
+            LevelSource = "Campaign";
 
             if (RandomizeEnabled)
             {
@@ -622,6 +679,8 @@ namespace EpochBreaker.Gameplay
             LevelElapsedTime = 0f;
             _timerRunning = false;
             DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = false;
             GlobalLives = DEATHS_PER_LEVEL;
             TransitionTo(GameState.Loading);
         }
@@ -646,7 +705,10 @@ namespace EpochBreaker.Gameplay
             LevelElapsedTime = 0f;
             _timerRunning = false;
             DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = false;
             GlobalLives = DEATHS_PER_LEVEL;
+            LevelSource = "Code";
             TransitionTo(GameState.Loading);
         }
 
@@ -660,7 +722,10 @@ namespace EpochBreaker.Gameplay
             LevelNumber++;
             DeathsThisLevel = 0;
             // Per-level lives: in FreePlay, reset each level; in Campaign/Streak, deducted from GlobalLives
-            LivesRemaining = DEATHS_PER_LEVEL;
+            // Uses DifficultyManager.MaxDeathsPerLevel for difficulty-aware death limits (Sprint 9)
+            LivesRemaining = DifficultyManager.Instance != null
+                ? DifficultyManager.Instance.MaxDeathsPerLevel
+                : DEATHS_PER_LEVEL;
 
             // Generate level ID based on game mode
             if (CurrentLevelID.Seed == 0)
@@ -720,6 +785,10 @@ namespace EpochBreaker.Gameplay
                 AchievementManager.Instance.StartLevel(totalDestructibles, totalItems, totalHazards);
             }
 
+            // Reset context-sensitive hint timers for the new level (Sprint 9)
+            if (TutorialManager.Instance != null)
+                TutorialManager.Instance.ResetContextHints();
+
             TransitionTo(GameState.Playing);
         }
 
@@ -734,12 +803,12 @@ namespace EpochBreaker.Gameplay
 
         /// <summary>
         /// Get star rating based on total score.
-        /// Theoretical max ~19000. 3 stars >= 68%, 2 stars >= 39%, 1 star = completed.
+        /// Theoretical max ~20000. 3 stars >= 68%, 2 stars >= 39%, 1 star = completed.
         /// </summary>
         public static int GetStarRating(int score)
         {
-            if (score >= 13000) return 3;
-            if (score >= 7500) return 2;
+            if (score >= 13500) return 3;  // ~68% of ~20k theoretical max
+            if (score >= 7800) return 2;   // ~39% of ~20k theoretical max
             return 1;
         }
 
@@ -828,7 +897,8 @@ namespace EpochBreaker.Gameplay
             _rewardCounts[type] = count;
 
             int baseValue = GetRewardBaseValue(type);
-            int bonus = baseValue * count;
+            int multiplier = Mathf.Min(count, 3); // Cap at 3x multiplier
+            int bonus = baseValue * multiplier;
             ItemBonusScore += bonus;
 
             AchievementManager.Instance?.RecordItemCollected();
@@ -846,7 +916,8 @@ namespace EpochBreaker.Gameplay
             _weaponCounts[tier] = count;
 
             int baseValue = WeaponDatabase.GetPickupScoreValue(type, tier);
-            int bonus = baseValue * count;
+            int multiplier = Mathf.Min(count, 3); // Cap at 3x multiplier
+            int bonus = baseValue * multiplier;
             ItemBonusScore += bonus;
 
             AchievementManager.Instance?.RecordItemCollected();
@@ -872,7 +943,8 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Record an enemy kill. Returns the bonus score awarded (100 * kill count).
+        /// Record an enemy kill. Returns the bonus score awarded.
+        /// Flat 100 per kill (soft cap 2500) + combo bonus (+50 per level, cap +500).
         /// Also tracks no-damage kill streak for combat mastery scoring.
         /// </summary>
         public int RecordEnemyKill()
@@ -888,7 +960,15 @@ namespace EpochBreaker.Gameplay
                 ComboCount = 1;
             _comboTimer = COMBO_WINDOW;
 
-            int bonus = 100 * EnemiesKilled;
+            // Flat 100 per kill, soft cap at 2500
+            int bonus = 100;
+            if (EnemyBonusScore + bonus > 2500)
+                bonus = Mathf.Max(0, 2500 - EnemyBonusScore);
+
+            // Combo bonus: +50 per combo level, capped at +500
+            int comboBonus = Mathf.Min(ComboCount * 50, 500);
+            bonus += comboBonus;
+
             EnemyBonusScore += bonus;
 
             AchievementManager.Instance?.RecordEnemyKilled();
@@ -1023,7 +1103,8 @@ namespace EpochBreaker.Gameplay
                 EpochName = CurrentLevelID.EpochName,
                 Score = Score,
                 Stars = GetStarRating(Score),
-                PlayedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                PlayedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Source = LevelSource
             };
 
             if (existingIdx >= 0)
@@ -1114,6 +1195,90 @@ namespace EpochBreaker.Gameplay
         [System.Runtime.InteropServices.DllImport("__Internal")]
         private static extern void WebGLCopyToClipboard(string text);
 #endif
+
+        // =====================================================================
+        // Edge Cases (Sprint 9): Auto-pause, crash recovery
+        // =====================================================================
+
+        private const string CRASH_FLAG_KEY = "EpochBreaker_CrashFlag";
+
+        /// <summary>
+        /// Called when the app is paused/resumed (e.g., backgrounding on mobile).
+        /// Auto-pauses the game when losing focus mid-level.
+        /// </summary>
+        private void OnApplicationPause(bool paused)
+        {
+            if (paused)
+            {
+                // App going to background — auto-pause if playing
+                if (CurrentState == GameState.Playing)
+                {
+                    PauseGame();
+                    SaveSession(); // Save in case we get killed
+                }
+                // Set crash flag so we can detect unexpected termination
+                PlayerPrefs.SetInt(CRASH_FLAG_KEY, 1);
+                PlayerPrefs.Save();
+            }
+            else
+            {
+                // App returning to foreground — clear crash flag
+                PlayerPrefs.SetInt(CRASH_FLAG_KEY, 0);
+                PlayerPrefs.Save();
+            }
+        }
+
+        /// <summary>
+        /// Called when the app gains or loses focus (e.g., switching tabs in browser).
+        /// Auto-pauses the game when losing focus.
+        /// </summary>
+        private void OnApplicationFocus(bool hasFocus)
+        {
+            if (!hasFocus && CurrentState == GameState.Playing)
+            {
+                PauseGame();
+            }
+        }
+
+        /// <summary>
+        /// Called when Unity receives a low memory warning.
+        /// Cleans up cached assets to reduce memory pressure.
+        /// </summary>
+        private void OnApplicationQuit()
+        {
+            // Clear crash flag on clean exit
+            PlayerPrefs.SetInt(CRASH_FLAG_KEY, 0);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Check if the previous session ended in a crash (crash flag still set).
+        /// If so, and a saved session exists, the player can recover.
+        /// </summary>
+        public static bool DidCrashLastSession()
+        {
+            return PlayerPrefs.GetInt(CRASH_FLAG_KEY, 0) == 1 && HasSavedSession();
+        }
+
+        /// <summary>
+        /// Handle low memory warnings by clearing cached assets.
+        /// </summary>
+        private void HandleMemoryWarning()
+        {
+            // Clear any non-essential caches
+            Resources.UnloadUnusedAssets();
+            System.GC.Collect();
+        }
+
+        private void OnEnable()
+        {
+            Application.lowMemory += HandleMemoryWarning;
+        }
+
+        private void OnDisable()
+        {
+            Application.lowMemory -= HandleMemoryWarning;
+        }
 
         private void DestroyUI()
         {
@@ -1220,13 +1385,17 @@ namespace EpochBreaker.Gameplay
 
         /// <summary>
         /// Called when the player dies. Returns the result determining what happens next.
-        /// FreePlay: 2 deaths per level, then game over.
-        /// Campaign/Streak: each death costs 1 global life. 2 deaths in one level = level failed (advance).
+        /// FreePlay: MaxDeathsPerLevel deaths per level, then game over.
+        /// Campaign/Streak: each death costs 1 global life. MaxDeathsPerLevel deaths = level failed (advance).
         ///                   0 global lives = game over.
+        /// Deaths per level is configurable via DifficultyManager (Sprint 9).
         /// </summary>
         public DeathResult LoseLife()
         {
             DeathsThisLevel++;
+            int maxDeaths = DifficultyManager.Instance != null
+                ? DifficultyManager.Instance.MaxDeathsPerLevel
+                : DEATHS_PER_LEVEL;
 
             if (CurrentGameMode == GameMode.FreePlay)
             {
@@ -1251,7 +1420,7 @@ namespace EpochBreaker.Gameplay
                 return DeathResult.GameOver;
             }
 
-            if (DeathsThisLevel >= DEATHS_PER_LEVEL)
+            if (DeathsThisLevel >= maxDeaths)
             {
                 // Used up deaths for this level — level failed, advance
                 return DeathResult.LevelFailed;
@@ -1298,9 +1467,109 @@ namespace EpochBreaker.Gameplay
             TotalScore = 0;
             LevelNumber = 0;
             DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = false;
             LegendsUnlocked = true;
             CurrentLevelID = LevelID.GenerateRandom(UnityEngine.Random.Range(0, LevelID.MAX_EPOCH + 1));
             CurrentEpoch = CurrentLevelID.Epoch;
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Start today's daily challenge.
+        /// </summary>
+        public void StartDailyChallenge()
+        {
+            ClearSession();
+            CurrentGameMode = GameMode.FreePlay;
+            CurrentLevelID = DailyChallengeManager.GetTodayLevelID();
+            CurrentEpoch = CurrentLevelID.Epoch;
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
+            DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = false;
+            GlobalLives = DEATHS_PER_LEVEL;
+            LevelSource = "Daily";
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Start this week's weekly challenge. Resets every Monday.
+        /// More time to optimize than daily challenges.
+        /// </summary>
+        public void StartWeeklyChallenge()
+        {
+            ClearSession();
+            CurrentGameMode = GameMode.FreePlay;
+            CurrentLevelID = DailyChallengeManager.GetWeeklyLevelID();
+            CurrentEpoch = CurrentLevelID.Epoch;
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
+            DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = false;
+            GlobalLives = DEATHS_PER_LEVEL;
+            LevelSource = "Weekly";
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Start a friend challenge level. Shows the friend's score as a target during gameplay.
+        /// </summary>
+        public void StartFriendChallenge(string levelCode, int friendScore)
+        {
+            if (!LevelID.TryParse(levelCode, out LevelID levelID))
+            {
+                Debug.LogWarning($"Invalid challenge level code: {levelCode}");
+                return;
+            }
+            ClearSession();
+            CurrentGameMode = GameMode.FreePlay;
+            CurrentLevelID = levelID;
+            CurrentEpoch = levelID.Epoch;
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
+            DeathsThisLevel = 0;
+            FriendChallengeScore = friendScore;
+            IsGhostReplay = false;
+            GlobalLives = DEATHS_PER_LEVEL;
+            LevelSource = "Challenge";
+            TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Replay a level with ghost overlay showing the previous best run.
+        /// </summary>
+        public void StartGhostReplay(string levelCode)
+        {
+            if (!LevelID.TryParse(levelCode, out LevelID levelID))
+            {
+                Debug.LogWarning($"Invalid ghost replay level code: {levelCode}");
+                return;
+            }
+            ClearSession();
+            CurrentGameMode = GameMode.FreePlay;
+            CurrentLevelID = levelID;
+            CurrentEpoch = levelID.Epoch;
+            Score = 0;
+            TotalScore = 0;
+            LevelNumber = 0;
+            LevelElapsedTime = 0f;
+            _timerRunning = false;
+            DeathsThisLevel = 0;
+            FriendChallengeScore = 0;
+            IsGhostReplay = true;
+            GlobalLives = DEATHS_PER_LEVEL;
             TransitionTo(GameState.Loading);
         }
 

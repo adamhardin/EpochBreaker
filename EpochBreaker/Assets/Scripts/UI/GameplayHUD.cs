@@ -66,10 +66,19 @@ namespace EpochBreaker.UI
         private float _eraCardTimer;
         private Color _eraCardColor;
 
+        // Special attack meter
+        private Gameplay.SpecialAttackSystem _cachedSpecialAttack;
+        private Image _specialBarBg;
+        private Image _specialBarFill;
+        private float _specialFlashTimer;
+
         // Damage direction indicators (4 edges: left, right, top, bottom)
         private Image[] _dmgDirImages;
         private float _dmgDirTimer;
         private int _dmgDirEdge = -1;
+
+        // Sprint 8: Friend challenge target score display
+        private Text _friendTargetText;
 
         private const int MAX_HEARTS = 5;
 
@@ -108,6 +117,8 @@ namespace EpochBreaker.UI
             UpdateAchievementToast();
             UpdateEraCard();
             UpdateDamageDirection();
+            UpdateSpecialAttackMeter();
+            UpdateFriendTarget();
         }
 
         private void FindPlayerHealth()
@@ -173,6 +184,9 @@ namespace EpochBreaker.UI
                 _hearts[i] = img;
             }
 
+            // Special attack meter (below hearts)
+            CreateSpecialAttackBar(canvasGO.transform);
+
             // Timer (top-left, below hearts)
             var timerGO = CreateHUDText(canvasGO.transform, "0:00.0", TextAnchor.UpperLeft);
             _timerText = timerGO.GetComponent<Text>();
@@ -195,7 +209,7 @@ namespace EpochBreaker.UI
             // Weapon slots indicator (top-right, below weapon name)
             var slotsGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
             _weaponSlotsText = slotsGO.GetComponent<Text>();
-            _weaponSlotsText.fontSize = 16;
+            _weaponSlotsText.fontSize = 18;
             _weaponSlotsText.color = new Color(0.7f, 0.7f, 0.7f);
             var slotsRect = slotsGO.GetComponent<RectTransform>();
             slotsRect.anchorMin = new Vector2(1, 1);
@@ -247,6 +261,7 @@ namespace EpochBreaker.UI
             scoreRect.anchorMax = new Vector2(0.5f, 1);
             scoreRect.pivot = new Vector2(0.5f, 1);
             scoreRect.anchoredPosition = new Vector2(0, -20);
+            scoreRect.sizeDelta = new Vector2(600, 40); // Cap width to prevent overlap with hearts/weapon
 
             // Ability icons (below hearts)
             CreateAbilityIcons(canvasGO.transform);
@@ -265,7 +280,7 @@ namespace EpochBreaker.UI
             // Auto-select reason (below weapon name, right side)
             var asGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
             _autoSelectText = asGO.GetComponent<Text>();
-            _autoSelectText.fontSize = 14;
+            _autoSelectText.fontSize = 16;
             _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, 0f);
             var asRect = asGO.GetComponent<RectTransform>();
             asRect.anchorMin = new Vector2(1, 1);
@@ -410,6 +425,36 @@ namespace EpochBreaker.UI
                         edgeRect.anchoredPosition = Vector2.zero;
                         break;
                 }
+            }
+
+            // Sprint 8: Friend challenge target (below running score, hidden unless in challenge mode)
+            if (gm != null && gm.FriendChallengeScore > 0)
+            {
+                // CHALLENGE MODE badge
+                var badgeGO = new GameObject("ChallengeBadge");
+                badgeGO.transform.SetParent(canvasGO.transform, false);
+                var badgeImg = badgeGO.AddComponent<Image>();
+                badgeImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(
+                    "CHALLENGE MODE", new Color(1f, 0.85f, 0.2f), 2);
+                badgeImg.preserveAspect = true;
+                var badgeRect = badgeGO.GetComponent<RectTransform>();
+                badgeRect.anchorMin = new Vector2(0.5f, 1);
+                badgeRect.anchorMax = new Vector2(0.5f, 1);
+                badgeRect.pivot = new Vector2(0.5f, 1);
+                badgeRect.sizeDelta = new Vector2(200, 18);
+                badgeRect.anchoredPosition = new Vector2(0, -48);
+
+                var targetGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperCenter);
+                _friendTargetText = targetGO.GetComponent<Text>();
+                _friendTargetText.fontSize = 22;
+                _friendTargetText.color = new Color(0.5f, 0.8f, 1f);
+                var targetRect = targetGO.GetComponent<RectTransform>();
+                targetRect.anchorMin = new Vector2(0.5f, 1);
+                targetRect.anchorMax = new Vector2(0.5f, 1);
+                targetRect.pivot = new Vector2(0.5f, 1);
+                targetRect.sizeDelta = new Vector2(300, 26);
+                targetRect.anchoredPosition = new Vector2(0, -66);
+                _friendTargetText.text = $"Target: {gm.FriendChallengeScore:N0}";
             }
 
             // Boss health bar (hidden by default, shown when boss is active)
@@ -957,6 +1002,22 @@ namespace EpochBreaker.UI
                     return;
                 }
             }
+
+            // No free slot — reuse the oldest (lowest timer) to avoid dropping popups
+            int oldestIdx = 0;
+            float oldestTime = float.MaxValue;
+            for (int i = 0; i < POPUP_POOL_SIZE; i++)
+            {
+                if (_popupTimers[i] < oldestTime)
+                {
+                    oldestTime = _popupTimers[i];
+                    oldestIdx = i;
+                }
+            }
+            _popupTexts[oldestIdx].text = $"+{score}";
+            _popupTexts[oldestIdx].color = new Color(1f, 0.85f, 0.2f, 1f);
+            _popupTimers[oldestIdx] = 1f;
+            _popupWorldPositions[oldestIdx] = worldPos + new Vector3(0, 0.5f, 0);
         }
 
         private void UpdateScorePopups()
@@ -1109,6 +1170,139 @@ namespace EpochBreaker.UI
             {
                 for (int i = 0; i < 4; i++)
                     _dmgDirImages[i].color = new Color(1f, 0f, 0f, 0f);
+            }
+        }
+
+        private void CreateSpecialAttackBar(Transform parent)
+        {
+            // Background bar (below hearts row)
+            var bgGO = new GameObject("SpecialBarBg");
+            bgGO.transform.SetParent(parent, false);
+            _specialBarBg = bgGO.AddComponent<Image>();
+            _specialBarBg.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
+            _specialBarBg.raycastTarget = false;
+            var bgRect = bgGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = new Vector2(0, 1);
+            bgRect.anchorMax = new Vector2(0, 1);
+            bgRect.pivot = new Vector2(0, 1);
+            bgRect.sizeDelta = new Vector2(220, 8);
+            bgRect.anchoredPosition = new Vector2(20, -58);
+
+            // Fill bar
+            var fillGO = new GameObject("SpecialBarFill");
+            fillGO.transform.SetParent(bgGO.transform, false);
+            _specialBarFill = fillGO.AddComponent<Image>();
+            _specialBarFill.color = new Color(0.4f, 0.4f, 0.4f);
+            _specialBarFill.raycastTarget = false;
+            var fillRect = fillGO.GetComponent<RectTransform>();
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(0, 1);
+            fillRect.pivot = new Vector2(0, 0.5f);
+            fillRect.offsetMin = new Vector2(1, 1);
+            fillRect.offsetMax = new Vector2(1, -1);
+
+            // Start hidden — shown once player has enough weapons
+            bgGO.SetActive(false);
+        }
+
+        private void UpdateSpecialAttackMeter()
+        {
+            if (_specialBarBg == null || _specialBarFill == null) return;
+
+            // Lazy-find the special attack system
+            if (_cachedSpecialAttack == null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                if (player != null)
+                    _cachedSpecialAttack = player.GetComponent<Gameplay.SpecialAttackSystem>();
+            }
+            var sa = _cachedSpecialAttack;
+            if (sa == null)
+            {
+                _specialBarBg.gameObject.SetActive(false);
+                return;
+            }
+
+            // Only show the bar when player has enough weapons to ever use it
+            if (_cachedWeaponSystem == null)
+            {
+                _specialBarBg.gameObject.SetActive(false);
+                return;
+            }
+            bool hasEnoughWeapons = _cachedWeaponSystem.AcquiredWeaponCount >= 3;
+            _specialBarBg.gameObject.SetActive(hasEnoughWeapons);
+            if (!hasEnoughWeapons) return;
+
+            float fillRatio;
+            Color fillColor;
+
+            if (sa.IsAttacking)
+            {
+                // Flash white during attack
+                _specialFlashTimer = 0.3f;
+                fillRatio = 1f;
+                fillColor = Color.white;
+            }
+            else if (sa.IsCharging)
+            {
+                // Pulsing yellow glow while charging
+                fillRatio = sa.ChargeRatio;
+                float pulse = Mathf.PingPong(Time.time * 6f, 1f);
+                fillColor = Color.Lerp(new Color(0.9f, 0.8f, 0.1f), new Color(1f, 1f, 0.5f), pulse);
+            }
+            else if (sa.CooldownRatio > 0f)
+            {
+                // Gray fill showing cooldown progress (fills up as cooldown expires)
+                fillRatio = 1f - sa.CooldownRatio;
+                fillColor = new Color(0.4f, 0.4f, 0.4f);
+            }
+            else if (sa.IsReady)
+            {
+                // Solid yellow when ready
+                fillRatio = 1f;
+                fillColor = new Color(0.9f, 0.8f, 0.1f);
+            }
+            else
+            {
+                // Not enough weapons or not grounded — dim
+                fillRatio = 1f;
+                fillColor = new Color(0.35f, 0.35f, 0.3f);
+            }
+
+            // Activation flash decay
+            if (_specialFlashTimer > 0f && !sa.IsAttacking)
+            {
+                _specialFlashTimer -= Time.deltaTime;
+                float flash = Mathf.Clamp01(_specialFlashTimer / 0.3f);
+                fillColor = Color.Lerp(fillColor, Color.white, flash);
+            }
+
+            _specialBarFill.color = fillColor;
+            var rect = _specialBarFill.GetComponent<RectTransform>();
+            rect.anchorMax = new Vector2(fillRatio, 1);
+            rect.offsetMax = new Vector2(-1, -1);
+        }
+
+        private void UpdateFriendTarget()
+        {
+            if (_friendTargetText == null) return;
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null || gm.FriendChallengeScore <= 0) return;
+
+            int currentRunning = gm.ItemBonusScore + gm.EnemyBonusScore;
+            int target = gm.FriendChallengeScore;
+
+            if (currentRunning >= target)
+            {
+                // Player has beaten the friend's score
+                _friendTargetText.text = $"Target: {target:N0} - BEATEN!";
+                _friendTargetText.color = new Color(0.4f, 1f, 0.4f);
+            }
+            else
+            {
+                int remaining = target - currentRunning;
+                _friendTargetText.text = $"Target: {target:N0} (need {remaining:N0})";
+                _friendTargetText.color = new Color(0.5f, 0.8f, 1f);
             }
         }
 

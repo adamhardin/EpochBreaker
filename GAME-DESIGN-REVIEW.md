@@ -749,7 +749,7 @@ We'd love expert perspective on these areas:
 ## 17. Technical Context
 
 - **Engine**: Unity 6000.3.6f1 (originally targeting 2022 LTS)
-- **Target**: iOS 15+, iPhone 11+ at 60fps
+- **Target**: Unity Editor + WebGL browser (keyboard controls). iOS deferred — no mobile test environment available
 - **Level generation**: < 100ms average, < 150ms P95 on iPhone 11
 - **Memory**: < 100 MB peak, < 2 MB per level
 - **All art and audio generated at runtime** -- zero imported assets

@@ -507,6 +507,14 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
+        /// Get total number of levels completed across all sessions.
+        /// </summary>
+        public int GetTotalLevelsCompleted()
+        {
+            return _saveData?.TotalLevelsCompleted ?? 0;
+        }
+
+        /// <summary>
         /// Get count of unlocked achievements.
         /// </summary>
         public (int unlocked, int total) GetUnlockCount()

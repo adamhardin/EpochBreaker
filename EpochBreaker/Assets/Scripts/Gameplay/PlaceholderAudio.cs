@@ -86,6 +86,23 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakeClip(string name, float[] data)
         {
+            // 2-pass single-pole low-pass filter (-12 dB/octave effective rolloff)
+            // Cutoff ~3 kHz at 44100 Hz sample rate (alpha ≈ 0.35, applied twice)
+            const float lpAlpha = 0.35f;
+            float prev = data[0];
+            for (int i = 1; i < data.Length; i++)
+            {
+                data[i] = prev + lpAlpha * (data[i] - prev);
+                prev = data[i];
+            }
+            // Second pass for steeper rolloff
+            prev = data[0];
+            for (int i = 1; i < data.Length; i++)
+            {
+                data[i] = prev + lpAlpha * (data[i] - prev);
+                prev = data[i];
+            }
+
             // Normalize to consistent peak level so all clips have equal loudness
             float peak = 0f;
             for (int i = 0; i < data.Length; i++)
@@ -95,7 +112,7 @@ namespace EpochBreaker.Gameplay
             }
             if (peak > 0.001f)
             {
-                float gain = 0.4f / peak;
+                float gain = 0.28f / peak; // lower ceiling to reduce harshness
                 for (int i = 0; i < data.Length; i++)
                     data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
             }
@@ -712,6 +729,396 @@ namespace EpochBreaker.Gameplay
             return clip;
         }
 
+        // ═══════════════════════════════════════════════════════════════
+        //  MUSIC VARIANTS (Sprint 9: 3 per era group, random selection)
+        // ═══════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Get a gameplay music variant for the current era group.
+        /// Era groups: 0-2 (ancient), 3-5 (medieval-industrial), 6-8 (modern-digital), 9 (transcendent).
+        /// Each group has 3 variants with distinct progressions, rhythms, and lead patterns.
+        /// variant should be 0, 1, or 2.
+        /// </summary>
+        public static AudioClip GetGameplayMusicVariant(int epoch, int variant)
+        {
+            // Variant 0 returns the original track
+            if (variant == 0) return GetGameplayMusic(epoch);
+
+            string key = $"music_gameplay_{epoch}_v{variant}";
+            if (_cache.TryGetValue(key, out var c)) return c;
+
+            float bpm;
+            Wave leadWave;
+            float leadVol;
+
+            if (epoch >= 0 && epoch <= 2)
+            {
+                bpm = variant == 1 ? 100f : 118f;
+                leadWave = variant == 1 ? Wave.Square : Wave.Triangle;
+                leadVol = 0.11f;
+            }
+            else if (epoch >= 6 && epoch <= 8)
+            {
+                bpm = variant == 1 ? 135f : 148f;
+                leadWave = variant == 1 ? Wave.Square : Wave.Sawtooth;
+                leadVol = variant == 1 ? 0.09f : 0.07f;
+            }
+            else if (epoch == 9)
+            {
+                bpm = variant == 1 ? 115f : 126f;
+                leadWave = variant == 1 ? Wave.Square : Wave.Sawtooth;
+                leadVol = 0.09f;
+            }
+            else // 3-5
+            {
+                bpm = variant == 1 ? 122f : 136f;
+                leadWave = variant == 1 ? Wave.Sawtooth : Wave.Square;
+                leadVol = 0.1f;
+            }
+
+            float beat = 60f / bpm;
+            int bars = 8;
+            float totalDur = bars * 4 * beat;
+            var buf = MakeBuffer(totalDur);
+            float eighth = beat / 2f;
+
+            // Variant 1: Dm | Bb | F | C (darker progression)
+            // Variant 2: Em | C | G | D (brighter progression)
+            float[] bassRoots;
+            float[][] leadA, leadB;
+            if (variant == 1)
+            {
+                bassRoots = new[] { _D3, _B2, _F2, _C3, _D3, _B2, _F2, _C3 };
+                leadA = new[] {
+                    new[] { _D4, 0f, _F4, _D4, _A4, 0f, _F4, _A4 },
+                    new[] { _B3, 0f, _D4, _B3, _F4, 0f, _D4, _F4 },
+                    new[] { _F4, 0f, _A4, _F4, _C5, 0f, _A4, _C5 },
+                    new[] { _E4, 0f, _G4, _E4, _C5, 0f, _G4, _C5 },
+                };
+                leadB = new[] {
+                    new[] { _A4, 0f, _D4, _F4, _A4, 0f, _D5, _A4 },
+                    new[] { _F4, 0f, _B3, _D4, _F4, 0f, _B4, _F4 },
+                    new[] { _C5, 0f, _F4, _A4, _C5, 0f, _F5, _C5 },
+                    new[] { _C5, 0f, _E4, _G4, _C5, 0f, _E5, _C5 },
+                };
+            }
+            else
+            {
+                bassRoots = new[] { _E3, _C3, _G2, _D3, _E3, _C3, _G2, _D3 };
+                leadA = new[] {
+                    new[] { _E4, 0f, _G4, _E4, _B4, 0f, _G4, _B4 },
+                    new[] { _C4, 0f, _E4, _C4, _G4, 0f, _E4, _G4 },
+                    new[] { _G4, 0f, _B4, _G4, _D5, 0f, _B4, _D5 },
+                    new[] { _D4, 0f, _A4, _D4, _A4, 0f, _F4, _A4 },
+                };
+                leadB = new[] {
+                    new[] { _B4, 0f, _E4, _G4, _B4, 0f, _E5, _B4 },
+                    new[] { _G4, 0f, _C4, _E4, _G4, 0f, _C5, _G4 },
+                    new[] { _D5, 0f, _G4, _B4, _D5, 0f, _G5, _D5 },
+                    new[] { _A4, 0f, _D4, _F4, _A4, 0f, _D5, _A4 },
+                };
+            }
+
+            // Bass channel
+            for (int bar = 0; bar < bars; bar++)
+            {
+                float barStart = bar * 4 * beat;
+                float root = bassRoots[bar];
+                float octUp = root * 2f;
+                float[] bassPattern = { root, 0, octUp, root, 0, octUp, root, octUp };
+                for (int n = 0; n < bassPattern.Length; n++)
+                {
+                    if (bassPattern[n] <= 0f) continue;
+                    AddTone(buf, barStart + n * eighth, eighth * 0.7f,
+                        bassPattern[n], bassPattern[n], Wave.Triangle, 0.2f, 0.005f, 0.02f);
+                }
+            }
+
+            // Lead channel
+            for (int bar = 0; bar < bars; bar++)
+            {
+                float barStart = bar * 4 * beat;
+                float[] pattern = bar < 4 ? leadA[bar % 4] : leadB[bar % 4];
+                for (int n = 0; n < pattern.Length; n++)
+                {
+                    if (pattern[n] <= 0f) continue;
+                    AddTone(buf, barStart + n * eighth, eighth * 0.75f,
+                        pattern[n], pattern[n], leadWave, leadVol, 0.005f, 0.015f);
+                }
+            }
+
+            // Percussion
+            for (int bar = 0; bar < bars; bar++)
+            {
+                float barStart = bar * 4 * beat;
+                for (int b = 0; b < 4; b++)
+                {
+                    float beatStart = barStart + b * beat;
+                    AddTone(buf, beatStart, 0.06f, 150f, 40f, Wave.Triangle, 0.15f, 0.001f, 0.02f);
+                    if (variant == 1 ? (b == 1 || b == 3) : (b == 0 || b == 2))
+                        AddTone(buf, beatStart, 0.06f, 500f, 500f, Wave.Noise, 0.1f, 0.001f, 0.03f);
+                    AddTone(buf, beatStart, 0.02f, 1000f, 1000f, Wave.Noise, 0.04f, 0.001f, 0.008f);
+                    AddTone(buf, beatStart + eighth, 0.02f, 1000f, 1000f, Wave.Noise, 0.03f, 0.001f, 0.008f);
+                }
+            }
+
+            // Era 9: echo effect
+            if (epoch == 9)
+            {
+                int delaySamples = (int)(0.15f * SAMPLE_RATE);
+                for (int i = delaySamples; i < buf.Length; i++)
+                    buf[i] += buf[i - delaySamples] * 0.3f;
+            }
+
+            ApplyLoopFade(buf);
+            var clip = MakeClip($"Music_Gameplay_{epoch}_v{variant}", buf);
+            _cache[key] = clip;
+            return clip;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  VICTORY JINGLES (Sprint 9: varies by star rating)
+        // ═══════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Victory jingle that varies by star rating.
+        /// 1-star: short ascending notes. 2-star: medium fanfare. 3-star: triumphant full fanfare.
+        /// </summary>
+        public static AudioClip GetVictoryJingle(int stars)
+        {
+            stars = Mathf.Clamp(stars, 1, 3);
+            string key = $"sfx_victory_{stars}star";
+            if (_cache.TryGetValue(key, out var c)) return c;
+
+            AudioClip clip;
+            switch (stars)
+            {
+                case 1:
+                    clip = MakeVictory1Star();
+                    break;
+                case 2:
+                    clip = MakeVictory2Star();
+                    break;
+                default:
+                    clip = MakeVictory3Star();
+                    break;
+            }
+            _cache[key] = clip;
+            return clip;
+        }
+
+        private static AudioClip MakeVictory1Star()
+        {
+            // Short, modest ascending notes — level cleared but not great
+            var buf = MakeBuffer(0.8f);
+            float n = 0.12f;
+            AddTone(buf, 0f, n, _C4, _C4, Wave.Square, 0.15f, 0.003f, 0.02f);
+            AddTone(buf, n, n, _E4, _E4, Wave.Square, 0.15f, 0.003f, 0.02f);
+            AddTone(buf, n * 2, 0.4f, _G4, _G4, Wave.Square, 0.18f, 0.005f, 0.15f);
+            AddTone(buf, n * 2, 0.4f, _C4, _C4, Wave.Triangle, 0.1f, 0.01f, 0.15f);
+            return MakeClip("SFX_Victory_1Star", buf);
+        }
+
+        private static AudioClip MakeVictory2Star()
+        {
+            // Medium fanfare — solid performance
+            var buf = MakeBuffer(1.2f);
+            float n = 0.1f;
+            AddTone(buf, 0f, n, _C4, _C4, Wave.Square, 0.15f, 0.003f, 0.01f);
+            AddTone(buf, n, n, _E4, _E4, Wave.Square, 0.15f, 0.003f, 0.01f);
+            AddTone(buf, n * 2, n, _G4, _G4, Wave.Square, 0.15f, 0.003f, 0.01f);
+            AddTone(buf, n * 3, n, _C5, _C5, Wave.Square, 0.18f, 0.003f, 0.01f);
+            // Sustained chord
+            float chordStart = n * 4;
+            AddTone(buf, chordStart, 0.6f, _C5, _C5, Wave.Square, 0.14f, 0.01f, 0.15f);
+            AddTone(buf, chordStart, 0.6f, _E4, _E4, Wave.Triangle, 0.10f, 0.01f, 0.15f);
+            AddTone(buf, chordStart, 0.6f, _G4, _G4, Wave.Triangle, 0.08f, 0.01f, 0.15f);
+            return MakeClip("SFX_Victory_2Star", buf);
+        }
+
+        private static AudioClip MakeVictory3Star()
+        {
+            // Triumphant full fanfare — perfect run!
+            var buf = MakeBuffer(1.8f);
+            float n = 0.08f;
+            // Rapid ascending arpeggio
+            AddTone(buf, 0f, n, _C4, _C4, Wave.Square, 0.14f, 0.003f, 0.01f);
+            AddTone(buf, n, n, _E4, _E4, Wave.Square, 0.14f, 0.003f, 0.01f);
+            AddTone(buf, n * 2, n, _G4, _G4, Wave.Square, 0.14f, 0.003f, 0.01f);
+            AddTone(buf, n * 3, n, _C5, _C5, Wave.Square, 0.14f, 0.003f, 0.01f);
+            AddTone(buf, n * 4, n, _E5, _E5, Wave.Square, 0.14f, 0.003f, 0.01f);
+            AddTone(buf, n * 5, n, _G5, _G5, Wave.Square, 0.14f, 0.003f, 0.01f);
+            // Grand sustained chord with bass
+            float chordStart = n * 6;
+            float chordDur = 1.8f - chordStart - 0.15f;
+            AddTone(buf, chordStart, chordDur, _C5, _C5, Wave.Square, 0.15f, 0.01f, 0.2f);
+            AddTone(buf, chordStart, chordDur, _E5, _E5, Wave.Square, 0.12f, 0.01f, 0.2f);
+            AddTone(buf, chordStart, chordDur, _G5, _G5, Wave.Square, 0.10f, 0.01f, 0.2f);
+            AddTone(buf, chordStart, chordDur, _C4, _C4, Wave.Triangle, 0.15f, 0.01f, 0.2f);
+            AddTone(buf, chordStart, chordDur, _G3, _G3, Wave.Triangle, 0.10f, 0.01f, 0.2f);
+            // Shimmer effect
+            AddTone(buf, chordStart + 0.1f, chordDur - 0.1f, _C6, _C6, Wave.Square, 0.04f, 0.1f, 0.3f);
+            return MakeClip("SFX_Victory_3Star", buf);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  AMBIENT AUDIO (Sprint 9: environmental loops per era)
+        // ═══════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Get era-appropriate ambient audio loop.
+        /// Era 0-2: wind (low white noise). Era 3-4: medieval ambiance. Era 5: machinery (rhythmic clank).
+        /// Era 6: urban hum. Era 7-8: digital hum. Era 9: cosmic resonance.
+        /// </summary>
+        public static AudioClip GetAmbientLoop(int epoch)
+        {
+            string key = $"ambient_{epoch}";
+            if (_cache.TryGetValue(key, out var c)) return c;
+
+            AudioClip clip;
+            if (epoch <= 2)
+                clip = MakeWindAmbient(epoch);
+            else if (epoch <= 4)
+                clip = MakeMedievalAmbient(epoch);
+            else if (epoch == 5)
+                clip = MakeMachineryAmbient();
+            else if (epoch == 6)
+                clip = MakeUrbanAmbient();
+            else if (epoch <= 8)
+                clip = MakeDigitalAmbient(epoch);
+            else
+                clip = MakeCosmicAmbient();
+
+            _cache[key] = clip;
+            return clip;
+        }
+
+        private static AudioClip MakeWindAmbient(int epoch)
+        {
+            // Gentle wind: low-frequency filtered noise
+            var buf = MakeBuffer(3.0f);
+            float baseFreq = 60f + epoch * 15f; // Slightly different per era
+            AddTone(buf, 0f, 3.0f, baseFreq, baseFreq + 30f, Wave.Noise, 0.06f, 0.2f, 0.2f);
+            AddTone(buf, 0.5f, 2.0f, baseFreq * 0.5f, baseFreq * 0.7f, Wave.Noise, 0.04f, 0.3f, 0.3f);
+            // Soft rustling
+            AddTone(buf, 1.0f, 1.5f, 200f, 150f, Wave.Noise, 0.02f, 0.2f, 0.3f);
+            ApplyLoopFade(buf);
+            return MakeClip($"Ambient_Wind_{epoch}", buf);
+        }
+
+        private static AudioClip MakeMedievalAmbient(int epoch)
+        {
+            // Medieval: distant bells, crackling fire
+            var buf = MakeBuffer(4.0f);
+            // Background crackle
+            AddTone(buf, 0f, 4.0f, 150f, 100f, Wave.Noise, 0.03f, 0.3f, 0.3f);
+            // Distant bell tones
+            AddTone(buf, 0.5f, 0.8f, 400f, 395f, Wave.Triangle, 0.04f, 0.01f, 0.5f);
+            AddTone(buf, 2.2f, 0.8f, 350f, 345f, Wave.Triangle, 0.03f, 0.01f, 0.5f);
+            // Wind undertone
+            AddTone(buf, 0f, 4.0f, 80f, 90f, Wave.Noise, 0.02f, 0.3f, 0.3f);
+            ApplyLoopFade(buf);
+            return MakeClip($"Ambient_Medieval_{epoch}", buf);
+        }
+
+        private static AudioClip MakeMachineryAmbient()
+        {
+            // Industrial: rhythmic clanking, steam, gears
+            var buf = MakeBuffer(3.0f);
+            // Steady mechanical hum
+            AddTone(buf, 0f, 3.0f, 60f, 62f, Wave.Sawtooth, 0.05f, 0.2f, 0.2f);
+            // Rhythmic clank (every 0.5s)
+            for (int i = 0; i < 6; i++)
+            {
+                float t = i * 0.5f;
+                AddTone(buf, t, 0.05f, 800f, 200f, Wave.Noise, 0.06f, 0.001f, 0.02f);
+                AddTone(buf, t, 0.08f, 100f, 50f, Wave.Triangle, 0.05f, 0.001f, 0.03f);
+            }
+            // Steam hiss
+            AddTone(buf, 1.0f, 0.6f, 500f, 300f, Wave.Noise, 0.03f, 0.05f, 0.2f);
+            ApplyLoopFade(buf);
+            return MakeClip("Ambient_Machinery", buf);
+        }
+
+        private static AudioClip MakeUrbanAmbient()
+        {
+            // Urban: city hum, distant traffic
+            var buf = MakeBuffer(3.0f);
+            AddTone(buf, 0f, 3.0f, 80f, 85f, Wave.Sawtooth, 0.04f, 0.3f, 0.3f);
+            AddTone(buf, 0f, 3.0f, 120f, 125f, Wave.Triangle, 0.03f, 0.3f, 0.3f);
+            // Distant traffic swooshes
+            AddTone(buf, 0.3f, 0.8f, 200f, 100f, Wave.Noise, 0.03f, 0.1f, 0.3f);
+            AddTone(buf, 1.8f, 0.7f, 180f, 90f, Wave.Noise, 0.025f, 0.1f, 0.3f);
+            ApplyLoopFade(buf);
+            return MakeClip("Ambient_Urban", buf);
+        }
+
+        private static AudioClip MakeDigitalAmbient(int epoch)
+        {
+            // Digital: high-frequency hum, data processing sounds
+            var buf = MakeBuffer(3.0f);
+            float baseHum = epoch == 7 ? 440f : 520f;
+            // High-frequency constant hum
+            AddTone(buf, 0f, 3.0f, baseHum, baseHum + 5f, Wave.Square, 0.02f, 0.3f, 0.3f);
+            AddTone(buf, 0f, 3.0f, baseHum * 1.5f, baseHum * 1.5f + 3f, Wave.Square, 0.01f, 0.3f, 0.3f);
+            // Data processing blips
+            for (int i = 0; i < 8; i++)
+            {
+                float t = i * 0.37f;
+                float freq = 800f + (i % 3) * 200f;
+                AddTone(buf, t, 0.03f, freq, freq, Wave.Square, 0.02f, 0.002f, 0.01f);
+            }
+            // Low digital drone
+            AddTone(buf, 0f, 3.0f, 100f, 102f, Wave.Sawtooth, 0.03f, 0.3f, 0.3f);
+            ApplyLoopFade(buf);
+            return MakeClip($"Ambient_Digital_{epoch}", buf);
+        }
+
+        private static AudioClip MakeCosmicAmbient()
+        {
+            // Transcendent: ethereal tones, cosmic resonance
+            var buf = MakeBuffer(4.0f);
+            // Deep cosmic drone
+            AddTone(buf, 0f, 4.0f, 55f, 58f, Wave.Triangle, 0.06f, 0.5f, 0.5f);
+            // Ethereal high tones
+            AddTone(buf, 0f, 4.0f, 660f, 665f, Wave.Triangle, 0.02f, 0.5f, 0.5f);
+            AddTone(buf, 0.5f, 3.0f, 880f, 878f, Wave.Triangle, 0.015f, 0.5f, 0.5f);
+            // Shimmer
+            AddTone(buf, 1.0f, 2.0f, 1320f, 1325f, Wave.Square, 0.008f, 0.3f, 0.5f);
+            // Soft noise texture
+            AddTone(buf, 0f, 4.0f, 200f, 180f, Wave.Noise, 0.015f, 0.5f, 0.5f);
+            ApplyLoopFade(buf);
+            return MakeClip("Ambient_Cosmic", buf);
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  BOSS PHASE-CHANGE ROAR (Sprint 9)
+        // ═══════════════════════════════════════════════════════════════
+
+        /// <summary>
+        /// Intense boss phase-change roar — deeper and more distorted than regular roar.
+        /// Low rumble with heavy distortion and rising overtones.
+        /// </summary>
+        public static AudioClip GetBossPhaseChangeSFX()
+        {
+            if (_cache.TryGetValue("sfx_boss_phase_change", out var c)) return c;
+            var buf = MakeBuffer(0.9f);
+            // Deep rumble foundation
+            AddTone(buf, 0f, 0.7f, 50f, 35f, Wave.Sawtooth, 0.35f, 0.01f, 0.2f);
+            AddTone(buf, 0f, 0.6f, 70f, 40f, Wave.Square, 0.25f, 0.01f, 0.15f);
+            // Noise burst for distortion
+            AddTone(buf, 0f, 0.4f, 400f, 100f, Wave.Noise, 0.25f, 0.005f, 0.15f);
+            // Rising overtone — signals danger escalation
+            AddTone(buf, 0.1f, 0.5f, 100f, 400f, Wave.Sawtooth, 0.15f, 0.03f, 0.1f);
+            // Secondary rumble
+            AddTone(buf, 0.3f, 0.4f, 60f, 30f, Wave.Triangle, 0.2f, 0.02f, 0.15f);
+            // Noise tail
+            AddTone(buf, 0.5f, 0.3f, 200f, 80f, Wave.Noise, 0.12f, 0.02f, 0.15f);
+            var clip = MakeClip("SFX_BossPhaseChange", buf);
+            _cache["sfx_boss_phase_change"] = clip;
+            return clip;
+        }
+
         /// <summary>Crossfade edges for seamless looping (50ms fade in/out).</summary>
         private static void ApplyLoopFade(float[] buf)
         {
@@ -724,5 +1131,10 @@ namespace EpochBreaker.Gameplay
                 buf[buf.Length - 1 - i] *= fade;
             }
         }
+
+        // Note frequency helpers (flats/sharps for variant progressions)
+        const float _Bb2 = 116.54f, _B2_flat = 116.54f;
+        const float _Eb3 = 155.56f, _Bb3 = 233.08f;
+        const float _D2 = 73.42f, _E2 = 82.41f;
     }
 }

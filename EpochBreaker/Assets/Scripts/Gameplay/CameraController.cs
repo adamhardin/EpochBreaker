@@ -131,6 +131,9 @@ namespace EpochBreaker.Gameplay
 
         private System.Collections.IEnumerator LevelIntroPan()
         {
+            // Wait one frame so Start() and physics have time to settle
+            yield return null;
+
             if (_target == null) yield break;
 
             float savedSmoothX = _smoothSpeedX;
@@ -142,22 +145,32 @@ namespace EpochBreaker.Gameplay
             Transform savedTarget = _target;
             _target = tempGO.transform;
 
-            yield return new WaitForSeconds(0.6f);
+            yield return new WaitForSecondsRealtime(0.6f);
 
-            // Return to player
-            _target = savedTarget;
+            // Return to player — guard against savedTarget being destroyed during pan
+            if (savedTarget != null)
+            {
+                _target = savedTarget;
+            }
+            else
+            {
+                var player = GameObject.FindWithTag("Player");
+                if (player != null) _target = player.transform;
+            }
             _smoothSpeedX = 5f;
 
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSecondsRealtime(0.5f);
 
             _smoothSpeedX = savedSmoothX;
-            Destroy(tempGO);
+            if (tempGO != null) Destroy(tempGO);
             _introCoroutine = null;
         }
 
         private void LateUpdate()
         {
             if (_target == null || _camera == null) return;
+            // Guard against target destroyed mid-frame (Unity null check)
+            if (!_target.gameObject) return;
 
             Vector3 currentPos = transform.position;
             Vector3 targetPos = _target.position;
@@ -208,11 +221,14 @@ namespace EpochBreaker.Gameplay
             }
 
             // Apply trauma-based screen shake (Perlin noise for smooth motion)
+            // Multiplied by AccessibilityManager.ScreenShakeIntensity (Sprint 9)
             float shakeX = 0f, shakeY = 0f;
             if (_trauma > 0f)
             {
+                float shakeMultiplier = AccessibilityManager.Instance != null
+                    ? AccessibilityManager.Instance.ScreenShakeIntensity : 1f;
                 _shakeTime += Time.unscaledDeltaTime * 50f; // fast noise scroll
-                float magnitude = _trauma * _trauma * 0.6f; // quadratic falloff, max ~0.6 units
+                float magnitude = _trauma * _trauma * 0.6f * shakeMultiplier; // quadratic falloff, scaled by setting
                 shakeX = (Mathf.PerlinNoise(_shakeTime, 0f) - 0.5f) * 2f * magnitude;
                 shakeY = (Mathf.PerlinNoise(0f, _shakeTime) - 0.5f) * 2f * magnitude;
                 _trauma = Mathf.Max(0f, _trauma - TRAUMA_DECAY_SPEED * Time.unscaledDeltaTime);

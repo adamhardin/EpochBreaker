@@ -319,6 +319,20 @@ namespace EpochBreaker.Generative
         RealityBreaker = 9,
     }
 
+    public enum BossVariant
+    {
+        Primitive,      // Era 0: charge-only, 2 phases
+        BronzeGuard,    // Era 1: charge + single shot, 2 phases
+        ClassicWarrior, // Era 2: all attacks but slower, 2 phases
+        Medieval,       // Era 3: ground-slam shockwave, 3 phases
+        Renaissance,    // Era 4: teleport dash, 3 phases
+        Industrial,     // Era 5: summons minions, 3 phases
+        Modern,         // Era 6: arena hazards, 3 phases
+        Digital,        // Era 7: projectile reflection, 3 phases
+        SpaceAge,       // Era 8: gravity flip, 3 phases
+        Architect       // Era 9: 4 phases, rewrites arena, all mechanics
+    }
+
     // =====================================================================
     // Rewards and Checkpoints
     // =====================================================================

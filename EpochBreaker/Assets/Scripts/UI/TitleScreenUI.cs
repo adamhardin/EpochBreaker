@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -13,6 +14,7 @@ namespace EpochBreaker.UI
     public class TitleScreenUI : MonoBehaviour
     {
         private Canvas _canvas;
+        private GameObject _canvasGO;
         private GameObject _levelSelectorPanel;
         private GameObject _levelHistoryPanel;
         private GameObject _enterCodePanel;
@@ -20,11 +22,19 @@ namespace EpochBreaker.UI
         private GameObject _settingsMenuContent;
         private GameObject _audioSubPanel;
         private GameObject _aboutSubPanel;
+        private GameObject _accessibilitySubPanel;
+        private GameObject _difficultySubPanel;
         private GameObject _historyContentParent;
+        private int _historyPage = 0;
+        private Text _historyPageLabel;
+        private const int HISTORY_PAGE_SIZE = 10;
         private GameObject _legendsObj;
         private GameObject _achievementsObj;
+        private GameObject _challengeEntryObj;
+        private GameObject _cosmeticsObj;
         private InputField _codeInputField;
         private Text _codeErrorText;
+        private GameObject _confirmNewGamePanel;
 
         private static readonly string[] EpochNames = {
             "Stone Age", "Bronze Age", "Classical", "Medieval", "Renaissance",
@@ -54,6 +64,15 @@ namespace EpochBreaker.UI
             // Close overlays with Escape
             if (Keyboard.current.escapeKey.wasPressedThisFrame)
             {
+                // New game confirmation dialog (highest priority)
+                if (_confirmNewGamePanel != null)
+                {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    Destroy(_confirmNewGamePanel);
+                    _confirmNewGamePanel = null;
+                    return;
+                }
+
                 // Legends overlay
                 if (_legendsObj != null)
                     return; // LegendsUI handles its own escape
@@ -61,6 +80,14 @@ namespace EpochBreaker.UI
                 // Achievements overlay
                 if (_achievementsObj != null)
                     return; // AchievementsUI handles its own escape
+
+                // Challenge entry overlay
+                if (_challengeEntryObj != null)
+                    return; // ChallengeEntryUI handles its own escape
+
+                // Cosmetics overlay
+                if (_cosmeticsObj != null)
+                    return; // CosmeticSelectUI handles its own escape
 
                 // About sub-panel → back to settings menu
                 if (_aboutSubPanel != null && _aboutSubPanel.activeSelf)
@@ -72,6 +99,18 @@ namespace EpochBreaker.UI
                 else if (_audioSubPanel != null && _audioSubPanel.activeSelf)
                 {
                     _audioSubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                }
+                // Accessibility sub-panel → back to settings menu
+                else if (_accessibilitySubPanel != null && _accessibilitySubPanel.activeSelf)
+                {
+                    _accessibilitySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                }
+                // Difficulty sub-panel → back to settings menu
+                else if (_difficultySubPanel != null && _difficultySubPanel.activeSelf)
+                {
+                    _difficultySubPanel.SetActive(false);
                     _settingsMenuContent.SetActive(true);
                 }
                 else if (_settingsPanel != null && _settingsPanel.activeSelf)
@@ -87,6 +126,7 @@ namespace EpochBreaker.UI
         {
             // Canvas
             var canvasGO = new GameObject("TitleCanvas");
+            _canvasGO = canvasGO;
             canvasGO.transform.SetParent(transform);
             _canvas = canvasGO.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -156,27 +196,21 @@ namespace EpochBreaker.UI
             sub2Rect.sizeDelta = new Vector2(900, 34);
             sub2Rect.anchoredPosition = new Vector2(0, 198);
 
-            // Main menu buttons
+            // Main menu buttons (center column)
             CreateMainMenu(canvasGO.transform);
 
-            // Legend panel
+            // Challenge cluster (top-right: DAILY, WEEKLY, CHALLENGE with alert badges)
+            CreateChallengeCluster(canvasGO.transform);
+
+            // Legend info panel (bottom center)
             CreateLegend(canvasGO.transform);
 
             // Controls hint
             var hintGO = CreateText(canvasGO.transform,
                 "Move: Arrow Pad | Jump: Spacebar | Ground Pound: Down Arrow while Airborn | Esc: Pause", 16,
-                new Color(0.5f, 0.5f, 0.6f));
+                new Color(0.65f, 0.65f, 0.75f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
-
-            // Build ID — above bottom gold border, left corner on purple background
-            var verGO = CreateText(canvasGO.transform, BuildInfo.FullBuildID, 22,
-                new Color(0.9f, 0.9f, 0.95f));
-            var verRect = verGO.GetComponent<RectTransform>();
-            verRect.anchorMin = new Vector2(0, 0);
-            verRect.anchorMax = new Vector2(0, 0);
-            verRect.pivot = new Vector2(0, 0);
-            verRect.anchoredPosition = new Vector2(30, 85);
 
             // Enter code overlay (initially hidden)
             CreateEnterCodeOverlay(canvasGO.transform);
@@ -191,6 +225,122 @@ namespace EpochBreaker.UI
             CreateLevelHistoryOverlay(canvasGO.transform);
         }
 
+        private void RebuildUI()
+        {
+            if (_canvasGO != null) Destroy(_canvasGO);
+            _legendsObj = null;
+            _achievementsObj = null;
+            _challengeEntryObj = null;
+            _cosmeticsObj = null;
+            _confirmNewGamePanel = null;
+            CreateUI();
+        }
+
+        private void ShowNewGameConfirmation()
+        {
+            if (_confirmNewGamePanel != null) return;
+
+            _confirmNewGamePanel = new GameObject("ConfirmNewGame");
+            _confirmNewGamePanel.transform.SetParent(_canvasGO.transform, false);
+
+            // Canvas on top of everything
+            var panelCanvas = _confirmNewGamePanel.AddComponent<Canvas>();
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 150;
+            _confirmNewGamePanel.AddComponent<GraphicRaycaster>();
+
+            // Full-screen dim overlay (blocks clicks behind)
+            var dimGO = new GameObject("Dim");
+            dimGO.transform.SetParent(_confirmNewGamePanel.transform, false);
+            var dimImg = dimGO.AddComponent<Image>();
+            dimImg.color = new Color(0.02f, 0.02f, 0.05f, 0.85f);
+            var dimRect = dimGO.GetComponent<RectTransform>();
+            dimRect.anchorMin = Vector2.zero;
+            dimRect.anchorMax = Vector2.one;
+            dimRect.sizeDelta = Vector2.zero;
+
+            // Dialog box — ornate style
+            var boxGO = new GameObject("DialogBox");
+            boxGO.transform.SetParent(_confirmNewGamePanel.transform, false);
+            var boxImg = boxGO.AddComponent<Image>();
+            boxImg.color = new Color(0.85f, 0.65f, 0.12f, 0.9f); // outer gold border
+            var boxRect = boxGO.GetComponent<RectTransform>();
+            boxRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boxRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boxRect.sizeDelta = new Vector2(460, 220);
+            boxRect.anchoredPosition = Vector2.zero;
+
+            // Dark gap
+            var gapGO = new GameObject("Gap");
+            gapGO.transform.SetParent(boxGO.transform, false);
+            var gapImg = gapGO.AddComponent<Image>();
+            gapImg.color = new Color(0.06f, 0.04f, 0.10f);
+            var gapRect = gapGO.GetComponent<RectTransform>();
+            gapRect.anchorMin = Vector2.zero;
+            gapRect.anchorMax = Vector2.one;
+            gapRect.sizeDelta = new Vector2(-4, -4);
+
+            // Inner gold border
+            var innerGO = new GameObject("InnerBorder");
+            innerGO.transform.SetParent(gapGO.transform, false);
+            var innerImg = innerGO.AddComponent<Image>();
+            innerImg.color = new Color(0.90f, 0.70f, 0.18f, 0.75f);
+            var innerRect = innerGO.GetComponent<RectTransform>();
+            innerRect.anchorMin = Vector2.zero;
+            innerRect.anchorMax = Vector2.one;
+            innerRect.sizeDelta = new Vector2(-3, -3);
+
+            // Dark background
+            var bgGO = new GameObject("Bg");
+            bgGO.transform.SetParent(innerGO.transform, false);
+            var bgImg = bgGO.AddComponent<Image>();
+            bgImg.color = new Color(0.10f, 0.08f, 0.16f, 0.98f);
+            var bgRect = bgGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = Vector2.zero;
+            bgRect.anchorMax = Vector2.one;
+            bgRect.sizeDelta = new Vector2(-3, -3);
+
+            // Warning title
+            var titleGO = new GameObject("Title");
+            titleGO.transform.SetParent(bgGO.transform, false);
+            var titleImg = titleGO.AddComponent<Image>();
+            titleImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW GAME", new Color(1f, 0.85f, 0.2f), 3);
+            titleImg.preserveAspect = true;
+            var titleRect = titleGO.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0.5f, 0.5f);
+            titleRect.anchorMax = new Vector2(0.5f, 0.5f);
+            titleRect.sizeDelta = new Vector2(300, 30);
+            titleRect.anchoredPosition = new Vector2(0, 60);
+
+            // Warning message
+            var msgGO = CreateText(bgGO.transform,
+                "All current progress will be lost.\nAre you sure?", 18,
+                new Color(0.8f, 0.75f, 0.85f));
+            var msgRect = msgGO.GetComponent<RectTransform>();
+            msgRect.anchorMin = new Vector2(0.5f, 0.5f);
+            msgRect.anchorMax = new Vector2(0.5f, 0.5f);
+            msgRect.sizeDelta = new Vector2(380, 50);
+            msgRect.anchoredPosition = new Vector2(0, 10);
+
+            // CONTINUE button (confirms new game)
+            CreateMenuButton(bgGO.transform, "CONTINUE", new Vector2(-90, -55),
+                new Vector2(150, 42), new Color(0.55f, 0.25f, 0.2f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    Destroy(_confirmNewGamePanel);
+                    _confirmNewGamePanel = null;
+                    GameManager.ClearSession();
+                    RebuildUI();
+                });
+
+            // CANCEL button
+            CreateMenuButton(bgGO.transform, "CANCEL", new Vector2(90, -55),
+                new Vector2(150, 42), new Color(0.3f, 0.3f, 0.38f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    Destroy(_confirmNewGamePanel);
+                    _confirmNewGamePanel = null;
+                });
+        }
+
         private void CreateMainMenu(Transform parent)
         {
             bool hasSavedSession = GameManager.HasSavedSession();
@@ -198,21 +348,22 @@ namespace EpochBreaker.UI
             if (hasSavedSession)
             {
                 // CONTINUE button (primary — left side)
-                CreateMenuButton(parent, "CONTINUE", new Vector2(-72, 120),
+                CreateMenuButton(parent, "CONTINUE", new Vector2(-72, 130),
                     new Vector2(200, 55), new Color(0.2f, 0.55f, 0.3f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         GameManager.Instance?.ContinueSession();
                     });
 
                 // NEW GAME button (secondary — right of CONTINUE)
-                CreateMenuButton(parent, "NEW GAME", new Vector2(142, 120),
+                // Shows confirmation dialog before clearing saved session
+                CreateMenuButton(parent, "NEW GAME", new Vector2(142, 130),
                     new Vector2(140, 42), new Color(0.55f, 0.45f, 0.15f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                        GameManager.Instance?.StartGame();
+                        ShowNewGameConfirmation();
                     });
 
                 // Enter Code button
-                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 58),
+                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 70),
                     new Vector2(260, 42), new Color(0.4f, 0.5f, 0.55f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_enterCodePanel != null)
@@ -224,20 +375,16 @@ namespace EpochBreaker.UI
                         }
                     });
 
-                // Level History button
-                CreateMenuButton(parent, "LEVEL HISTORY", new Vector2(0, 8),
-                    new Vector2(260, 42), new Color(0.35f, 0.45f, 0.55f), () => {
+                // Cosmetics button
+                CreateMenuButton(parent, "COSMETICS", new Vector2(0, 10),
+                    new Vector2(220, 42), new Color(0.5f, 0.4f, 0.6f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                        if (_levelHistoryPanel != null)
-                        {
-                            RefreshHistoryContent();
-                            _levelHistoryPanel.SetActive(true);
-                        }
+                        OpenCosmetics();
                     });
 
                 // Settings button
-                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -42),
-                    new Vector2(260, 42), new Color(0.4f, 0.4f, 0.48f), () => {
+                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -45),
+                    new Vector2(220, 42), new Color(0.4f, 0.4f, 0.48f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_settingsPanel != null)
                             _settingsPanel.SetActive(true);
@@ -246,14 +393,14 @@ namespace EpochBreaker.UI
             else
             {
                 // Play Game button (primary)
-                CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 120),
+                CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 130),
                     new Vector2(260, 55), new Color(0.2f, 0.55f, 0.3f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         GameManager.Instance?.StartGame();
                     });
 
                 // Enter Code button
-                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 58),
+                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 70),
                     new Vector2(260, 42), new Color(0.4f, 0.5f, 0.55f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_enterCodePanel != null)
@@ -265,25 +412,266 @@ namespace EpochBreaker.UI
                         }
                     });
 
-                // Level History button
-                CreateMenuButton(parent, "LEVEL HISTORY", new Vector2(0, 8),
-                    new Vector2(260, 42), new Color(0.35f, 0.45f, 0.55f), () => {
+                // Cosmetics button
+                CreateMenuButton(parent, "COSMETICS", new Vector2(0, 10),
+                    new Vector2(220, 42), new Color(0.5f, 0.4f, 0.6f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                        if (_levelHistoryPanel != null)
-                        {
-                            RefreshHistoryContent();
-                            _levelHistoryPanel.SetActive(true);
-                        }
+                        OpenCosmetics();
                     });
 
                 // Settings button
-                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -42),
-                    new Vector2(260, 42), new Color(0.4f, 0.4f, 0.48f), () => {
+                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -45),
+                    new Vector2(220, 42), new Color(0.4f, 0.4f, 0.48f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_settingsPanel != null)
                             _settingsPanel.SetActive(true);
                     });
             }
+        }
+
+        /// <summary>
+        /// Creates the horizontal nav row with TROPHIES, LEVEL HISTORY, and LEGENDS buttons.
+        /// Replaces the previous ornate corner buttons with a compact center row at Y=10.
+        /// </summary>
+        private void CreateNavRow(Transform parent)
+        {
+            CreateMenuButton(parent, "TROPHIES", new Vector2(-145, 10),
+                new Vector2(130, 42), new Color(0.45f, 0.38f, 0.2f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    OpenAchievements();
+                });
+
+            CreateMenuButton(parent, "LEVEL HISTORY", new Vector2(0, 10),
+                new Vector2(140, 42), new Color(0.35f, 0.45f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (_levelHistoryPanel != null)
+                    {
+                        RefreshHistoryContent();
+                        _levelHistoryPanel.SetActive(true);
+                    }
+                });
+
+            bool legendsUnlocked = GameManager.Instance != null && GameManager.Instance.LegendsUnlocked;
+            CreateMenuButton(parent, "LEGENDS", new Vector2(145, 10),
+                new Vector2(130, 42), legendsUnlocked
+                    ? new Color(0.5f, 0.4f, 0.15f)
+                    : new Color(0.25f, 0.22f, 0.28f), () => {
+                    if (!legendsUnlocked) return;
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    OpenLegends();
+                });
+        }
+
+        /// <summary>
+        /// Creates the top-right challenge cluster containing DAILY, WEEKLY, and CHALLENGE buttons.
+        /// Positioned right of the subtitle area so alert badges (NEW) are prominent and
+        /// time-limited challenges are visually grouped together.
+        /// </summary>
+        private void CreateChallengeCluster(Transform parent)
+        {
+            // Container panel — top-right area, semi-transparent
+            var containerGO = CreatePanel(parent, "ChallengeCluster", new Color(0.12f, 0.10f, 0.22f, 0.7f));
+            var containerRect = containerGO.GetComponent<RectTransform>();
+            containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            containerRect.sizeDelta = new Vector2(240, 180);
+            // Top edge = 370 + 90 = 460, well within ±540 viewport bounds (leaves room for NEW badges)
+            containerRect.anchoredPosition = new Vector2(660, 370);
+
+            // DAILY, WEEKLY, CHALLENGE stacked vertically
+            CreateDailyButton(containerGO.transform, new Vector2(0, 50));
+            CreateWeeklyButton(containerGO.transform, new Vector2(0, -2));
+
+            // CHALLENGE button (bottom)
+            CreateMenuButton(containerGO.transform, "CHALLENGE", new Vector2(0, -54),
+                new Vector2(220, 40), new Color(0.5f, 0.35f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    OpenChallengeEntry();
+                });
+        }
+
+        private void CreateDailyButton(Transform parent, Vector2 position)
+        {
+            int epoch = DailyChallengeManager.GetTodayEpoch();
+            string epochName = LevelID.GetEpochName(epoch);
+            string difficulty = DailyChallengeManager.GetTodayDifficulty();
+            bool played = DailyChallengeManager.HasPlayedToday();
+            int streak = DailyChallengeManager.GetStreakCount();
+            Color epochColor = GetEpochColor(epoch);
+
+            // Button background — daily accent color based on epoch
+            Color dailyBgColor = new Color(
+                Mathf.Lerp(0.15f, epochColor.r, 0.4f),
+                Mathf.Lerp(0.10f, epochColor.g, 0.4f),
+                Mathf.Lerp(0.30f, epochColor.b, 0.4f));
+
+            var go = new GameObject("DailyBtn");
+            go.transform.SetParent(parent, false);
+
+            var img = go.AddComponent<Image>();
+            img.color = dailyBgColor;
+
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                GameManager.Instance?.StartDailyChallenge();
+            });
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(220, 48);
+            rect.anchoredPosition = position;
+
+            // "DAILY" label (main text)
+            string labelText = "DAILY";
+            if (streak > 0)
+                labelText += $" x{streak}";
+
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(go.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(labelText, Color.white, 2);
+            labelImg.preserveAspect = true;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.sizeDelta = new Vector2(110, 16);
+            labelRect.anchoredPosition = new Vector2(0, 4);
+
+            // Epoch/difficulty sub-label
+            var subGO = new GameObject("SubLabel");
+            subGO.transform.SetParent(go.transform, false);
+            var subImg = subGO.AddComponent<Image>();
+            subImg.sprite = PlaceholderAssets.GetPixelTextSprite(
+                difficulty,
+                new Color(0.75f, 0.75f, 0.85f), 2);
+            subImg.preserveAspect = true;
+            var subRect = subGO.GetComponent<RectTransform>();
+            subRect.anchorMin = new Vector2(0.5f, 0.5f);
+            subRect.anchorMax = new Vector2(0.5f, 0.5f);
+            subRect.sizeDelta = new Vector2(130, 14);
+            subRect.anchoredPosition = new Vector2(0, -14);
+
+            // "NEW" badge if not yet played today
+            if (!played)
+            {
+                var badgeGO = new GameObject("NewBadge");
+                badgeGO.transform.SetParent(go.transform, false);
+                var badgeImg = badgeGO.AddComponent<Image>();
+                badgeImg.color = new Color(0.9f, 0.3f, 0.2f);
+                var badgeRect = badgeGO.GetComponent<RectTransform>();
+                badgeRect.anchorMin = new Vector2(1f, 1f);
+                badgeRect.anchorMax = new Vector2(1f, 1f);
+                badgeRect.pivot = new Vector2(1f, 1f);
+                badgeRect.sizeDelta = new Vector2(40, 20);
+                badgeRect.anchoredPosition = new Vector2(4, 4);
+
+                var badgeLabelGO = new GameObject("BadgeLabel");
+                badgeLabelGO.transform.SetParent(badgeGO.transform, false);
+                var badgeLabelImg = badgeLabelGO.AddComponent<Image>();
+                badgeLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW", Color.white, 1);
+                badgeLabelImg.preserveAspect = true;
+                var badgeLabelRect = badgeLabelGO.GetComponent<RectTransform>();
+                badgeLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                badgeLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                badgeLabelRect.sizeDelta = new Vector2(32, 12);
+                badgeLabelRect.anchoredPosition = Vector2.zero;
+            }
+        }
+
+        private void CreateWeeklyButton(Transform parent, Vector2 position)
+        {
+            int epoch = DailyChallengeManager.GetWeeklyEpoch();
+            string epochName = LevelID.GetEpochName(epoch);
+            bool played = DailyChallengeManager.HasPlayedThisWeek();
+            Color epochColor = GetEpochColor(epoch);
+
+            // Button background — weekly accent color
+            Color weeklyBgColor = new Color(
+                Mathf.Lerp(0.15f, epochColor.r, 0.3f),
+                Mathf.Lerp(0.25f, epochColor.g, 0.3f),
+                Mathf.Lerp(0.15f, epochColor.b, 0.3f));
+
+            var go = new GameObject("WeeklyBtn");
+            go.transform.SetParent(parent, false);
+
+            var img = go.AddComponent<Image>();
+            img.color = weeklyBgColor;
+
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                GameManager.Instance?.StartWeeklyChallenge();
+            });
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(220, 48);
+            rect.anchoredPosition = position;
+
+            // "WEEKLY" label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(go.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("WEEKLY", Color.white, 2);
+            labelImg.preserveAspect = true;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.sizeDelta = new Vector2(110, 16);
+            labelRect.anchoredPosition = new Vector2(0, 4);
+
+            // Epoch sub-label
+            var subGO = new GameObject("SubLabel");
+            subGO.transform.SetParent(go.transform, false);
+            var subImg = subGO.AddComponent<Image>();
+            subImg.sprite = PlaceholderAssets.GetPixelTextSprite(
+                epochName,
+                new Color(0.75f, 0.75f, 0.85f), 2);
+            subImg.preserveAspect = true;
+            var subRect = subGO.GetComponent<RectTransform>();
+            subRect.anchorMin = new Vector2(0.5f, 0.5f);
+            subRect.anchorMax = new Vector2(0.5f, 0.5f);
+            subRect.sizeDelta = new Vector2(130, 14);
+            subRect.anchoredPosition = new Vector2(0, -14);
+
+            // "NEW" badge if not yet played this week
+            if (!played)
+            {
+                var badgeGO = new GameObject("NewBadge");
+                badgeGO.transform.SetParent(go.transform, false);
+                var badgeImg = badgeGO.AddComponent<Image>();
+                badgeImg.color = new Color(0.3f, 0.7f, 0.3f);
+                var badgeRect = badgeGO.GetComponent<RectTransform>();
+                badgeRect.anchorMin = new Vector2(1f, 1f);
+                badgeRect.anchorMax = new Vector2(1f, 1f);
+                badgeRect.pivot = new Vector2(1f, 1f);
+                badgeRect.sizeDelta = new Vector2(40, 20);
+                badgeRect.anchoredPosition = new Vector2(4, 4);
+
+                var badgeLabelGO = new GameObject("BadgeLabel");
+                badgeLabelGO.transform.SetParent(badgeGO.transform, false);
+                var badgeLabelImg = badgeLabelGO.AddComponent<Image>();
+                badgeLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("NEW", Color.white, 1);
+                badgeLabelImg.preserveAspect = true;
+                var badgeLabelRect = badgeLabelGO.GetComponent<RectTransform>();
+                badgeLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                badgeLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                badgeLabelRect.sizeDelta = new Vector2(32, 12);
+                badgeLabelRect.anchoredPosition = Vector2.zero;
+            }
+        }
+
+        private void OpenChallengeEntry()
+        {
+            if (_challengeEntryObj != null) return;
+            _challengeEntryObj = new GameObject("ChallengeEntryOverlay");
+            var entry = _challengeEntryObj.AddComponent<ChallengeEntryUI>();
+            entry.Initialize(() => { _challengeEntryObj = null; });
         }
 
         private void CreateLegend(Transform parent)
@@ -296,8 +684,8 @@ namespace EpochBreaker.UI
             var panelRect = panelGO.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(800, 280);
-            panelRect.anchoredPosition = new Vector2(0, -240);
+            panelRect.sizeDelta = new Vector2(800, 260);
+            panelRect.anchoredPosition = new Vector2(0, -270);
 
             // Row 1: Rewards
             float row1Y = 95f;
@@ -337,214 +725,20 @@ namespace EpochBreaker.UI
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetGoalSprite(),
                 "Goal", new Vector2(110, row3Y), 48f);
 
-            // ── Legends button — ornate feature button to the right of the legend panel ──
+            // ACHIEVEMENTS and LEGENDS — stacked left of sprite legend, ornate framed
+            CreateOrnateButton(parent, "ACHIEVEMENTS", new Vector2(-540, -240),
+                new Vector2(220, 50), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    OpenAchievements();
+                });
+
             bool legendsUnlocked = GameManager.Instance != null && GameManager.Instance.LegendsUnlocked;
-
-            // Center between legend panel right edge (X=400) and screen right (~X=900)
-            float legendsBtnX = 650f;
-            float legendsBtnY = -240f;
-
-            // Outer glow/border frame
-            var legendsGlowGO = new GameObject("LegendsGlow");
-            legendsGlowGO.transform.SetParent(parent, false);
-            var legendsGlowImg = legendsGlowGO.AddComponent<Image>();
-            legendsGlowImg.color = new Color(0.8f, 0.6f, 0.1f, 0.5f);
-            var legendsGlowRect = legendsGlowGO.GetComponent<RectTransform>();
-            legendsGlowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            legendsGlowRect.anchorMax = new Vector2(0.5f, 0.5f);
-            legendsGlowRect.sizeDelta = new Vector2(210, 150);
-            legendsGlowRect.anchoredPosition = new Vector2(legendsBtnX, legendsBtnY);
-
-            // Main button body
-            var legendsBtnGO = new GameObject("LegendsBtn");
-            legendsBtnGO.transform.SetParent(legendsGlowGO.transform, false);
-            var legendsBtnImg = legendsBtnGO.AddComponent<Image>();
-            legendsBtnImg.color = new Color(0.18f, 0.12f, 0.05f, 0.95f);
-            var legendsBtnRect = legendsBtnGO.GetComponent<RectTransform>();
-            legendsBtnRect.anchorMin = new Vector2(0.5f, 0.5f);
-            legendsBtnRect.anchorMax = new Vector2(0.5f, 0.5f);
-            legendsBtnRect.sizeDelta = new Vector2(190, 130);
-            legendsBtnRect.anchoredPosition = Vector2.zero;
-
-            // Inner border accent
-            var legendsBorderGO = new GameObject("Border");
-            legendsBorderGO.transform.SetParent(legendsBtnGO.transform, false);
-            var legendsBorderImg = legendsBorderGO.AddComponent<Image>();
-            legendsBorderImg.color = new Color(0.85f, 0.65f, 0.15f, 0.8f);
-            var legendsBorderRect = legendsBorderGO.GetComponent<RectTransform>();
-            legendsBorderRect.anchorMin = Vector2.zero;
-            legendsBorderRect.anchorMax = Vector2.one;
-            legendsBorderRect.sizeDelta = new Vector2(-6, -6);
-            legendsBorderRect.anchoredPosition = Vector2.zero;
-
-            // Inner fill
-            var legendsFillGO = new GameObject("Fill");
-            legendsFillGO.transform.SetParent(legendsBorderGO.transform, false);
-            var legendsFillImg = legendsFillGO.AddComponent<Image>();
-            legendsFillImg.color = new Color(0.14f, 0.10f, 0.04f, 0.98f);
-            var legendsFillRect = legendsFillGO.GetComponent<RectTransform>();
-            legendsFillRect.anchorMin = Vector2.zero;
-            legendsFillRect.anchorMax = Vector2.one;
-            legendsFillRect.sizeDelta = new Vector2(-4, -4);
-            legendsFillRect.anchoredPosition = Vector2.zero;
-
-            // Trophy/star icon — top-aligned
-            var trophyGO = new GameObject("Trophy");
-            trophyGO.transform.SetParent(legendsFillGO.transform, false);
-            var trophyImg = trophyGO.AddComponent<Image>();
-            trophyImg.sprite = PlaceholderAssets.GetPixelTextSprite("*", legendsUnlocked
-                ? new Color(1f, 0.85f, 0.2f)
-                : new Color(0.35f, 0.32f, 0.40f), 5);
-            trophyImg.preserveAspect = true;
-            var trophyRect = trophyGO.GetComponent<RectTransform>();
-            trophyRect.anchorMin = new Vector2(0.5f, 1f);
-            trophyRect.anchorMax = new Vector2(0.5f, 1f);
-            trophyRect.pivot = new Vector2(0.5f, 1f);
-            trophyRect.sizeDelta = new Vector2(40, 40);
-            trophyRect.anchoredPosition = new Vector2(0, -6);
-
-            // "LEGENDS" label — below trophy
-            var legendsLabelGO = new GameObject("Label");
-            legendsLabelGO.transform.SetParent(legendsFillGO.transform, false);
-            var legendsLabelImg = legendsLabelGO.AddComponent<Image>();
-            legendsLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("LEGENDS", legendsUnlocked
-                ? new Color(1f, 0.85f, 0.2f)
-                : new Color(0.4f, 0.38f, 0.45f), 3);
-            legendsLabelImg.preserveAspect = true;
-            var legendsLabelRect = legendsLabelGO.GetComponent<RectTransform>();
-            legendsLabelRect.anchorMin = new Vector2(0.5f, 1f);
-            legendsLabelRect.anchorMax = new Vector2(0.5f, 1f);
-            legendsLabelRect.pivot = new Vector2(0.5f, 1f);
-            legendsLabelRect.sizeDelta = new Vector2(160, 28);
-            legendsLabelRect.anchoredPosition = new Vector2(0, -48);
-
-            // Status subtitle — below label
-            var statusGO = new GameObject("Status");
-            statusGO.transform.SetParent(legendsFillGO.transform, false);
-            var statusImg = statusGO.AddComponent<Image>();
-            statusImg.sprite = PlaceholderAssets.GetPixelTextSprite(
-                legendsUnlocked ? "VIEW RECORDS" : "LOCKED",
-                legendsUnlocked ? new Color(0.7f, 0.6f, 0.3f) : new Color(0.45f, 0.35f, 0.35f), 2);
-            statusImg.preserveAspect = true;
-            var statusRect = statusGO.GetComponent<RectTransform>();
-            statusRect.anchorMin = new Vector2(0.5f, 1f);
-            statusRect.anchorMax = new Vector2(0.5f, 1f);
-            statusRect.pivot = new Vector2(0.5f, 1f);
-            statusRect.sizeDelta = new Vector2(120, 16);
-            statusRect.anchoredPosition = new Vector2(0, -78);
-
-            // Button component on the glow parent for largest click area
-            var legendsBtn = legendsGlowGO.AddComponent<Button>();
-            legendsBtn.targetGraphic = legendsBtnImg;
-            legendsBtn.interactable = legendsUnlocked;
-            legendsBtn.onClick.AddListener(() =>
-            {
-                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                OpenLegends();
-            });
-
-            // ── Achievements button — ornate feature button to the LEFT of the legend panel ──
-            float achBtnX = -650f;
-            float achBtnY = -240f;
-
-            // Outer glow/border frame
-            var achGlowGO = new GameObject("AchievementsGlow");
-            achGlowGO.transform.SetParent(parent, false);
-            var achGlowImg = achGlowGO.AddComponent<Image>();
-            achGlowImg.color = new Color(0.8f, 0.6f, 0.1f, 0.5f);
-            var achGlowRect = achGlowGO.GetComponent<RectTransform>();
-            achGlowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            achGlowRect.anchorMax = new Vector2(0.5f, 0.5f);
-            achGlowRect.sizeDelta = new Vector2(210, 150);
-            achGlowRect.anchoredPosition = new Vector2(achBtnX, achBtnY);
-
-            // Main button body
-            var achBtnGO = new GameObject("AchievementsBtn");
-            achBtnGO.transform.SetParent(achGlowGO.transform, false);
-            var achBtnImg = achBtnGO.AddComponent<Image>();
-            achBtnImg.color = new Color(0.18f, 0.12f, 0.05f, 0.95f);
-            var achBtnRect = achBtnGO.GetComponent<RectTransform>();
-            achBtnRect.anchorMin = new Vector2(0.5f, 0.5f);
-            achBtnRect.anchorMax = new Vector2(0.5f, 0.5f);
-            achBtnRect.sizeDelta = new Vector2(190, 130);
-            achBtnRect.anchoredPosition = Vector2.zero;
-
-            // Inner border accent
-            var achBorderGO = new GameObject("Border");
-            achBorderGO.transform.SetParent(achBtnGO.transform, false);
-            var achBorderImg = achBorderGO.AddComponent<Image>();
-            achBorderImg.color = new Color(0.85f, 0.65f, 0.15f, 0.8f);
-            var achBorderRect = achBorderGO.GetComponent<RectTransform>();
-            achBorderRect.anchorMin = Vector2.zero;
-            achBorderRect.anchorMax = Vector2.one;
-            achBorderRect.sizeDelta = new Vector2(-6, -6);
-            achBorderRect.anchoredPosition = Vector2.zero;
-
-            // Inner fill
-            var achFillGO = new GameObject("Fill");
-            achFillGO.transform.SetParent(achBorderGO.transform, false);
-            var achFillImg = achFillGO.AddComponent<Image>();
-            achFillImg.color = new Color(0.14f, 0.10f, 0.04f, 0.98f);
-            var achFillRect = achFillGO.GetComponent<RectTransform>();
-            achFillRect.anchorMin = Vector2.zero;
-            achFillRect.anchorMax = Vector2.one;
-            achFillRect.sizeDelta = new Vector2(-4, -4);
-            achFillRect.anchoredPosition = Vector2.zero;
-
-            // Trophy icon — top-aligned
-            var achIconGO = new GameObject("Icon");
-            achIconGO.transform.SetParent(achFillGO.transform, false);
-            var achIconImg = achIconGO.AddComponent<Image>();
-            var achCounts = AchievementManager.Instance?.GetUnlockCount() ?? (0, 0);
-            bool hasAny = achCounts.unlocked > 0;
-            achIconImg.sprite = PlaceholderAssets.GetPixelTextSprite("+", hasAny
-                ? new Color(0.4f, 0.9f, 0.4f)
-                : new Color(0.35f, 0.32f, 0.40f), 5);
-            achIconImg.preserveAspect = true;
-            var achIconRect = achIconGO.GetComponent<RectTransform>();
-            achIconRect.anchorMin = new Vector2(0.5f, 1f);
-            achIconRect.anchorMax = new Vector2(0.5f, 1f);
-            achIconRect.pivot = new Vector2(0.5f, 1f);
-            achIconRect.sizeDelta = new Vector2(40, 40);
-            achIconRect.anchoredPosition = new Vector2(0, -6);
-
-            // "ACHIEVEMENTS" label
-            var achLabelGO = new GameObject("Label");
-            achLabelGO.transform.SetParent(achFillGO.transform, false);
-            var achLabelImg = achLabelGO.AddComponent<Image>();
-            achLabelImg.sprite = PlaceholderAssets.GetPixelTextSprite("TROPHIES",
-                new Color(1f, 0.85f, 0.2f), 3);
-            achLabelImg.preserveAspect = true;
-            var achLabelRect = achLabelGO.GetComponent<RectTransform>();
-            achLabelRect.anchorMin = new Vector2(0.5f, 1f);
-            achLabelRect.anchorMax = new Vector2(0.5f, 1f);
-            achLabelRect.pivot = new Vector2(0.5f, 1f);
-            achLabelRect.sizeDelta = new Vector2(160, 28);
-            achLabelRect.anchoredPosition = new Vector2(0, -48);
-
-            // Status subtitle
-            var achStatusGO = new GameObject("Status");
-            achStatusGO.transform.SetParent(achFillGO.transform, false);
-            var achStatusImg = achStatusGO.AddComponent<Image>();
-            achStatusImg.sprite = PlaceholderAssets.GetPixelTextSprite(
-                $"{achCounts.unlocked}/{achCounts.total}",
-                hasAny ? new Color(0.7f, 0.6f, 0.3f) : new Color(0.45f, 0.35f, 0.35f), 2);
-            achStatusImg.preserveAspect = true;
-            var achStatusRect = achStatusGO.GetComponent<RectTransform>();
-            achStatusRect.anchorMin = new Vector2(0.5f, 1f);
-            achStatusRect.anchorMax = new Vector2(0.5f, 1f);
-            achStatusRect.pivot = new Vector2(0.5f, 1f);
-            achStatusRect.sizeDelta = new Vector2(120, 16);
-            achStatusRect.anchoredPosition = new Vector2(0, -78);
-
-            // Button component
-            var achBtn = achGlowGO.AddComponent<Button>();
-            achBtn.targetGraphic = achBtnImg;
-            achBtn.onClick.AddListener(() =>
-            {
-                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                OpenAchievements();
-            });
+            CreateOrnateButton(parent, "LEGENDS", new Vector2(-540, -300),
+                new Vector2(220, 50), () => {
+                    if (!legendsUnlocked) return;
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    OpenLegends();
+                }, legendsUnlocked ? 1f : 0.4f);
         }
 
         private void OpenLegends()
@@ -561,6 +755,14 @@ namespace EpochBreaker.UI
             _achievementsObj = new GameObject("AchievementsOverlay");
             var achievements = _achievementsObj.AddComponent<AchievementsUI>();
             achievements.Initialize(() => { _achievementsObj = null; });
+        }
+
+        private void OpenCosmetics()
+        {
+            if (_cosmeticsObj != null) return;
+            _cosmeticsObj = new GameObject("CosmeticsOverlay");
+            var cosmetics = _cosmeticsObj.AddComponent<CosmeticSelectUI>();
+            cosmetics.Initialize(() => { _cosmeticsObj = null; });
         }
 
         private void CreateLegendLabel(Transform parent, string text, Vector2 position)
@@ -789,7 +991,7 @@ namespace EpochBreaker.UI
             var panelRect = panelGO.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(520, 480);
+            panelRect.sizeDelta = new Vector2(520, 620);
             panelRect.anchoredPosition = Vector2.zero;
 
             // ── Settings menu content (main page) ──
@@ -803,46 +1005,77 @@ namespace EpochBreaker.UI
             // Title
             var titleGO = CreateText(_settingsMenuContent.transform, "SETTINGS", 32, new Color(1f, 0.85f, 0.1f));
             var titleRect = titleGO.GetComponent<RectTransform>();
-            titleRect.anchoredPosition = new Vector2(0, 170);
+            titleRect.anchoredPosition = new Vector2(0, 240);
 
             // Close button
-            CreateMenuButton(_settingsMenuContent.transform, "X", new Vector2(230, 170),
+            CreateMenuButton(_settingsMenuContent.transform, "X", new Vector2(230, 240),
                 new Vector2(40, 40), new Color(0.6f, 0.25f, 0.25f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsPanel.SetActive(false);
                 });
 
             // Audio button
-            CreateMenuButton(_settingsMenuContent.transform, "AUDIO", new Vector2(0, 80),
-                new Vector2(300, 55), new Color(0.3f, 0.4f, 0.55f), () => {
+            CreateMenuButton(_settingsMenuContent.transform, "AUDIO", new Vector2(0, 160),
+                new Vector2(300, 48), new Color(0.3f, 0.4f, 0.55f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _audioSubPanel.SetActive(true);
                 });
 
             // About button
-            CreateMenuButton(_settingsMenuContent.transform, "ABOUT", new Vector2(0, 10),
-                new Vector2(300, 55), new Color(0.35f, 0.40f, 0.45f), () => {
+            CreateMenuButton(_settingsMenuContent.transform, "ABOUT", new Vector2(0, 105),
+                new Vector2(300, 48), new Color(0.35f, 0.40f, 0.45f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _aboutSubPanel.SetActive(true);
                 });
 
+            // Level History button
+            CreateMenuButton(_settingsMenuContent.transform, "LEVEL HISTORY", new Vector2(0, 50),
+                new Vector2(300, 48), new Color(0.35f, 0.45f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsPanel.SetActive(false);
+                    if (_levelHistoryPanel != null)
+                    {
+                        RefreshHistoryContent();
+                        _levelHistoryPanel.SetActive(true);
+                    }
+                });
+
+            // Accessibility button
+            CreateMenuButton(_settingsMenuContent.transform, "ACCESSIBILITY", new Vector2(0, -5),
+                new Vector2(300, 48), new Color(0.3f, 0.45f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _accessibilitySubPanel.SetActive(true);
+                });
+
+            // Difficulty button
+            CreateMenuButton(_settingsMenuContent.transform, "DIFFICULTY", new Vector2(0, -60),
+                new Vector2(300, 48), new Color(0.5f, 0.35f, 0.35f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _difficultySubPanel.SetActive(true);
+                });
+
             // Level Select [DEV] button
-            CreateMenuButton(_settingsMenuContent.transform, "LEVEL SELECT [DEV]", new Vector2(0, -60),
-                new Vector2(300, 55), new Color(0.4f, 0.35f, 0.5f), () => {
+            CreateMenuButton(_settingsMenuContent.transform, "LEVEL SELECT [DEV]", new Vector2(0, -115),
+                new Vector2(300, 42), new Color(0.4f, 0.35f, 0.5f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsPanel.SetActive(false);
                     if (_levelSelectorPanel != null)
                         _levelSelectorPanel.SetActive(true);
                 });
 
+            // Randomize toggle
+            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, -165));
+
             // Tutorial buttons
             bool tutDone = Gameplay.TutorialManager.IsTutorialCompleted();
 
             // Replay tutorial — resets flag and immediately starts game in tutorial mode
-            CreateMenuButton(_settingsMenuContent.transform, "REPLAY TUTORIAL", new Vector2(0, -130),
-                new Vector2(300, 45), new Color(0.35f, 0.45f, 0.4f), () => {
+            CreateMenuButton(_settingsMenuContent.transform, "REPLAY TUTORIAL", new Vector2(140, -210),
+                new Vector2(150, 36), new Color(0.35f, 0.45f, 0.4f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.TutorialManager.ResetTutorial();
                     _settingsPanel.SetActive(false);
@@ -852,23 +1085,19 @@ namespace EpochBreaker.UI
             // Skip tutorial — only shown if tutorial hasn't been completed
             if (!tutDone)
             {
-                CreateMenuButton(_settingsMenuContent.transform, "SKIP TUTORIAL", new Vector2(0, -180),
-                    new Vector2(300, 45), new Color(0.45f, 0.35f, 0.35f), () => {
+                CreateMenuButton(_settingsMenuContent.transform, "SKIP TUTORIAL", new Vector2(-80, -210),
+                    new Vector2(150, 36), new Color(0.45f, 0.35f, 0.35f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         Gameplay.TutorialManager.SetTutorialCompleted();
                         _settingsPanel.SetActive(false);
                     });
             }
 
-            // Randomize checkbox (below tutorial buttons)
-            float randomizeY = tutDone ? -190f : -240f;
-            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, randomizeY));
-
             // Escape hint
             var escGO = CreateText(_settingsMenuContent.transform, "Press Esc to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
-            escRect.anchoredPosition = new Vector2(0, randomizeY - 45f);
+            escRect.anchoredPosition = new Vector2(0, -258f);
 
             // ── Audio sub-panel ──
             _audioSubPanel = new GameObject("AudioSubPanel");
@@ -1013,6 +1242,12 @@ namespace EpochBreaker.UI
             legendsInfoRect.sizeDelta = new Vector2(460, 80);
             legendsInfoGO.GetComponent<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
 
+            // Build ID
+            var buildGO = CreateText(_aboutSubPanel.transform, BuildInfo.FullBuildID, 16,
+                new Color(0.6f, 0.6f, 0.65f));
+            var buildRect = buildGO.GetComponent<RectTransform>();
+            buildRect.anchoredPosition = new Vector2(0, -170);
+
             // Escape hint
             var aboutEscGO = CreateText(_aboutSubPanel.transform, "Press Esc to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
@@ -1020,6 +1255,164 @@ namespace EpochBreaker.UI
             aboutEscRect.anchoredPosition = new Vector2(0, -200);
 
             _aboutSubPanel.SetActive(false);
+
+            // ── Accessibility sub-panel (Sprint 9) ──
+            _accessibilitySubPanel = new GameObject("AccessibilitySubPanel");
+            _accessibilitySubPanel.transform.SetParent(panelGO.transform, false);
+            var accRect = _accessibilitySubPanel.AddComponent<RectTransform>();
+            accRect.anchorMin = Vector2.zero;
+            accRect.anchorMax = Vector2.one;
+            accRect.sizeDelta = Vector2.zero;
+
+            var accTitleGO = CreateText(_accessibilitySubPanel.transform, "ACCESSIBILITY", 28, new Color(1f, 0.85f, 0.1f));
+            var accTitleRect = accTitleGO.GetComponent<RectTransform>();
+            accTitleRect.anchoredPosition = new Vector2(0, 200);
+
+            CreateMenuButton(_accessibilitySubPanel.transform, "BACK", new Vector2(-200, 200),
+                new Vector2(80, 40), new Color(0.4f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _accessibilitySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                });
+
+            CreateMenuButton(_accessibilitySubPanel.transform, "X", new Vector2(230, 200),
+                new Vector2(40, 40), new Color(0.6f, 0.25f, 0.25f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _accessibilitySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                    _settingsPanel.SetActive(false);
+                });
+
+            // Colorblind mode toggle
+            bool cbInitial = Gameplay.AccessibilityManager.Instance != null &&
+                Gameplay.AccessibilityManager.Instance.ColorblindMode;
+            CreateToggleRow(_accessibilitySubPanel.transform, "COLORBLIND MODE", new Vector2(0, 120), cbInitial,
+                (val) => { if (Gameplay.AccessibilityManager.Instance != null) Gameplay.AccessibilityManager.Instance.ColorblindMode = val; });
+
+            // Screen shake intensity slider
+            float shakeInitial = Gameplay.AccessibilityManager.Instance != null
+                ? Gameplay.AccessibilityManager.Instance.ScreenShakeIntensity : 1f;
+            CreateVolumeSlider(_accessibilitySubPanel.transform, "SCREEN SHAKE", new Vector2(0, 55), shakeInitial,
+                (val) => { if (Gameplay.AccessibilityManager.Instance != null) Gameplay.AccessibilityManager.Instance.ScreenShakeIntensity = val; });
+
+            // Font size slider (0.8 to 1.5 mapped to 0-1 slider)
+            float fontInitial = Gameplay.AccessibilityManager.Instance != null
+                ? (Gameplay.AccessibilityManager.Instance.FontSizeScale - 0.8f) / 0.7f : 0.286f;
+            CreateVolumeSlider(_accessibilitySubPanel.transform, "FONT SIZE", new Vector2(0, -10), fontInitial,
+                (val) => {
+                    float scale = 0.8f + val * 0.7f; // Map 0-1 to 0.8-1.5
+                    if (Gameplay.AccessibilityManager.Instance != null)
+                        Gameplay.AccessibilityManager.Instance.FontSizeScale = scale;
+                });
+
+            // High contrast mode toggle
+            bool hcInitial = Gameplay.AccessibilityManager.Instance != null &&
+                Gameplay.AccessibilityManager.Instance.HighContrastMode;
+            CreateToggleRow(_accessibilitySubPanel.transform, "HIGH CONTRAST", new Vector2(0, -85), hcInitial,
+                (val) => { if (Gameplay.AccessibilityManager.Instance != null) Gameplay.AccessibilityManager.Instance.HighContrastMode = val; });
+
+            var accEscGO = CreateText(_accessibilitySubPanel.transform, "Press Esc to go back", 14,
+                new Color(0.5f, 0.5f, 0.6f));
+            var accEscRect = accEscGO.GetComponent<RectTransform>();
+            accEscRect.anchoredPosition = new Vector2(0, -200);
+
+            _accessibilitySubPanel.SetActive(false);
+
+            // ── Difficulty sub-panel (Sprint 9) ──
+            _difficultySubPanel = new GameObject("DifficultySubPanel");
+            _difficultySubPanel.transform.SetParent(panelGO.transform, false);
+            var diffRect = _difficultySubPanel.AddComponent<RectTransform>();
+            diffRect.anchorMin = Vector2.zero;
+            diffRect.anchorMax = Vector2.one;
+            diffRect.sizeDelta = Vector2.zero;
+
+            var diffTitleGO = CreateText(_difficultySubPanel.transform, "DIFFICULTY", 28, new Color(1f, 0.85f, 0.1f));
+            var diffTitleRect = diffTitleGO.GetComponent<RectTransform>();
+            diffTitleRect.anchoredPosition = new Vector2(0, 200);
+
+            CreateMenuButton(_difficultySubPanel.transform, "BACK", new Vector2(-200, 200),
+                new Vector2(80, 40), new Color(0.4f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _difficultySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                });
+
+            CreateMenuButton(_difficultySubPanel.transform, "X", new Vector2(230, 200),
+                new Vector2(40, 40), new Color(0.6f, 0.25f, 0.25f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _difficultySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                    _settingsPanel.SetActive(false);
+                });
+
+            // Difficulty description
+            var diffDescGO = CreateText(_difficultySubPanel.transform,
+                "Changes apply to new games.\nSeparate leaderboards per difficulty.", 16,
+                new Color(0.7f, 0.7f, 0.8f));
+            var diffDescRect = diffDescGO.GetComponent<RectTransform>();
+            diffDescRect.anchoredPosition = new Vector2(0, 140);
+            diffDescRect.sizeDelta = new Vector2(460, 50);
+            diffDescGO.GetComponent<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
+
+            // Active indicator (text that shows current selection)
+            var diffActiveGO = CreateText(_difficultySubPanel.transform, "", 18, new Color(0.9f, 0.85f, 0.5f));
+            var diffActiveRect = diffActiveGO.GetComponent<RectTransform>();
+            diffActiveRect.anchoredPosition = new Vector2(0, -160);
+            var diffActiveText = diffActiveGO.GetComponent<Text>();
+
+            System.Action updateDifficultyLabel = () => {
+                if (Gameplay.DifficultyManager.Instance == null) return;
+                var d = Gameplay.DifficultyManager.Instance.CurrentDifficulty;
+                string desc = d switch {
+                    Gameplay.DifficultyLevel.Easy => "EASY: 3 lives/level, fewer enemies, more health",
+                    Gameplay.DifficultyLevel.Hard => "HARD: 1 life/level, more enemies, no health",
+                    _ => "NORMAL: 2 lives/level, standard enemies and health"
+                };
+                diffActiveText.text = desc;
+            };
+            updateDifficultyLabel();
+
+            // Easy button
+            CreateMenuButton(_difficultySubPanel.transform, "EASY", new Vector2(-140, 60),
+                new Vector2(130, 55), new Color(0.25f, 0.50f, 0.30f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (Gameplay.DifficultyManager.Instance != null)
+                        Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Easy;
+                    updateDifficultyLabel();
+                });
+
+            // Normal button
+            CreateMenuButton(_difficultySubPanel.transform, "NORMAL", new Vector2(0, 60),
+                new Vector2(130, 55), new Color(0.35f, 0.40f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (Gameplay.DifficultyManager.Instance != null)
+                        Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Normal;
+                    updateDifficultyLabel();
+                });
+
+            // Hard button
+            CreateMenuButton(_difficultySubPanel.transform, "HARD", new Vector2(140, 60),
+                new Vector2(130, 55), new Color(0.55f, 0.25f, 0.25f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (Gameplay.DifficultyManager.Instance != null)
+                        Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Hard;
+                    updateDifficultyLabel();
+                });
+
+            // Descriptions for each mode
+            CreateText(_difficultySubPanel.transform, "3 deaths/level\n50% enemies\n1.5x health", 14,
+                new Color(0.5f, 0.7f, 0.5f)).GetComponent<RectTransform>().anchoredPosition = new Vector2(-140, -20);
+            CreateText(_difficultySubPanel.transform, "2 deaths/level\nStandard\nStandard", 14,
+                new Color(0.6f, 0.6f, 0.8f)).GetComponent<RectTransform>().anchoredPosition = new Vector2(0, -20);
+            CreateText(_difficultySubPanel.transform, "1 death/level\n1.5x enemies\nNo health", 14,
+                new Color(0.8f, 0.5f, 0.5f)).GetComponent<RectTransform>().anchoredPosition = new Vector2(140, -20);
+
+            var diffEscGO = CreateText(_difficultySubPanel.transform, "Press Esc to go back", 14,
+                new Color(0.5f, 0.5f, 0.6f));
+            var diffEscRect = diffEscGO.GetComponent<RectTransform>();
+            diffEscRect.anchoredPosition = new Vector2(0, -200);
+
+            _difficultySubPanel.SetActive(false);
             _settingsPanel.SetActive(false);
         }
 
@@ -1256,19 +1649,41 @@ namespace EpochBreaker.UI
             contentRect.anchoredPosition = new Vector2(0, -20);
             _historyContentParent = contentGO;
 
+            // Pagination controls
+            CreateMenuButton(panelGO.transform, "< PREV", new Vector2(-160, -280),
+                new Vector2(100, 36), new Color(0.35f, 0.35f, 0.50f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    if (_historyPage > 0) { _historyPage--; RefreshHistoryContent(); }
+                });
+
+            var pageLabelGO = CreateText(panelGO.transform, "Page 1 of 1", 16,
+                new Color(0.6f, 0.6f, 0.7f));
+            var pageLabelRect = pageLabelGO.GetComponent<RectTransform>();
+            pageLabelRect.anchoredPosition = new Vector2(0, -280);
+            _historyPageLabel = pageLabelGO.GetComponent<Text>();
+
+            CreateMenuButton(panelGO.transform, "NEXT >", new Vector2(160, -280),
+                new Vector2(100, 36), new Color(0.35f, 0.35f, 0.50f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    var h = GameManager.LoadLevelHistory();
+                    int maxPage = Mathf.Max(0, (h.Entries.Count - 1) / HISTORY_PAGE_SIZE);
+                    if (_historyPage < maxPage) { _historyPage++; RefreshHistoryContent(); }
+                });
+
             // Clear history button
-            CreateMenuButton(panelGO.transform, "CLEAR HISTORY", new Vector2(0, -300),
-                new Vector2(180, 40), new Color(0.5f, 0.3f, 0.3f), () => {
+            CreateMenuButton(panelGO.transform, "CLEAR HISTORY", new Vector2(0, -320),
+                new Vector2(180, 36), new Color(0.5f, 0.3f, 0.3f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     GameManager.ClearLevelHistory();
+                    _historyPage = 0;
                     RefreshHistoryContent();
                 });
 
             // Hint text
-            var hintGO = CreateText(panelGO.transform, "Press Esc to close", 14,
+            var hintGO2 = CreateText(panelGO.transform, "Press Esc to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
-            var hintRect = hintGO.GetComponent<RectTransform>();
-            hintRect.anchoredPosition = new Vector2(0, -330);
+            var hintRect2 = hintGO2.GetComponent<RectTransform>();
+            hintRect2.anchoredPosition = new Vector2(0, -345);
 
             _levelHistoryPanel.SetActive(false);
         }
@@ -1287,6 +1702,8 @@ namespace EpochBreaker.UI
 
             if (history.Entries.Count == 0)
             {
+                _historyPage = 0;
+                if (_historyPageLabel != null) _historyPageLabel.text = "Page 1 of 1";
                 var noHistoryGO = CreateText(_historyContentParent.transform, "No levels played yet", 20,
                     new Color(0.5f, 0.5f, 0.6f));
                 var noHistoryRect = noHistoryGO.GetComponent<RectTransform>();
@@ -1294,33 +1711,32 @@ namespace EpochBreaker.UI
                 return;
             }
 
+            // Pagination
+            int totalPages = Mathf.Max(1, (history.Entries.Count + HISTORY_PAGE_SIZE - 1) / HISTORY_PAGE_SIZE);
+            _historyPage = Mathf.Clamp(_historyPage, 0, totalPages - 1);
+            if (_historyPageLabel != null)
+                _historyPageLabel.text = $"Page {_historyPage + 1} of {totalPages}";
+
+            int startIdx = _historyPage * HISTORY_PAGE_SIZE;
+            int endIdx = Mathf.Min(startIdx + HISTORY_PAGE_SIZE, history.Entries.Count);
+
             // Column headers
             float headerY = 220f;
-            CreateHistoryHeader(_historyContentParent.transform, "CODE", new Vector2(-240, headerY), 140);
-            CreateHistoryHeader(_historyContentParent.transform, "EPOCH", new Vector2(-70, headerY), 160);
-            CreateHistoryHeader(_historyContentParent.transform, "SCORE", new Vector2(100, headerY), 100);
-            CreateHistoryHeader(_historyContentParent.transform, "STARS", new Vector2(200, headerY), 80);
-            CreateHistoryHeader(_historyContentParent.transform, "COPY", new Vector2(280, headerY), 80);
+            CreateHistoryHeader(_historyContentParent.transform, "CODE", new Vector2(-260, headerY), 120);
+            CreateHistoryHeader(_historyContentParent.transform, "SOURCE", new Vector2(-150, headerY), 80);
+            CreateHistoryHeader(_historyContentParent.transform, "EPOCH", new Vector2(-50, headerY), 120);
+            CreateHistoryHeader(_historyContentParent.transform, "SCORE", new Vector2(80, headerY), 100);
+            CreateHistoryHeader(_historyContentParent.transform, "STARS", new Vector2(180, headerY), 60);
+            CreateHistoryHeader(_historyContentParent.transform, "COPY", new Vector2(270, headerY), 60);
 
-            // Display up to 10 entries (scrolling would require ScrollRect setup)
             float rowY = 180f;
             float rowHeight = 42f;
-            int maxDisplay = Mathf.Min(history.Entries.Count, 10);
 
-            for (int i = 0; i < maxDisplay; i++)
+            for (int i = startIdx; i < endIdx; i++)
             {
                 var entry = history.Entries[i];
                 CreateHistoryRow(_historyContentParent.transform, entry, rowY);
                 rowY -= rowHeight;
-            }
-
-            if (history.Entries.Count > 10)
-            {
-                var moreGO = CreateText(_historyContentParent.transform,
-                    $"... and {history.Entries.Count - 10} more", 14,
-                    new Color(0.5f, 0.5f, 0.6f));
-                var moreRect = moreGO.GetComponent<RectTransform>();
-                moreRect.anchoredPosition = new Vector2(0, rowY - 10);
             }
         }
 
@@ -1346,34 +1762,51 @@ namespace EpochBreaker.UI
             rowRect.anchoredPosition = new Vector2(0, y);
 
             // Code (clickable to copy)
-            var codeGO = CreateText(rowGO.transform, entry.Code, 18, new Color(0.5f, 0.8f, 1f));
+            var codeGO = CreateText(rowGO.transform, entry.Code, 16, new Color(0.5f, 0.8f, 1f));
             var codeRect = codeGO.GetComponent<RectTransform>();
-            codeRect.anchoredPosition = new Vector2(-240, 0);
-            codeRect.sizeDelta = new Vector2(140, 30);
+            codeRect.anchoredPosition = new Vector2(-260, 0);
+            codeRect.sizeDelta = new Vector2(120, 30);
+
+            // Source (color-coded)
+            string source = string.IsNullOrEmpty(entry.Source) ? "-" : entry.Source;
+            Color sourceColor;
+            switch (entry.Source)
+            {
+                case "Campaign": sourceColor = new Color(0.4f, 0.9f, 0.4f); break;
+                case "Challenge": sourceColor = new Color(0.5f, 0.8f, 1f); break;
+                case "Daily": sourceColor = new Color(0.7f, 0.5f, 0.9f); break;
+                case "Weekly": sourceColor = new Color(0.7f, 0.5f, 0.9f); break;
+                case "Code": sourceColor = new Color(0.6f, 0.6f, 0.65f); break;
+                default: sourceColor = new Color(0.45f, 0.45f, 0.5f); break;
+            }
+            var sourceGO = CreateText(rowGO.transform, source, 14, sourceColor);
+            var sourceRect = sourceGO.GetComponent<RectTransform>();
+            sourceRect.anchoredPosition = new Vector2(-150, 0);
+            sourceRect.sizeDelta = new Vector2(80, 30);
 
             // Epoch name
-            string epochShort = entry.EpochName.Length > 12 ? entry.EpochName.Substring(0, 10) + ".." : entry.EpochName;
-            var epochGO = CreateText(rowGO.transform, epochShort, 16, GetEpochColor(entry.Epoch) * 2f);
+            string epochShort = entry.EpochName.Length > 10 ? entry.EpochName.Substring(0, 8) + ".." : entry.EpochName;
+            var epochGO = CreateText(rowGO.transform, epochShort, 14, GetEpochColor(entry.Epoch) * 2f);
             var epochRect = epochGO.GetComponent<RectTransform>();
-            epochRect.anchoredPosition = new Vector2(-70, 0);
-            epochRect.sizeDelta = new Vector2(160, 30);
+            epochRect.anchoredPosition = new Vector2(-50, 0);
+            epochRect.sizeDelta = new Vector2(120, 30);
 
             // Score
-            var scoreGO = CreateText(rowGO.transform, entry.Score.ToString("N0"), 16, Color.white);
+            var scoreGO = CreateText(rowGO.transform, entry.Score.ToString("N0"), 14, Color.white);
             var scoreRect = scoreGO.GetComponent<RectTransform>();
-            scoreRect.anchoredPosition = new Vector2(100, 0);
+            scoreRect.anchoredPosition = new Vector2(80, 0);
             scoreRect.sizeDelta = new Vector2(100, 30);
 
             // Stars
             string stars = new string('*', entry.Stars) + new string('-', 3 - entry.Stars);
-            var starsGO = CreateText(rowGO.transform, stars, 18, new Color(1f, 0.85f, 0.1f));
+            var starsGO = CreateText(rowGO.transform, stars, 16, new Color(1f, 0.85f, 0.1f));
             var starsRect = starsGO.GetComponent<RectTransform>();
-            starsRect.anchoredPosition = new Vector2(200, 0);
-            starsRect.sizeDelta = new Vector2(80, 30);
+            starsRect.anchoredPosition = new Vector2(180, 0);
+            starsRect.sizeDelta = new Vector2(60, 30);
 
             // Copy button
             string capturedCode = entry.Code;
-            CreateSmallButton(rowGO.transform, "COPY", new Vector2(280, 0), new Vector2(60, 28),
+            CreateSmallButton(rowGO.transform, "COPY", new Vector2(270, 0), new Vector2(55, 28),
                 new Color(0.3f, 0.5f, 0.4f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     GameManager.CopyToClipboard(capturedCode);
@@ -1534,6 +1967,73 @@ namespace EpochBreaker.UI
             rect.anchoredPosition = position;
         }
 
+        /// <summary>
+        /// Create a labeled toggle row for settings panels (Sprint 9).
+        /// </summary>
+        private void CreateToggleRow(Transform parent, string label, Vector2 position, bool initialValue,
+            UnityEngine.Events.UnityAction<bool> onValueChanged)
+        {
+            var containerGO = new GameObject("Toggle_" + label);
+            containerGO.transform.SetParent(parent, false);
+            var containerRect = containerGO.AddComponent<RectTransform>();
+            containerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            containerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            containerRect.sizeDelta = new Vector2(440, 40);
+            containerRect.anchoredPosition = position;
+
+            // Checkbox background
+            var checkBgGO = new GameObject("CheckBg");
+            checkBgGO.transform.SetParent(containerGO.transform, false);
+            var checkBgImg = checkBgGO.AddComponent<Image>();
+            checkBgImg.color = new Color(0.15f, 0.13f, 0.25f);
+            var checkBgRect = checkBgGO.GetComponent<RectTransform>();
+            checkBgRect.anchorMin = new Vector2(1, 0.5f);
+            checkBgRect.anchorMax = new Vector2(1, 0.5f);
+            checkBgRect.pivot = new Vector2(1, 0.5f);
+            checkBgRect.sizeDelta = new Vector2(32, 32);
+            checkBgRect.anchoredPosition = new Vector2(-8, 0);
+
+            // Checkmark
+            var checkmarkGO = new GameObject("Checkmark");
+            checkmarkGO.transform.SetParent(checkBgGO.transform, false);
+            var checkmarkText = checkmarkGO.AddComponent<Text>();
+            checkmarkText.text = "X";
+            checkmarkText.fontSize = 22;
+            checkmarkText.color = new Color(0.4f, 0.8f, 0.4f);
+            checkmarkText.alignment = TextAnchor.MiddleCenter;
+            checkmarkText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            checkmarkText.fontStyle = FontStyle.Bold;
+            var checkmarkRect = checkmarkGO.GetComponent<RectTransform>();
+            checkmarkRect.anchorMin = Vector2.zero;
+            checkmarkRect.anchorMax = Vector2.one;
+            checkmarkRect.sizeDelta = Vector2.zero;
+            checkmarkGO.SetActive(initialValue);
+
+            // Toggle component
+            var toggle = checkBgGO.AddComponent<Toggle>();
+            toggle.isOn = initialValue;
+            toggle.targetGraphic = checkBgImg;
+            toggle.graphic = checkmarkText;
+            toggle.onValueChanged.AddListener((val) => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                onValueChanged.Invoke(val);
+                checkmarkGO.SetActive(val);
+            });
+
+            // Label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(containerGO.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(label, new Color(0.85f, 0.85f, 0.95f), 2);
+            labelImg.preserveAspect = true;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0, 0.5f);
+            labelRect.anchorMax = new Vector2(0, 0.5f);
+            labelRect.pivot = new Vector2(0, 0.5f);
+            labelRect.sizeDelta = new Vector2(label.Length * 12 + 12, 22);
+            labelRect.anchoredPosition = new Vector2(8, 0);
+        }
+
         private void CreateRandomizeToggle(Transform parent, Vector2 position)
         {
             bool isOn = GameManager.Instance != null && GameManager.Instance.RandomizeEnabled;
@@ -1603,14 +2103,80 @@ namespace EpochBreaker.UI
             labelRect.anchoredPosition = new Vector2(42, 0);
 
             // Description
-            var descGO = CreateText(containerGO.transform, "OFF = Campaign, ON = FreePlay", 12,
-                new Color(0.5f, 0.5f, 0.6f));
+            var descGO = CreateText(containerGO.transform, "OFF = Campaign, ON = FreePlay", 14,
+                new Color(0.6f, 0.6f, 0.7f));
             var descRect = descGO.GetComponent<RectTransform>();
             descRect.anchorMin = new Vector2(0, 0);
             descRect.anchorMax = new Vector2(1, 0);
             descRect.pivot = new Vector2(0.5f, 1);
             descRect.sizeDelta = new Vector2(300, 16);
             descRect.anchoredPosition = new Vector2(0, -2);
+        }
+
+        /// <summary>
+        /// Creates a button with ornate gold double-border framing.
+        /// Structure: OuterBorder (gold) → DarkGap → InnerBorder (gold) → DarkBg → Button + label.
+        /// </summary>
+        private void CreateOrnateButton(Transform parent, string text, Vector2 position,
+            Vector2 size, UnityEngine.Events.UnityAction onClick, float opacity = 1f)
+        {
+            // Outer gold border
+            var outerGO = new GameObject($"OrnateBtn_{text}");
+            outerGO.transform.SetParent(parent, false);
+            var outerImg = outerGO.AddComponent<Image>();
+            outerImg.color = new Color(0.85f, 0.65f, 0.12f, 0.9f * opacity);
+            var outerRect = outerGO.GetComponent<RectTransform>();
+            outerRect.anchorMin = new Vector2(0.5f, 0.5f);
+            outerRect.anchorMax = new Vector2(0.5f, 0.5f);
+            outerRect.sizeDelta = size;
+            outerRect.anchoredPosition = position;
+
+            // Dark gap
+            var gapGO = new GameObject("DarkGap");
+            gapGO.transform.SetParent(outerGO.transform, false);
+            var gapImg = gapGO.AddComponent<Image>();
+            gapImg.color = new Color(0.06f, 0.04f, 0.10f, opacity);
+            var gapRect = gapGO.GetComponent<RectTransform>();
+            gapRect.anchorMin = Vector2.zero;
+            gapRect.anchorMax = Vector2.one;
+            gapRect.sizeDelta = new Vector2(-4, -4);
+
+            // Inner gold border
+            var innerGO = new GameObject("InnerBorder");
+            innerGO.transform.SetParent(gapGO.transform, false);
+            var innerImg = innerGO.AddComponent<Image>();
+            innerImg.color = new Color(0.90f, 0.70f, 0.18f, 0.75f * opacity);
+            var innerRect = innerGO.GetComponent<RectTransform>();
+            innerRect.anchorMin = Vector2.zero;
+            innerRect.anchorMax = Vector2.one;
+            innerRect.sizeDelta = new Vector2(-3, -3);
+
+            // Dark button background
+            var bgGO = new GameObject("ButtonBg");
+            bgGO.transform.SetParent(innerGO.transform, false);
+            var bgImg = bgGO.AddComponent<Image>();
+            bgImg.color = new Color(0.12f, 0.10f, 0.18f, 0.95f * opacity);
+            var bgRect = bgGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = Vector2.zero;
+            bgRect.anchorMax = Vector2.one;
+            bgRect.sizeDelta = new Vector2(-3, -3);
+
+            // Clickable button
+            var btn = bgGO.AddComponent<Button>();
+            btn.targetGraphic = bgImg;
+            btn.onClick.AddListener(onClick);
+
+            // Pixel text label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(bgGO.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text,
+                new Color(1f * opacity, 0.85f * opacity, 0.2f * opacity + 0.2f * (1f - opacity)), 2);
+            labelImg.preserveAspect = true;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.sizeDelta = new Vector2(-12, -12);
         }
     }
 }

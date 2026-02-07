@@ -78,6 +78,9 @@ namespace EpochBreaker.Gameplay
         private float _squashTimer;
         private Vector3 _targetScale = Vector3.one;
 
+        // Sprite animation
+        private SpriteAnimator _animator;
+
         public bool IsGrounded => _isGrounded;
         public bool FacingRight => _facingRight;
         public bool IsStomping => _isStomping;
@@ -91,6 +94,16 @@ namespace EpochBreaker.Gameplay
             _spriteRenderer = GetComponent<SpriteRenderer>();
             _weaponSystem = GetComponent<WeaponSystem>();
             _rb.gravityScale = 0f; // We handle gravity manually
+
+            // Set up sprite animations
+            var animator = gameObject.AddComponent<SpriteAnimator>();
+            var idle = new Sprite[] { PlaceholderAssets.GetPlayerSprite() };
+            var walk = PlaceholderAssets.GetPlayerWalkFrames();
+            var jump = PlaceholderAssets.GetPlayerJumpFrame();
+            var fall = PlaceholderAssets.GetPlayerFallFrame();
+            var wallSlide = PlaceholderAssets.GetPlayerWallSlideFrames();
+            animator.SetAnimations(idle, walk, jump, fall, wallSlide);
+            _animator = animator;
         }
 
         private void Update()
@@ -136,6 +149,7 @@ namespace EpochBreaker.Gameplay
             ApplyVelocity();
             UpdateWallSlideVisuals();
             UpdateSquashStretch();
+            UpdateAnimationState();
         }
 
         private void EnsureFilterInitialized()
@@ -345,6 +359,22 @@ namespace EpochBreaker.Gameplay
             {
                 transform.localScale = Vector3.one;
             }
+        }
+
+        private void UpdateAnimationState()
+        {
+            if (_animator == null) return;
+
+            if (_isWallSliding)
+                _animator.SetState(SpriteAnimator.AnimState.WallSlide);
+            else if (!_isGrounded && _velocity.y > 0.5f)
+                _animator.SetState(SpriteAnimator.AnimState.Jump);
+            else if (!_isGrounded && _velocity.y < -0.5f)
+                _animator.SetState(SpriteAnimator.AnimState.Fall);
+            else if (_isGrounded && Mathf.Abs(_velocity.x) > 0.5f)
+                _animator.SetState(SpriteAnimator.AnimState.Walk);
+            else
+                _animator.SetState(SpriteAnimator.AnimState.Idle);
         }
 
         private void SpawnWallDust()
@@ -581,6 +611,12 @@ namespace EpochBreaker.Gameplay
                     CameraController.Instance?.AddTrauma(0.25f);
                     TryBreakTilesBelow(contact.point);
                     _velocity.y = 8f; // Satisfying bounce after stomp
+
+                    // Enhanced ground slam if ability is available
+                    var abilities = GetComponent<AbilitySystem>();
+                    if (abilities != null && abilities.HasGroundSlam)
+                        abilities.PerformGroundSlam();
+
                     break;
                 }
             }

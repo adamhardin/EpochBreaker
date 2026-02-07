@@ -70,6 +70,9 @@ namespace EpochBreaker.Gameplay
             // Spawn player
             SpawnPlayer(data);
 
+            // Sync physics so collider geometry is ready before camera reads player position
+            Physics2D.SyncTransforms();
+
             // Create camera
             CreateCamera();
 
@@ -96,6 +99,9 @@ namespace EpochBreaker.Gameplay
                 Vector3 startPos = _tilemapRenderer.LevelToWorld(data.Layout.StartX, data.Layout.StartY);
                 checkpointMgr.SetInitialSpawn(startPos);
             }
+
+            // Final physics sync so CompositeCollider2D geometry includes all spawned entities
+            Physics2D.SyncTransforms();
         }
 
         public void CleanupLevel()
@@ -115,6 +121,7 @@ namespace EpochBreaker.Gameplay
             _tilemapRenderer = null;
             Player = null;
             CurrentBoss = null;
+            EnemyBase.ClearRegistry(); // Clear stale enemy refs on level cleanup
             GameManager.Instance.CurrentLevel = null;
         }
 
@@ -142,9 +149,11 @@ namespace EpochBreaker.Gameplay
             _playerObj.tag = "Player";
             _playerObj.layer = LayerMask.NameToLayer("Default");
 
-            // Sprite
+            // Sprite (with cosmetic skin if selected)
             var sr = _playerObj.AddComponent<SpriteRenderer>();
-            sr.sprite = PlaceholderAssets.GetPlayerSprite();
+            var cm = CosmeticManager.Instance;
+            PlayerSkin selectedSkin = cm != null ? cm.SelectedSkin : PlayerSkin.Default;
+            sr.sprite = PlaceholderAssets.GetTintedPlayerSprite(selectedSkin);
             sr.sortingOrder = 10;
 
             // Physics
@@ -170,6 +179,27 @@ namespace EpochBreaker.Gameplay
             Player = _playerObj.AddComponent<PlayerController>();
             _playerObj.AddComponent<HealthSystem>();
             _playerObj.AddComponent<WeaponSystem>();
+            _playerObj.AddComponent<SpecialAttackSystem>();
+
+            // Cosmetic trail effect
+            TrailEffect selectedTrail = cm != null ? cm.SelectedTrail : TrailEffect.None;
+            if (selectedTrail != TrailEffect.None)
+            {
+                var trail = _playerObj.AddComponent<PlayerTrailEffect>();
+                trail.Initialize(selectedTrail);
+            }
+
+            // Sprint 8: Ghost replay recording
+            var ghostSystem = _playerObj.AddComponent<GhostReplaySystem>();
+            ghostSystem.StartRecording();
+
+            // If replaying a ghost, start playback
+            var gm = GameManager.Instance;
+            if (gm != null && gm.IsGhostReplay)
+            {
+                string ghostCode = gm.CurrentLevelID.ToCode();
+                ghostSystem.StartPlayback(ghostCode);
+            }
 
             // Checkpoint manager
             var checkpointGO = new GameObject("CheckpointManager");
@@ -217,6 +247,13 @@ namespace EpochBreaker.Gameplay
             var enemyParent = new GameObject("Enemies");
             enemyParent.transform.SetParent(_levelRoot.transform);
 
+            // Sprint 9: Apply difficulty enemy count multiplier
+            float enemyMultiplier = DifficultyManager.Instance != null
+                ? DifficultyManager.Instance.EnemyCountMultiplier : 1f;
+
+            // Use deterministic skip pattern based on level seed for enemy count reduction/increase
+            var difficultyRng = new Generative.XORShift64(data.ID.Seed + 99999UL);
+
             for (int i = 0; i < data.Enemies.Count; i++)
             {
                 var enemyData = data.Enemies[i];
@@ -224,6 +261,14 @@ namespace EpochBreaker.Gameplay
                 // Skip enemies too close to the start — give player a safe zone
                 int dx = Mathf.Abs(enemyData.TileX - data.Layout.StartX);
                 if (dx < 8) continue;
+
+                // Difficulty-based spawning: randomly skip enemies on Easy, duplicate on Hard
+                if (enemyMultiplier < 1f)
+                {
+                    // Easy: skip enemies based on multiplier probability
+                    float roll = (float)(difficultyRng.Next() % 1000) / 1000f;
+                    if (roll >= enemyMultiplier) continue;
+                }
 
                 Vector3 pos = _tilemapRenderer.LevelToWorld(enemyData.TileX, enemyData.TileY);
 
@@ -247,6 +292,37 @@ namespace EpochBreaker.Gameplay
 
                 var enemy = go.AddComponent<EnemyBase>();
                 enemy.Initialize(enemyData, _tilemapRenderer);
+
+                // Hard: add an extra enemy nearby (50% chance per enemy to spawn duplicate)
+                if (enemyMultiplier > 1f)
+                {
+                    float roll = (float)(difficultyRng.Next() % 1000) / 1000f;
+                    if (roll < (enemyMultiplier - 1f))
+                    {
+                        // Spawn duplicate enemy offset slightly
+                        Vector3 dupePos = pos + new Vector3(1.5f, 0f, 0f);
+                        var dupeGo = new GameObject($"Enemy_{i}_dupe_{enemyData.Type}");
+                        dupeGo.transform.SetParent(enemyParent.transform);
+                        dupeGo.transform.position = dupePos;
+                        dupeGo.tag = "Enemy";
+
+                        var dupeSr = dupeGo.AddComponent<SpriteRenderer>();
+                        dupeSr.sprite = PlaceholderAssets.GetEnemySprite(enemyData.Type, enemyData.Behavior);
+                        dupeSr.sortingOrder = 9;
+
+                        var dupeRb = dupeGo.AddComponent<Rigidbody2D>();
+                        dupeRb.gravityScale = (enemyData.Behavior == EnemyBehavior.Flying) ? 0f : 3f;
+                        dupeRb.freezeRotation = true;
+                        dupeRb.interpolation = RigidbodyInterpolation2D.Interpolate;
+
+                        var dupeCol = dupeGo.AddComponent<BoxCollider2D>();
+                        dupeCol.size = new Vector2(1.0f, 1.2f);
+                        dupeCol.offset = new Vector2(0f, 0.6f);
+
+                        var dupeEnemy = dupeGo.AddComponent<EnemyBase>();
+                        dupeEnemy.Initialize(enemyData, _tilemapRenderer);
+                    }
+                }
             }
         }
 
@@ -290,15 +366,36 @@ namespace EpochBreaker.Gameplay
             if (epoch < 3) return;
 
             var rng = new Generative.XORShift64(data.ID.Seed + 77777UL);
+
+            // --- First pickup: movement ability (Double Jump / Air Dash) ---
             int placeX = data.Layout.WidthTiles * 2 / 5;
-            int placeY = data.Layout.StartY; // Same height as player start
-
-            // Find ground at that X position
+            int placeY = data.Layout.StartY;
             placeY = ClampAboveGround(data, placeX, placeY);
-            Vector3 pos = _tilemapRenderer.LevelToWorld(placeX, placeY);
 
-            // Alternate between abilities based on epoch
-            AbilityType type = (epoch % 2 == 1) ? AbilityType.DoubleJump : AbilityType.AirDash;
+            // Alternate between movement abilities based on epoch
+            AbilityType movementType = (epoch % 2 == 1) ? AbilityType.DoubleJump : AbilityType.AirDash;
+            SpawnSingleAbilityPickup(data, movementType, placeX, placeY);
+
+            // --- Second pickup: combat ability (epoch 5+) ---
+            if (epoch >= 5)
+            {
+                int placeX2 = data.Layout.WidthTiles * 3 / 5;
+                int placeY2 = data.Layout.StartY;
+                placeY2 = ClampAboveGround(data, placeX2, placeY2);
+
+                AbilityType combatType;
+                if (epoch >= 7)
+                    combatType = AbilityType.PhaseShift;
+                else
+                    combatType = AbilityType.GroundSlam;
+
+                SpawnSingleAbilityPickup(data, combatType, placeX2, placeY2);
+            }
+        }
+
+        private void SpawnSingleAbilityPickup(LevelData data, AbilityType type, int tileX, int tileY)
+        {
+            Vector3 pos = _tilemapRenderer.LevelToWorld(tileX, tileY);
 
             var go = new GameObject($"AbilityPickup_{type}");
             go.transform.SetParent(_levelRoot.transform);
@@ -306,9 +403,14 @@ namespace EpochBreaker.Gameplay
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetParticleSprite(); // Placeholder — glowing orb
-            sr.color = type == AbilityType.DoubleJump
-                ? new Color(0.4f, 1f, 0.6f) // Green for double jump
-                : new Color(0.4f, 0.7f, 1f); // Blue for dash
+            sr.color = type switch
+            {
+                AbilityType.DoubleJump => new Color(0.4f, 1f, 0.6f),   // Green
+                AbilityType.AirDash    => new Color(0.4f, 0.7f, 1f),   // Blue
+                AbilityType.GroundSlam => new Color(1f, 0.6f, 0.2f),   // Orange
+                AbilityType.PhaseShift => new Color(0.3f, 0.9f, 1f),   // Cyan
+                _ => Color.white
+            };
             sr.sortingOrder = 9;
             go.transform.localScale = Vector3.one * 1.2f;
 
@@ -327,10 +429,24 @@ namespace EpochBreaker.Gameplay
             var rewardParent = new GameObject("Rewards");
             rewardParent.transform.SetParent(_levelRoot.transform);
 
+            // Sprint 9: Apply difficulty health pickup multiplier
+            float healthMultiplier = DifficultyManager.Instance != null
+                ? DifficultyManager.Instance.HealthPickupMultiplier : 1f;
+            var rewardRng = new Generative.XORShift64(data.ID.Seed + 55555UL);
+
             for (int i = 0; i < data.Rewards.Count; i++)
             {
                 var reward = data.Rewards[i];
                 if (reward.Hidden) continue;
+
+                // Apply health pickup multiplier (only affects health-type rewards)
+                bool isHealth = reward.Type == RewardType.HealthSmall || reward.Type == RewardType.HealthLarge;
+                if (isHealth && healthMultiplier < 1f)
+                {
+                    // Hard mode: skip health pickups based on multiplier (0 = skip all)
+                    float roll = (float)(rewardRng.Next() % 1000) / 1000f;
+                    if (roll >= healthMultiplier) continue;
+                }
 
                 int clampedY = ClampAboveGround(data, reward.TileX, reward.TileY);
                 Vector3 pos = _tilemapRenderer.LevelToWorld(reward.TileX, clampedY);
@@ -350,6 +466,34 @@ namespace EpochBreaker.Gameplay
                 var rewardPickup = go.AddComponent<RewardPickup>();
                 rewardPickup.Type = reward.Type;
                 rewardPickup.Value = reward.Value;
+
+                // Easy mode: spawn extra health pickups (multiplier = 1.5)
+                if (isHealth && healthMultiplier > 1f)
+                {
+                    float roll = (float)(rewardRng.Next() % 1000) / 1000f;
+                    if (roll < (healthMultiplier - 1f))
+                    {
+                        int bonusX = Mathf.Min(reward.TileX + 2, data.Layout.WidthTiles - 1);
+                        int bonusY = ClampAboveGround(data, bonusX, reward.TileY);
+                        Vector3 bonusPos = _tilemapRenderer.LevelToWorld(bonusX, bonusY);
+
+                        var bonusGo = new GameObject($"Reward_{reward.Type}_{i}_bonus");
+                        bonusGo.transform.SetParent(rewardParent.transform);
+                        bonusGo.transform.position = bonusPos;
+
+                        var bonusSr = bonusGo.AddComponent<SpriteRenderer>();
+                        bonusSr.sprite = PlaceholderAssets.GetRewardSprite(reward.Type);
+                        bonusSr.sortingOrder = 7;
+
+                        var bonusCol = bonusGo.AddComponent<BoxCollider2D>();
+                        bonusCol.isTrigger = true;
+                        bonusCol.size = new Vector2(0.8f, 0.8f);
+
+                        var bonusPickup = bonusGo.AddComponent<RewardPickup>();
+                        bonusPickup.Type = reward.Type;
+                        bonusPickup.Value = reward.Value;
+                    }
+                }
             }
         }
 

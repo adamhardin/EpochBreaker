@@ -34,6 +34,9 @@ namespace EpochBreaker.Gameplay
         private Color _baseColor = Color.white;
         private Color _originalColor = Color.white;
 
+        // Sprite animation
+        private SpriteAnimator _animator;
+
         // Slow effect
         private float _slowFactor = 1f;
         private float _slowTimer;
@@ -95,6 +98,17 @@ namespace EpochBreaker.Gameplay
             if (_sr != null)
                 _originalColor = _sr.color;
             _playerTransform = GameObject.FindWithTag("Player")?.transform;
+
+            // Set up walk animation for moving enemies
+            if (Behavior == EnemyBehavior.Patrol || Behavior == EnemyBehavior.Chase)
+            {
+                _animator = gameObject.AddComponent<SpriteAnimator>();
+                var walkFrames = PlaceholderAssets.GetEnemyWalkFrames(Type, Behavior);
+                var idle = new Sprite[] { _sr.sprite };
+                _animator.SetAnimations(idle, walkFrames, idle, idle, idle);
+                _animator.SetState(SpriteAnimator.AnimState.Walk);
+            }
+
             Register(gameObject);
         }
 
@@ -132,6 +146,13 @@ namespace EpochBreaker.Gameplay
                 case EnemyBehavior.Flying:
                     UpdateFlying();
                     break;
+            }
+
+            // Idle bob for stationary enemies
+            if (Behavior == EnemyBehavior.Stationary && !IsDead)
+            {
+                float bob = 0.98f + Mathf.Sin(Time.time * 3f) * 0.02f;
+                transform.localScale = new Vector3(1f, bob, 1f);
             }
         }
 

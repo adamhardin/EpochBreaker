@@ -133,9 +133,31 @@ namespace EpochBreaker.UI
             divRect.sizeDelta = new Vector2(720, 2);
             divRect.anchoredPosition = new Vector2(0, 255);
 
+            // ── Scrollable achievement list ──
+
+            // Viewport — clips content to visible area using RectMask2D
+            var viewportGO = new GameObject("Viewport");
+            viewportGO.transform.SetParent(panelGO.transform, false);
+            var viewportRect = viewportGO.AddComponent<RectTransform>();
+            viewportRect.anchorMin = new Vector2(0.5f, 0.5f);
+            viewportRect.anchorMax = new Vector2(0.5f, 0.5f);
+            viewportRect.sizeDelta = new Vector2(740, 500);
+            viewportRect.anchoredPosition = new Vector2(0, -15);
+            viewportGO.AddComponent<RectMask2D>();
+
+            // Scroll content — holds all achievement rows
+            var contentGO = new GameObject("Content");
+            contentGO.transform.SetParent(viewportGO.transform, false);
+            var contentRect = contentGO.AddComponent<RectTransform>();
+            contentRect.anchorMin = new Vector2(0.5f, 1f);
+            contentRect.anchorMax = new Vector2(0.5f, 1f);
+            contentRect.pivot = new Vector2(0.5f, 1f);
+
             // Achievement list — two columns
             var achievementTypes = (Gameplay.AchievementType[])Enum.GetValues(typeof(Gameplay.AchievementType));
             int halfCount = (achievementTypes.Length + 1) / 2;
+            float contentHeight = halfCount * 42f + 10f;
+            contentRect.sizeDelta = new Vector2(740, contentHeight);
 
             for (int i = 0; i < achievementTypes.Length; i++)
             {
@@ -143,18 +165,28 @@ namespace EpochBreaker.UI
                 int col = i < halfCount ? 0 : 1;
                 int row = i < halfCount ? i : i - halfCount;
                 float x = col == 0 ? -185f : 185f;
-                float y = 220f - row * 42f;
+                float y = -5f - row * 42f; // relative to content top
 
-                CreateAchievementRow(panelGO.transform, type, am, new Vector2(x, y));
+                CreateAchievementRow(contentGO.transform, type, am, new Vector2(x, y));
             }
 
-            // Close button
-            CreateButton(panelGO.transform, "CLOSE", new Vector2(0, -320),
+            // ScrollRect component on the viewport's parent
+            var scrollGO = viewportGO;
+            var scrollRect = scrollGO.AddComponent<ScrollRect>();
+            scrollRect.content = contentRect;
+            scrollRect.viewport = viewportRect;
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
+            scrollRect.scrollSensitivity = 30f;
+
+            // Close button (below scroll area)
+            CreateButton(panelGO.transform, "CLOSE", new Vector2(0, -300),
                 new Color(0.3f, 0.25f, 0.35f), Close);
 
             // Hint
-            CreateText(panelGO.transform, "Esc: Close", 14,
-                new Color(0.4f, 0.35f, 0.45f), new Vector2(0, -345));
+            CreateText(panelGO.transform, "Esc: Close  |  Scroll: Mouse Wheel", 14,
+                new Color(0.4f, 0.35f, 0.45f), new Vector2(0, -330));
         }
 
         private void CreateAchievementRow(Transform parent, Gameplay.AchievementType type,
@@ -169,8 +201,9 @@ namespace EpochBreaker.UI
             var rowGO = new GameObject($"Achievement_{type}");
             rowGO.transform.SetParent(parent, false);
             var rowRect = rowGO.AddComponent<RectTransform>();
-            rowRect.anchorMin = new Vector2(0.5f, 0.5f);
-            rowRect.anchorMax = new Vector2(0.5f, 0.5f);
+            rowRect.anchorMin = new Vector2(0.5f, 1f);
+            rowRect.anchorMax = new Vector2(0.5f, 1f);
+            rowRect.pivot = new Vector2(0.5f, 1f);
             rowRect.sizeDelta = new Vector2(340, 38);
             rowRect.anchoredPosition = position;
 
@@ -228,6 +261,45 @@ namespace EpochBreaker.UI
                 // Progress text
                 CreateText(rowGO.transform, $"{data.Progress}/{data.ProgressTarget}", 10,
                     new Color(0.5f, 0.5f, 0.55f), new Vector2(120, 2), TextAnchor.MiddleCenter, 80);
+            }
+
+            // Sprint 8: Share button for unlocked achievements
+            if (isUnlocked)
+            {
+                string capturedName = name;
+                string capturedDesc = desc;
+
+                var shareBtnGO = new GameObject("ShareBtn");
+                shareBtnGO.transform.SetParent(rowGO.transform, false);
+                var shareBtnImg = shareBtnGO.AddComponent<Image>();
+                shareBtnImg.color = new Color(0.25f, 0.45f, 0.6f, 0.8f);
+                var shareBtn = shareBtnGO.AddComponent<Button>();
+                shareBtn.targetGraphic = shareBtnImg;
+                shareBtn.onClick.AddListener(() => {
+                    string shareText = Gameplay.LevelShareManager.GenerateAchievementShareText(
+                        capturedName, capturedDesc);
+                    Gameplay.GameManager.CopyToClipboard(shareText);
+                    Gameplay.AudioManager.PlaySFX(Gameplay.PlaceholderAudio.GetMenuSelectSFX());
+                });
+                var shareBtnRect = shareBtnGO.GetComponent<RectTransform>();
+                shareBtnRect.anchorMin = new Vector2(0.5f, 0.5f);
+                shareBtnRect.anchorMax = new Vector2(0.5f, 0.5f);
+                shareBtnRect.sizeDelta = new Vector2(40, 22);
+                shareBtnRect.anchoredPosition = new Vector2(148, 0);
+
+                // Share label
+                var shareLabelGO = new GameObject("ShareLabel");
+                shareLabelGO.transform.SetParent(shareBtnGO.transform, false);
+                var shareLabel = shareLabelGO.AddComponent<Text>();
+                shareLabel.text = "SHARE";
+                shareLabel.fontSize = 12;
+                shareLabel.color = Color.white;
+                shareLabel.alignment = TextAnchor.MiddleCenter;
+                shareLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var shareLabelRect = shareLabelGO.GetComponent<RectTransform>();
+                shareLabelRect.anchorMin = Vector2.zero;
+                shareLabelRect.anchorMax = Vector2.one;
+                shareLabelRect.sizeDelta = Vector2.zero;
             }
         }
 

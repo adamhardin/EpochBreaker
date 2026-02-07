@@ -18,6 +18,8 @@ namespace EpochBreaker.Gameplay
         public event Action OnDeath;
         public event Action OnDamage;
 
+        private float _iFrameFlashAccum;
+
         private float _invulnerabilityTimer;
         private const float INVULNERABILITY_DURATION = 1f; // 60 frames at 60fps
         private const float KNOCKBACK_FORCE = 8f;
@@ -39,6 +41,12 @@ namespace EpochBreaker.Gameplay
             OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
         }
 
+        private void OnDisable()
+        {
+            CancelInvoke(); // Cancel pending Respawn/HandleLevelFailed if destroyed mid-death
+            _deathProcessing = false;
+        }
+
         private void Update()
         {
             if (IsInvulnerable)
@@ -52,10 +60,11 @@ namespace EpochBreaker.Gameplay
                 }
                 else
                 {
-                    // Flash effect during i-frames
+                    // Flash effect during i-frames (local accumulator for consistent phase)
+                    _iFrameFlashAccum += Time.deltaTime * 10f;
                     if (_spriteRenderer != null)
                     {
-                        float flash = Mathf.PingPong(Time.time * 10f, 1f);
+                        float flash = Mathf.PingPong(_iFrameFlashAccum, 1f);
                         _spriteRenderer.color = new Color(1f, 1f, 1f, flash > 0.5f ? 1f : 0.3f);
                     }
                 }
@@ -102,6 +111,7 @@ namespace EpochBreaker.Gameplay
             // Start i-frames
             IsInvulnerable = true;
             _invulnerabilityTimer = INVULNERABILITY_DURATION;
+            _iFrameFlashAccum = 0f;
 
             if (CurrentHealth <= 0)
             {

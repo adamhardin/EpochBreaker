@@ -6,6 +6,8 @@ namespace EpochBreaker.Gameplay
     {
         DoubleJump,
         AirDash,
+        GroundSlam,
+        PhaseShift
     }
 
     /// <summary>
@@ -48,6 +50,12 @@ namespace EpochBreaker.Gameplay
                     break;
                 case AbilityType.AirDash:
                     abilities.GrantAirDash();
+                    break;
+                case AbilityType.GroundSlam:
+                    abilities.GrantGroundSlam();
+                    break;
+                case AbilityType.PhaseShift:
+                    abilities.GrantPhaseShift();
                     break;
             }
 

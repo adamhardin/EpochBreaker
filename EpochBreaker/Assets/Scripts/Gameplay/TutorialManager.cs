@@ -4,13 +4,15 @@ using EpochBreaker.Generative;
 namespace EpochBreaker.Gameplay
 {
     /// <summary>
-    /// Manages tutorial progression across 3 tutorial levels.
-    /// Tracks which tutorial step the player is on and triggers hints.
-    /// Persists completion state to PlayerPrefs.
+    /// Manages tutorial progression across 3 tutorial levels AND context-sensitive
+    /// gameplay hints (Sprint 9). Tutorial hints use scripted steps; gameplay hints
+    /// monitor player behavior and show contextual reminders.
+    /// Per-hint skip tracking persisted in PlayerPrefs.
     /// </summary>
     public class TutorialManager : MonoBehaviour
     {
         private const string PREF_KEY = "EpochBreaker_TutorialCompleted";
+        private const string PREF_HINT_DISMISSED_PREFIX = "EpochBreaker_HintDismissed_";
 
         public static TutorialManager Instance { get; private set; }
 
@@ -19,6 +21,24 @@ namespace EpochBreaker.Gameplay
         public int CurrentStep { get; private set; }
         public string CurrentHintText { get; private set; } = "";
         public bool HintVisible { get; private set; }
+
+        // Sprint 9: Context-sensitive gameplay hint state
+        /// <summary>Text for the context-sensitive gameplay hint (separate from tutorial hints).</summary>
+        public string GameplayHintText { get; private set; } = "";
+        /// <summary>Whether a context-sensitive gameplay hint is currently visible.</summary>
+        public bool GameplayHintVisible { get; private set; }
+        private float _gameplayHintFadeTimer;
+        private const float GAMEPLAY_HINT_DURATION = 3f;
+
+        // Player behavior tracking for context hints
+        private Vector3 _lastPlayerPos;
+        private float _stuckTimer;           // Time player hasn't moved significantly
+        private float _nearWallTimer;        // Time player has been near a wall without wall-jumping
+        private float _noCombatTimer;        // Time without attacking during combat
+        private bool _wallJumpHintShown;
+        private bool _attackHintShown;
+        private bool _stuckHintShown;
+        private int _lastWallJumpCount;
 
         private TutorialStep[] _steps;
         private float _hintTimer;
@@ -108,6 +128,24 @@ namespace EpochBreaker.Gameplay
 
         private void Update()
         {
+            // Fade out gameplay hints
+            if (GameplayHintVisible)
+            {
+                _gameplayHintFadeTimer -= Time.deltaTime;
+                if (_gameplayHintFadeTimer <= 0f)
+                {
+                    GameplayHintVisible = false;
+                    GameplayHintText = "";
+                }
+            }
+
+            // Run context-sensitive gameplay hints (Sprint 9) when playing but not in tutorial
+            if (!IsTutorialActive && GameManager.Instance != null &&
+                GameManager.Instance.CurrentState == GameState.Playing)
+            {
+                UpdateContextHints();
+            }
+
             if (!IsTutorialActive || _steps == null || CurrentStep >= _steps.Length)
                 return;
 
@@ -134,6 +172,161 @@ namespace EpochBreaker.Gameplay
                     CurrentHintText = "";
                 }
             }
+        }
+
+        // =====================================================================
+        // Context-Sensitive Gameplay Hints (Sprint 9)
+        // =====================================================================
+
+        /// <summary>
+        /// Monitor player behavior and show contextual reminders.
+        /// </summary>
+        private void UpdateContextHints()
+        {
+            if (_cachedPlayer == null)
+            {
+                _cachedPlayer = GameObject.FindWithTag("Player");
+                if (_cachedPlayer != null)
+                    _cachedPlayerController = _cachedPlayer.GetComponent<PlayerController>();
+            }
+            if (_cachedPlayer == null || _cachedPlayerController == null) return;
+
+            Vector3 currentPos = _cachedPlayer.transform.position;
+
+            // --- Stuck detection: same position for 8s ---
+            float posDiff = (currentPos - _lastPlayerPos).sqrMagnitude;
+            if (posDiff < 0.5f && !_cachedPlayerController.IsWallSliding) // Less than ~0.7 units moved
+            {
+                _stuckTimer += Time.deltaTime;
+            }
+            else
+            {
+                _stuckTimer = 0f;
+                _stuckHintShown = false;
+            }
+
+            if (_stuckTimer >= 8f && !_stuckHintShown && !GameplayHintVisible)
+            {
+                if (!IsHintDismissed("stuck"))
+                {
+                    ShowGameplayHint("Look for another path!");
+                    _stuckHintShown = true;
+                }
+            }
+
+            // --- Near wall without wall-jumping for 5s ---
+            bool isNearWall = _cachedPlayerController.IsWallSliding;
+            if (isNearWall)
+            {
+                _nearWallTimer += Time.deltaTime;
+            }
+            else
+            {
+                _nearWallTimer = 0f;
+            }
+
+            int currentWallJumps = _cachedPlayerController.WallJumpsThisLevel;
+            if (currentWallJumps > _lastWallJumpCount)
+            {
+                _nearWallTimer = 0f;
+                _wallJumpHintShown = true; // Player knows about wall jumping
+                _lastWallJumpCount = currentWallJumps;
+            }
+
+            if (_nearWallTimer >= 5f && !_wallJumpHintShown && !GameplayHintVisible)
+            {
+                if (!IsHintDismissed("walljump"))
+                {
+                    ShowGameplayHint("Try wall-jumping!");
+                    _wallJumpHintShown = true;
+                }
+            }
+
+            // --- No weapon use during combat for 10s ---
+            bool enemiesNearby = EnemyBase.ActiveEnemies.Count > 0;
+            if (enemiesNearby)
+            {
+                _noCombatTimer += Time.deltaTime;
+                if (GameManager.Instance.ShotsFired > 0 || GameManager.Instance.EnemiesKilled > 0)
+                {
+                    _noCombatTimer = 0f;
+                    _attackHintShown = true;
+                }
+            }
+            else
+            {
+                _noCombatTimer = 0f;
+            }
+
+            if (_noCombatTimer >= 10f && !_attackHintShown && !GameplayHintVisible)
+            {
+                if (!IsHintDismissed("attack"))
+                {
+                    ShowGameplayHint("Your weapon fires automatically at enemies!");
+                    _attackHintShown = true;
+                }
+            }
+
+            _lastPlayerPos = currentPos;
+        }
+
+        /// <summary>
+        /// Show a context-sensitive gameplay hint popup. Fades after GAMEPLAY_HINT_DURATION seconds.
+        /// </summary>
+        private void ShowGameplayHint(string text)
+        {
+            GameplayHintText = text;
+            GameplayHintVisible = true;
+            _gameplayHintFadeTimer = GAMEPLAY_HINT_DURATION;
+        }
+
+        /// <summary>
+        /// Reset context hint state when starting a new level.
+        /// </summary>
+        public void ResetContextHints()
+        {
+            _stuckTimer = 0f;
+            _nearWallTimer = 0f;
+            _noCombatTimer = 0f;
+            _wallJumpHintShown = false;
+            _attackHintShown = false;
+            _stuckHintShown = false;
+            _lastWallJumpCount = 0;
+            _lastPlayerPos = Vector3.zero;
+            _cachedPlayer = null;
+            _cachedPlayerController = null;
+            GameplayHintVisible = false;
+            GameplayHintText = "";
+        }
+
+        /// <summary>
+        /// Dismiss a specific hint permanently so it won't show again.
+        /// </summary>
+        public static void DismissHint(string hintId)
+        {
+            PlayerPrefs.SetInt(PREF_HINT_DISMISSED_PREFIX + hintId, 1);
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Check if a specific hint has been permanently dismissed.
+        /// </summary>
+        public static bool IsHintDismissed(string hintId)
+        {
+            return PlayerPrefs.GetInt(PREF_HINT_DISMISSED_PREFIX + hintId, 0) == 1;
+        }
+
+        /// <summary>
+        /// Reset all dismissed hints (for settings menu "Reset Hints" option).
+        /// </summary>
+        public static void ResetDismissedHints()
+        {
+            string[] hintIds = { "stuck", "walljump", "attack" };
+            foreach (var id in hintIds)
+            {
+                PlayerPrefs.DeleteKey(PREF_HINT_DISMISSED_PREFIX + id);
+            }
+            PlayerPrefs.Save();
         }
 
         private void ShowHint(TutorialStep step)
