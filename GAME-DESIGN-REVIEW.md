@@ -2,7 +2,7 @@
 
 **Prepared for**: Expert game design review
 **Date**: 2026-02-06
-**Build**: v0.5.0 build 011
+**Build**: v0.6.0 build 012
 **Play it**: [https://adamhardin.github.io/EpochBreaker/](https://adamhardin.github.io/EpochBreaker/) (WebGL, keyboard: arrows/WASD, Space=jump, S/Down=stomp, X/J=cycle weapon, Esc=pause)
 
 ---
@@ -112,12 +112,9 @@ The game is a working prototype with all core systems functional. A reviewer can
 - All audio synthesized at runtime (waveform synthesis, no imported audio files)
 
 ### Not yet implemented:
-- Parallax backgrounds
 - Cosmetic unlocks (skins, trails)
 - Daily challenge system
 - Sprite animations (currently static sprites)
-- Particle effects for destruction
-- Screen shake on impacts
 
 ---
 
@@ -648,10 +645,7 @@ All sprites are generated at runtime via Texture2D pixel painting. No imported a
 Hazard overlays: crack lines (debris), green tint (gas), orange tint (fire), spike edges, shield outline (cover), golden glow (relic).
 
 ### Not yet implemented:
-- Parallax backgrounds (5-layer system designed)
 - Animations (currently static sprites)
-- Particle effects for destruction
-- Screen shake on impacts
 
 ---
 
@@ -809,4 +803,23 @@ v0.4.0 implemented expert review cycle 2 feedback. v0.5.0 added performance, pol
 
 ---
 
-*This document represents the game as of v0.5.0 build 011 (2026-02-06). The codebase, design specifications, and this review document are all available for reference.*
+## 20. Changes Since Last Review (v0.5.0 -> v0.6.0)
+
+v0.6.0 "Make It Fun" pass: 9 sprints focused on game feel, balance, and polish.
+
+| Area | What Changed |
+|------|-------------|
+| Performance | Object pooling (Projectile/30, Particle/50, Flash/8) eliminates all runtime allocations during gameplay |
+| Game Feel | Trauma-based screen shake (Perlin noise), hit-stop on kills/boss phases, landing dust particles, muzzle flash, death particles with era-colored bursts |
+| Boss Overhaul | Arena lockdown with destructible pillars, boss intro cinematic with name card, 3-phase camera zoom, phase-transition hit-stop, slow damage amplification (1.2x), Cannon DPS cap bypass (30%) |
+| Visible Systems | Running score with scale animation, ability icons (double jump/air dash), Quick Draw weapon glow + "QUICK DRAW!" flash, auto-select reason display, DPS cap "RESISTED" feedback, boss health bar with phase colors |
+| Era Identity | Era-specific parallax silhouettes, era-parameterized music (tempo/waveform/volume per era group), era-specific platform tile colors, boss arena uses era tiles |
+| Weapon Balance | Spreader damage 0.8x→0.5x with +projectiles per tier, Chainer chain count 1+t→2+t and range 4→4+t, Slower duration 2+t→3+t with stronger slow, Quick Draw +25% fire rate and +20% audio pitch on manual weapon switch |
+| Gamification | Score popups (world-to-screen, pooled), combo counter (x2+ with 2s window, reset on damage), achievement toast queue (slide-in animation), first-completion auto-expand details, contextual tips on level complete |
+| Polish | Enemy shoot telegraphs (0.3s red tint buildup), enemy knockback on hit (2 units/sec), wall-slide only caps descending velocity, level intro camera pan (1s sweep ahead), era intro card ("ERA N: NAME" with accent color), damage direction indicators (red edge flash) |
+| Scoring | Kill combo system builds multiplier within 2s window, resets on damage |
+| Achievements | HazardDodger requires 5+ hazard tiles, CoolUnderPressure requires 3+ Cannon shots, RecordCannonShot tracking |
+
+---
+
+*This document represents the game as of v0.6.0 build 012 (2026-02-06). The codebase, design specifications, and this review document are all available for reference.*

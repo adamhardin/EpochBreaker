@@ -20,6 +20,7 @@ Tracks each WebGL deployment to GitHub Pages. The build number displayed on the 
 | 009 | 0.4.0 | 2026-02-06 | Expert review cycle 2: limited auto-select, Quick Draw, archaeology scoring, arena pillars, hazard rebalance, tutorial wall-jump optional |
 | 010 | 0.5.0 | 2026-02-06 | Performance pass: cached physics/refs, batched geometry, debounced saves, enemy registry. Visual: parallax backgrounds, screen flash, squash/stretch. Features: ability system (double jump, air dash) |
 | 011 | 0.5.0 | 2026-02-06 | Documentation cleanup, build ID display fix, compilation error fixes |
+| 012 | 0.6.0 | 2026-02-06 | "Make It Fun" pass: object pooling, screen shake/hit-stop, boss overhaul, visible systems, era differentiation, weapon balance, score gamification, polish |
 
 ---
 
