@@ -25,10 +25,10 @@ namespace EpochBreaker.Gameplay
         // visible), offset 2.8 puts the player at (7-2.8)/14 = 30% from bottom.
         private float _verticalOffset = 2.8f;
 
-        // Screen shake
-        private float _shakeTimer;
-        private float _shakeDuration;
-        private float _shakeIntensity;
+        // Trauma-based screen shake
+        private float _trauma;
+        private const float TRAUMA_DECAY_SPEED = 2.5f; // trauma per second
+        private float _shakeTime; // running time for Perlin noise seed
 
         private void Awake()
         {
@@ -54,17 +54,20 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Trigger screen shake. Intensity decays linearly over duration.
+        /// Add trauma to the screen shake system. Trauma is clamped to [0,1].
+        /// Shake magnitude = trauma^2 for a non-linear, satisfying feel.
+        /// </summary>
+        public void AddTrauma(float amount)
+        {
+            _trauma = Mathf.Clamp01(_trauma + amount);
+        }
+
+        /// <summary>
+        /// Legacy convenience: converts intensity/duration to trauma amount.
         /// </summary>
         public void Shake(float intensity, float duration)
         {
-            // Only override if stronger than current shake
-            if (intensity > _shakeIntensity || _shakeTimer <= 0f)
-            {
-                _shakeIntensity = intensity;
-                _shakeTimer = duration;
-                _shakeDuration = duration;
-            }
+            AddTrauma(intensity * 2f);
         }
 
         private void LateUpdate()
@@ -108,18 +111,15 @@ namespace EpochBreaker.Gameplay
                 newY = Mathf.Clamp(newY, minY, Mathf.Max(minY, maxY));
             }
 
-            // Apply screen shake offset
+            // Apply trauma-based screen shake (Perlin noise for smooth motion)
             float shakeX = 0f, shakeY = 0f;
-            if (_shakeTimer > 0f)
+            if (_trauma > 0f)
             {
-                _shakeTimer -= Time.deltaTime;
-                float decay = Mathf.Clamp01(_shakeTimer / _shakeDuration);
-                float magnitude = _shakeIntensity * decay;
-                shakeX = Random.Range(-magnitude, magnitude);
-                shakeY = Random.Range(-magnitude, magnitude);
-
-                if (_shakeTimer <= 0f)
-                    _shakeIntensity = 0f;
+                _shakeTime += Time.unscaledDeltaTime * 50f; // fast noise scroll
+                float magnitude = _trauma * _trauma * 0.6f; // quadratic falloff, max ~0.6 units
+                shakeX = (Mathf.PerlinNoise(_shakeTime, 0f) - 0.5f) * 2f * magnitude;
+                shakeY = (Mathf.PerlinNoise(0f, _shakeTime) - 0.5f) * 2f * magnitude;
+                _trauma = Mathf.Max(0f, _trauma - TRAUMA_DECAY_SPEED * Time.unscaledDeltaTime);
             }
 
             transform.position = new Vector3(newX + shakeX, newY + shakeY, -10f);

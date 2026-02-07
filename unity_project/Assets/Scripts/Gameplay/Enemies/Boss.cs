@@ -210,6 +210,9 @@ namespace EpochBreaker.Gameplay
                 _sr.color = new Color(1f, tint, tint);
             }
 
+            // Hit-stop on boss phase transition (4 frames / ~66ms)
+            GameManager.HitStop(0.066f);
+
             // Speed up in later phases — update multiplier so slow recovery is correct
             _phaseSpeedMultiplier *= 1.2f;
             _moveSpeed = _baseMoveSpeed * _phaseSpeedMultiplier * _slowFactor;
@@ -603,7 +606,7 @@ namespace EpochBreaker.Gameplay
             AudioManager.PlaySFX(PlaceholderAudio.GetEnemyHitSFX());
 
             // Screen shake scales with damage
-            CameraController.Instance?.Shake(0.05f * amount, 0.15f);
+            CameraController.Instance?.AddTrauma(0.05f * amount);
 
             // Flash white
             if (_sr != null)
@@ -641,9 +644,10 @@ namespace EpochBreaker.Gameplay
                 GameManager.Instance.RecordBossKillScore(500);
             }
 
-            // Epic boss death sound + big shake
+            // Epic boss death sound + big shake + hit-stop (8 frames / ~133ms)
             AudioManager.PlaySFX(PlaceholderAudio.GetBossDeathSFX());
-            CameraController.Instance?.Shake(0.3f, 0.5f);
+            CameraController.Instance?.AddTrauma(0.7f);
+            GameManager.HitStop(0.133f);
 
             // Stop movement
             if (_rb != null)

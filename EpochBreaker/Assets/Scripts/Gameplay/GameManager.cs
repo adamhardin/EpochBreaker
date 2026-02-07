@@ -100,6 +100,40 @@ namespace EpochBreaker.Gameplay
     {
         public static GameManager Instance { get; private set; }
 
+        // Hit-stop: brief time freeze on impactful events
+        private Coroutine _hitStopCoroutine;
+        private float _savedTimeScale = 1f;
+
+        /// <summary>
+        /// Freeze time briefly for impact emphasis. Duration is in real (unscaled) seconds.
+        /// Typical values: enemy kill 0.033s, boss phase 0.066s, boss death 0.133s.
+        /// </summary>
+        public static void HitStop(float duration)
+        {
+            if (Instance == null) return;
+            // Don't hit-stop if already paused or not playing
+            if (Instance.CurrentState == GameState.Paused) return;
+            if (Instance._hitStopCoroutine != null)
+                Instance.StopCoroutine(Instance._hitStopCoroutine);
+            Instance._hitStopCoroutine = Instance.StartCoroutine(Instance.DoHitStop(duration));
+        }
+
+        private System.Collections.IEnumerator DoHitStop(float duration)
+        {
+            _savedTimeScale = Time.timeScale;
+            Time.timeScale = 0f;
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            // Restore — but only if not paused during the hit-stop
+            if (CurrentState != GameState.Paused)
+                Time.timeScale = _savedTimeScale;
+            _hitStopCoroutine = null;
+        }
+
         public GameState CurrentState { get; private set; } = GameState.TitleScreen;
         public int CurrentEpoch { get; set; } = 0;
         public const int DEATHS_PER_LEVEL = 2;

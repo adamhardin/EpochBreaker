@@ -88,13 +88,18 @@ namespace EpochBreaker.Gameplay
 
             if (idx < 0 || idx >= _levelData.Layout.Tiles.Length) return;
 
-            // Check for hazard, relic, and hidden content before clearing data
+            // Check for hazard, relic, hidden content, and material before clearing data
             var hazard = _levelData.Layout.Destructibles[idx].Hazard;
             bool isRelic = _levelData.Layout.Destructibles[idx].IsRelic;
             var hiddenContent = _levelData.Layout.Destructibles[idx].HiddenContent;
+            byte materialClass = _levelData.Layout.Destructibles[idx].MaterialClass;
 
-            // Spawn destruction particles before clearing data
-            SpawnTileParticles(tileX, tileY, _levelData.Layout.Tiles[idx]);
+            // Spawn destruction particles before clearing data (scaled by material)
+            SpawnTileParticles(tileX, tileY, _levelData.Layout.Tiles[idx], materialClass);
+
+            // Pitched crunch SFX — heavier materials get lower pitch
+            float pitch = 1.1f - materialClass * 0.1f;
+            AudioManager.PlaySFXPitched(PlaceholderAudio.GetTileCrunchSFX(), pitch - 0.1f, pitch + 0.1f);
 
             // Clear tile data
             _levelData.Layout.Tiles[idx] = (byte)TileType.Empty;
@@ -238,13 +243,36 @@ namespace EpochBreaker.Gameplay
             return new Vector2Int(tileX, tileY);
         }
 
-        private void SpawnTileParticles(int tileX, int tileY, byte tileType)
+        private void SpawnTileParticles(int tileX, int tileY, byte tileType, byte materialClass = 0)
         {
             Vector3 worldPos = LevelToWorld(tileX, tileY);
             int epoch = _levelData?.ID.Epoch ?? 0;
             Color tileColor = PlaceholderAssets.GetTileParticleColor(tileType, epoch);
 
-            int count = Random.Range(3, 6);
+            // Scale particle count and effects by material class
+            // Soft=2, Medium=4, Hard=6, Reinforced=8, Indestructible=10
+            int count;
+            float maxScale;
+            float trauma;
+            switch ((MaterialClass)materialClass)
+            {
+                case MaterialClass.Soft:
+                    count = Random.Range(2, 3); maxScale = 0.25f; trauma = 0f; break;
+                case MaterialClass.Medium:
+                    count = Random.Range(3, 5); maxScale = 0.3f; trauma = 0.05f; break;
+                case MaterialClass.Hard:
+                    count = Random.Range(5, 7); maxScale = 0.35f; trauma = 0.1f; break;
+                case MaterialClass.Reinforced:
+                    count = Random.Range(7, 9); maxScale = 0.4f; trauma = 0.2f; break;
+                case MaterialClass.Indestructible:
+                    count = Random.Range(8, 11); maxScale = 0.45f; trauma = 0.3f; break;
+                default:
+                    count = Random.Range(3, 5); maxScale = 0.3f; trauma = 0.05f; break;
+            }
+
+            if (trauma > 0f)
+                CameraController.Instance?.AddTrauma(trauma);
+
             for (int i = 0; i < count; i++)
             {
                 var go = ObjectPool.GetParticle();
@@ -255,7 +283,7 @@ namespace EpochBreaker.Gameplay
                 sr.sprite = PlaceholderAssets.GetParticleSprite();
                 sr.color = tileColor;
                 sr.sortingOrder = 15;
-                go.transform.localScale = Vector3.one * Random.Range(0.15f, 0.35f);
+                go.transform.localScale = Vector3.one * Random.Range(0.15f, maxScale);
 
                 var rb = go.GetComponent<Rigidbody2D>();
                 rb.gravityScale = 4f;
@@ -263,6 +291,19 @@ namespace EpochBreaker.Gameplay
                 rb.linearVelocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * Random.Range(2f, 5f);
 
                 go.GetComponent<PoolTimer>().StartTimer(0.6f);
+            }
+
+            // Indestructible: extra flash burst
+            if ((MaterialClass)materialClass == MaterialClass.Indestructible)
+            {
+                var flashGO = ObjectPool.GetFlash();
+                flashGO.transform.position = worldPos;
+                var flashSR = flashGO.GetComponent<SpriteRenderer>();
+                flashSR.sprite = PlaceholderAssets.GetParticleSprite();
+                flashSR.color = new Color(1f, 1f, 0.9f, 0.8f);
+                flashSR.sortingOrder = 16;
+                flashGO.transform.localScale = Vector3.one * 1.2f;
+                flashGO.GetComponent<PoolTimer>().StartTimer(0.08f);
             }
         }
 

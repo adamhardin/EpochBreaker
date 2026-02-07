@@ -27,6 +27,7 @@ namespace EpochBreaker.Gameplay
 
         // Ground pound
         private const float STOMP_SPEED = 30f;
+        private const float STOMP_STALL_DURATION = 0.05f; // 50ms air-stall before descent
 
         // Ground detection
         private const float GROUND_CHECK_DISTANCE = 0.1f;
@@ -60,6 +61,7 @@ namespace EpochBreaker.Gameplay
         private bool _facingRight = true;
         private bool _jumpCut;
         private bool _isStomping;
+        private float _stompStallTimer;
 
         // Wall state
         private bool _isTouchingWallLeft;
@@ -112,6 +114,14 @@ namespace EpochBreaker.Gameplay
 
             if (_isStomping)
             {
+                // Air-stall phase: brief hover before plummeting
+                if (_stompStallTimer > 0f)
+                {
+                    _stompStallTimer -= Time.fixedDeltaTime;
+                    _velocity = Vector2.zero;
+                    ApplyVelocity();
+                    return;
+                }
                 // During stomp: override velocity, no horizontal control
                 _velocity.x = 0f;
                 _velocity.y = -STOMP_SPEED;
@@ -164,11 +174,12 @@ namespace EpochBreaker.Gameplay
             if (_isGrounded)
             {
                 _coyoteTimer = COYOTE_FRAMES;
-                // Landing squash effect
+                // Landing squash effect + dust particles
                 if (!wasGrounded)
                 {
                     _targetScale = new Vector3(1.2f, 0.8f, 1f);
                     _squashTimer = 0.1f;
+                    SpawnLandingDust();
                 }
                 if (_isStomping)
                     _isStomping = false;
@@ -356,6 +367,33 @@ namespace EpochBreaker.Gameplay
             dustGO.GetComponent<PoolTimer>().StartTimer(0.2f);
         }
 
+        private void SpawnLandingDust()
+        {
+            // Scale particle count by fall speed: 0 at walk speed, up to 4 at max fall
+            float fallSpeed = Mathf.Abs(_velocity.y);
+            int count = Mathf.Clamp(Mathf.FloorToInt(fallSpeed / MAX_FALL_SPEED * 4f), 1, 4);
+
+            Vector3 basePos = transform.position + Vector3.down * (_collider.size.y * 0.5f);
+            for (int i = 0; i < count; i++)
+            {
+                var go = ObjectPool.GetParticle();
+                go.transform.position = basePos + new Vector3(
+                    Random.Range(-0.4f, 0.4f), Random.Range(-0.1f, 0.1f), 0f);
+                var sr = go.GetComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetParticleSprite();
+                sr.color = new Color(0.75f, 0.7f, 0.6f, 0.6f);
+                sr.sortingOrder = 5;
+                go.transform.localScale = Vector3.one * Random.Range(0.15f, 0.3f);
+
+                var rb = go.GetComponent<Rigidbody2D>();
+                rb.gravityScale = 1f;
+                float angle = Random.Range(45f, 135f) * Mathf.Deg2Rad;
+                rb.linearVelocity = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * Random.Range(1f, 3f);
+
+                go.GetComponent<PoolTimer>().StartTimer(0.4f);
+            }
+        }
+
         /// <summary>
         /// Reset per-level tracking (e.g. wall-jump counter for achievements).
         /// </summary>
@@ -513,7 +551,8 @@ namespace EpochBreaker.Gameplay
             if (InputManager.StompPressed && !_isGrounded && !_isStomping && !_isWallSliding)
             {
                 _isStomping = true;
-                _velocity.y = -STOMP_SPEED;
+                _stompStallTimer = STOMP_STALL_DURATION; // brief air-stall before descending
+                _velocity.y = 0f;
                 _velocity.x = 0f;
             }
         }
@@ -542,8 +581,9 @@ namespace EpochBreaker.Gameplay
                 {
                     _isStomping = false;
                     AudioManager.PlaySFX(PlaceholderAudio.GetStompSFX());
+                    CameraController.Instance?.AddTrauma(0.25f);
                     TryBreakTilesBelow(contact.point);
-                    _velocity.y = 6f; // Small bounce after stomp
+                    _velocity.y = 8f; // Satisfying bounce after stomp
                     break;
                 }
             }

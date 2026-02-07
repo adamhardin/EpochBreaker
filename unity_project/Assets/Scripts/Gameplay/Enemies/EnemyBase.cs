@@ -299,7 +299,9 @@ namespace EpochBreaker.Gameplay
 
             Health -= amount;
 
-            AudioManager.PlaySFX(PlaceholderAudio.GetEnemyHitSFX());
+            // Pitch varies by enemy type for variety
+            float pitchBase = 1f - (int)Type * 0.03f; // lower pitch for later-era enemies
+            AudioManager.PlaySFXPitched(PlaceholderAudio.GetEnemyHitSFX(), pitchBase - 0.1f, pitchBase + 0.1f);
 
             // Flash red
             if (_sr != null)
@@ -328,7 +330,10 @@ namespace EpochBreaker.Gameplay
             AudioManager.PlaySFX(PlaceholderAudio.GetEnemyDieSFX());
 
             // Screen shake on enemy death
-            CameraController.Instance?.Shake(0.08f, 0.12f);
+            CameraController.Instance?.AddTrauma(0.15f);
+
+            // Hit-stop on enemy kill (2 frames / ~33ms)
+            GameManager.HitStop(0.033f);
 
             // Spawn death particles
             SpawnDeathParticles();

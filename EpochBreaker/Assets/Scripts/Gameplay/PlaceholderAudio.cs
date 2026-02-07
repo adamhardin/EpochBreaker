@@ -404,6 +404,20 @@ namespace EpochBreaker.Gameplay
             return clip;
         }
 
+        /// <summary>Short crunch — tile destroyed.</summary>
+        public static AudioClip GetTileCrunchSFX()
+        {
+            if (_cache.TryGetValue("sfx_crunch", out var c)) return c;
+            var buf = MakeBuffer(0.12f);
+            // Crunchy noise burst with low-frequency thud
+            AddTone(buf, 0f, 0.06f, 600f, 300f, Wave.Noise, 0.15f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.08f, 120f, 50f, Wave.Triangle, 0.2f, 0.001f, 0.03f);
+            AddTone(buf, 0.02f, 0.06f, 400f, 150f, Wave.Square, 0.08f, 0.001f, 0.02f);
+            var clip = MakeClip("SFX_Crunch", buf);
+            _cache["sfx_crunch"] = clip;
+            return clip;
+        }
+
         /// <summary>Soft scraping loop — wall-slide contact.</summary>
         public static AudioClip GetWallSlideSFX()
         {

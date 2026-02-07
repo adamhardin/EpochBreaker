@@ -77,8 +77,8 @@ namespace EpochBreaker.Gameplay
             OnDamage?.Invoke();
             AudioManager.PlaySFX(PlaceholderAudio.GetPlayerHurtSFX());
 
-            // Screen shake on player damage
-            CameraController.Instance?.Shake(0.15f, 0.2f);
+            // Screen shake on player damage (high trauma)
+            CameraController.Instance?.AddTrauma(0.4f);
 
             // Brief white flash before i-frame flashing
             if (_spriteRenderer != null)
@@ -130,8 +130,10 @@ namespace EpochBreaker.Gameplay
 
             OnDeath?.Invoke();
 
-            // Play death sound
+            // Play death sound + dramatic feedback
             AudioManager.PlaySFX(PlaceholderAudio.GetPlayerDeathSFX());
+            CameraController.Instance?.AddTrauma(0.5f);
+            GameManager.HitStop(0.1f); // 100ms freeze frame on death
 
             if (_player != null)
                 _player.IsAlive = false;
@@ -165,7 +167,7 @@ namespace EpochBreaker.Gameplay
         {
             if (_spriteRenderer == null) yield break;
 
-            float duration = 0.8f;
+            float duration = 1.0f;
             float elapsed = 0f;
             Vector3 originalScale = transform.localScale;
             Color originalColor = _spriteRenderer.color;
@@ -177,13 +179,13 @@ namespace EpochBreaker.Gameplay
 
                 // Fade out and shrink
                 float alpha = Mathf.Lerp(1f, 0f, t);
-                float scale = Mathf.Lerp(1f, 0.3f, t);
+                float scale = Mathf.Lerp(1f, 0.3f, t * t); // ease-in shrink
 
                 _spriteRenderer.color = new Color(1f, 0.3f, 0.3f, alpha); // Red tint
                 transform.localScale = originalScale * scale;
 
-                // Spin effect
-                transform.Rotate(0f, 0f, 720f * Time.deltaTime);
+                // Slower spin (360 deg/s, was 720)
+                transform.Rotate(0f, 0f, 360f * Time.deltaTime);
 
                 yield return null;
             }
@@ -203,6 +205,9 @@ namespace EpochBreaker.Gameplay
                 _player.IsAlive = true;
                 ResetHealth();
                 GrantSpawnProtection();
+
+                // Respawn flash
+                ScreenFlash.Flash(Color.white, 0.3f);
 
                 // Reset boss if player respawns in boss arena
                 var loader = GameManager.Instance?.GetComponent<LevelLoader>();

@@ -123,7 +123,31 @@ namespace EpochBreaker.Gameplay
 
             var src = Instance._sfxSources[Instance._sfxIndex];
             Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
+            // ±10% pitch randomization for weapon fire variety
+            src.pitch = Random.Range(0.9f, 1.1f);
             src.PlayOneShot(clip, volume * Instance._weaponVolume);
+            src.pitch = 1f; // Reset for next use
+        }
+
+        /// <summary>
+        /// Play SFX with pitch variation. Used for combat hits to add variety.
+        /// </summary>
+        public static void PlaySFXPitched(AudioClip clip, float pitchMin = 0.9f, float pitchMax = 1.1f, float volume = 1f)
+        {
+            if (Instance == null || clip == null) return;
+
+            int clipId = clip.GetInstanceID();
+            float now = Time.unscaledTime;
+            if (Instance._lastPlayTime.TryGetValue(clipId, out float last) &&
+                now - last < MIN_REPEAT_INTERVAL)
+                return;
+            Instance._lastPlayTime[clipId] = now;
+
+            var src = Instance._sfxSources[Instance._sfxIndex];
+            Instance._sfxIndex = (Instance._sfxIndex + 1) % SFX_POOL_SIZE;
+            src.pitch = Random.Range(pitchMin, pitchMax);
+            src.PlayOneShot(clip, volume * Instance._sfxVolume);
+            src.pitch = 1f;
         }
 
         public static void PlayMusic(AudioClip clip)
