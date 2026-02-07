@@ -87,6 +87,9 @@ namespace EpochBreaker.Gameplay
             // Notify achievement system that player took damage
             GameManager.Instance?.RecordPlayerDamage();
 
+            // Notify UI for damage direction indicator
+            GameManager.NotifyDamageDirection(damageSource);
+
             // Knockback away from damage source
             if (_player != null)
             {

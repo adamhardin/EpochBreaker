@@ -271,10 +271,7 @@ namespace EpochBreaker.Gameplay
                 // Clear wall-jump lock on new wall-grab (enables chimney climbing)
                 _wallJumpLockTimer = 0;
 
-                // Cap upward velocity when grabbing wall mid-jump (slows ascent)
-                if (_velocity.y > WALL_SLIDE_SPEED)
-                    _velocity.y = WALL_SLIDE_SPEED;
-
+                // Only clamp descending velocity — preserve upward momentum from wall-jumps
                 // Clamp fall speed while sliding
                 if (_velocity.y < -WALL_SLIDE_SPEED)
                     _velocity.y = -WALL_SLIDE_SPEED;

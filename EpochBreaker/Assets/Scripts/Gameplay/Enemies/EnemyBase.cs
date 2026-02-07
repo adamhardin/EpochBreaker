@@ -47,6 +47,7 @@ namespace EpochBreaker.Gameplay
         private float _shootCooldown = 1.5f;
         private float _shootTimer;
         private float _shootRange = 10f;
+        private float _telegraphTimer; // 0.3s pre-shoot telegraph
 
         // Flying behavior
         private float _flyHeight;
@@ -227,14 +228,32 @@ namespace EpochBreaker.Gameplay
 
         /// <summary>
         /// Attempt to shoot at the player if within range and cooldown elapsed.
+        /// Uses a 0.3s telegraph (red tint) before firing.
         /// </summary>
         private void TryShoot(float distToPlayer, float cooldown)
         {
+            // Telegraph in progress — build red tint
+            if (_telegraphTimer > 0f)
+            {
+                _telegraphTimer -= Time.fixedDeltaTime;
+                if (_sr != null)
+                {
+                    float t = 1f - (_telegraphTimer / 0.3f);
+                    _sr.color = Color.Lerp(_baseColor, new Color(1f, 0.3f, 0.2f), t);
+                }
+                if (_telegraphTimer <= 0f)
+                {
+                    ShootAtPlayer();
+                    _shootTimer = cooldown;
+                    if (_sr != null) _sr.color = _baseColor;
+                }
+                return;
+            }
+
             _shootTimer -= Time.fixedDeltaTime;
             if (_shootTimer <= 0f && distToPlayer < _shootRange)
             {
-                ShootAtPlayer();
-                _shootTimer = cooldown;
+                _telegraphTimer = 0.3f; // Start telegraph
             }
         }
 
@@ -311,6 +330,13 @@ namespace EpochBreaker.Gameplay
             if (_sr != null)
                 _sr.color = Color.red;
             Invoke(nameof(ResetColor), 0.1f);
+
+            // Knockback: small pushback away from player
+            if (_rb != null && _playerTransform != null)
+            {
+                Vector2 knockDir = ((Vector2)transform.position - (Vector2)_playerTransform.position).normalized;
+                _rb.linearVelocity += knockDir * 2f;
+            }
 
             if (Health <= 0)
             {

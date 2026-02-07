@@ -61,6 +61,16 @@ namespace EpochBreaker.UI
         private System.Collections.Generic.Queue<string> _achievementQueue
             = new System.Collections.Generic.Queue<string>();
 
+        // Era intro card
+        private Text _eraCardText;
+        private float _eraCardTimer;
+        private Color _eraCardColor;
+
+        // Damage direction indicators (4 edges: left, right, top, bottom)
+        private Image[] _dmgDirImages;
+        private float _dmgDirTimer;
+        private int _dmgDirEdge = -1;
+
         private const int MAX_HEARTS = 5;
 
         private void Start()
@@ -70,6 +80,9 @@ namespace EpochBreaker.UI
 
             // Subscribe to score popup events
             Gameplay.GameManager.OnScorePopup += HandleScorePopup;
+
+            // Subscribe to damage direction events
+            Gameplay.GameManager.OnDamageDirection += HandleDamageDirection;
 
             // Subscribe to achievement unlock events
             if (Gameplay.AchievementManager.Instance != null)
@@ -93,6 +106,8 @@ namespace EpochBreaker.UI
             UpdateScorePopups();
             UpdateComboCounter();
             UpdateAchievementToast();
+            UpdateEraCard();
+            UpdateDamageDirection();
         }
 
         private void FindPlayerHealth()
@@ -117,6 +132,7 @@ namespace EpochBreaker.UI
                 _healthSystem.OnHealthChanged -= UpdateHearts;
 
             Gameplay.GameManager.OnScorePopup -= HandleScorePopup;
+            Gameplay.GameManager.OnDamageDirection -= HandleDamageDirection;
 
             if (Gameplay.AchievementManager.Instance != null)
                 Gameplay.AchievementManager.Instance.OnAchievementUnlocked -= HandleAchievementUnlock;
@@ -330,6 +346,71 @@ namespace EpochBreaker.UI
             achRect.pivot = new Vector2(0.5f, 1);
             achRect.sizeDelta = new Vector2(400, 30);
             achRect.anchoredPosition = new Vector2(0, 40); // Starts off-screen above
+
+            // Era intro card (large centered text, fades after 2s)
+            var eraCardGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+            _eraCardText = eraCardGO.GetComponent<Text>();
+            _eraCardText.fontSize = 42;
+            _eraCardText.color = new Color(1f, 1f, 1f, 0f);
+            var eraCardRect = eraCardGO.GetComponent<RectTransform>();
+            eraCardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            eraCardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            eraCardRect.pivot = new Vector2(0.5f, 0.5f);
+            eraCardRect.sizeDelta = new Vector2(600, 60);
+            eraCardRect.anchoredPosition = new Vector2(0, 50);
+
+            if (gm != null)
+            {
+                int epoch = gm.CurrentEpoch;
+                string eraName = gm.CurrentLevelID.EpochName.ToUpper();
+                _eraCardText.text = $"ERA {epoch + 1}: {eraName}";
+                _eraCardColor = GetEraAccentColor(epoch);
+                _eraCardText.color = new Color(_eraCardColor.r, _eraCardColor.g, _eraCardColor.b, 0f);
+                _eraCardTimer = 2.5f;
+            }
+
+            // Damage direction indicators (4 screen edges)
+            _dmgDirImages = new Image[4];
+            for (int i = 0; i < 4; i++)
+            {
+                var edgeGO = new GameObject($"DmgDir_{i}");
+                edgeGO.transform.SetParent(canvasGO.transform, false);
+                _dmgDirImages[i] = edgeGO.AddComponent<Image>();
+                _dmgDirImages[i].color = new Color(1f, 0f, 0f, 0f);
+                _dmgDirImages[i].raycastTarget = false;
+                var edgeRect = edgeGO.GetComponent<RectTransform>();
+                switch (i)
+                {
+                    case 0: // Left
+                        edgeRect.anchorMin = new Vector2(0, 0);
+                        edgeRect.anchorMax = new Vector2(0, 1);
+                        edgeRect.pivot = new Vector2(0, 0.5f);
+                        edgeRect.sizeDelta = new Vector2(60, 0);
+                        edgeRect.anchoredPosition = Vector2.zero;
+                        break;
+                    case 1: // Right
+                        edgeRect.anchorMin = new Vector2(1, 0);
+                        edgeRect.anchorMax = new Vector2(1, 1);
+                        edgeRect.pivot = new Vector2(1, 0.5f);
+                        edgeRect.sizeDelta = new Vector2(60, 0);
+                        edgeRect.anchoredPosition = Vector2.zero;
+                        break;
+                    case 2: // Top
+                        edgeRect.anchorMin = new Vector2(0, 1);
+                        edgeRect.anchorMax = new Vector2(1, 1);
+                        edgeRect.pivot = new Vector2(0.5f, 1);
+                        edgeRect.sizeDelta = new Vector2(0, 40);
+                        edgeRect.anchoredPosition = Vector2.zero;
+                        break;
+                    case 3: // Bottom
+                        edgeRect.anchorMin = new Vector2(0, 0);
+                        edgeRect.anchorMax = new Vector2(1, 0);
+                        edgeRect.pivot = new Vector2(0.5f, 0);
+                        edgeRect.sizeDelta = new Vector2(0, 40);
+                        edgeRect.anchoredPosition = Vector2.zero;
+                        break;
+                }
+            }
 
             // Boss health bar (hidden by default, shown when boss is active)
             CreateBossBar(canvasGO.transform);
@@ -967,6 +1048,67 @@ namespace EpochBreaker.UI
             else
             {
                 _achievementText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            }
+        }
+
+        private void UpdateEraCard()
+        {
+            if (_eraCardText == null || _eraCardTimer <= 0f) return;
+            _eraCardTimer -= Time.deltaTime;
+            float fadeIn = Mathf.Clamp01((2.5f - _eraCardTimer) / 0.3f);
+            float fadeOut = Mathf.Clamp01(_eraCardTimer / 0.5f);
+            float alpha = Mathf.Min(fadeIn, fadeOut);
+            _eraCardText.color = new Color(_eraCardColor.r, _eraCardColor.g, _eraCardColor.b, alpha);
+        }
+
+        private static Color GetEraAccentColor(int epoch)
+        {
+            return epoch switch
+            {
+                0 => new Color(0.7f, 0.5f, 0.3f),   // Prehistoric - earth
+                1 => new Color(0.9f, 0.8f, 0.4f),   // Ancient - sand gold
+                2 => new Color(0.5f, 0.7f, 0.9f),   // Classical - marble blue
+                3 => new Color(0.6f, 0.6f, 0.7f),   // Medieval - stone grey
+                4 => new Color(0.8f, 0.6f, 0.3f),   // Renaissance - bronze
+                5 => new Color(0.5f, 0.5f, 0.6f),   // Industrial - steel
+                6 => new Color(0.3f, 0.8f, 0.3f),   // Modern - green
+                7 => new Color(0.3f, 0.6f, 1f),      // Information - blue
+                8 => new Color(0.6f, 0.3f, 0.9f),   // Future - purple
+                9 => new Color(0.9f, 0.2f, 0.4f),   // Singularity - crimson
+                _ => Color.white
+            };
+        }
+
+        private void HandleDamageDirection(Vector2 damageWorldPos)
+        {
+            var player = GameObject.FindWithTag("Player");
+            if (player == null) return;
+
+            Vector2 dir = damageWorldPos - (Vector2)player.transform.position;
+            if (Mathf.Abs(dir.x) > Mathf.Abs(dir.y))
+                _dmgDirEdge = dir.x < 0 ? 0 : 1;
+            else
+                _dmgDirEdge = dir.y > 0 ? 2 : 3;
+            _dmgDirTimer = 0.3f;
+        }
+
+        private void UpdateDamageDirection()
+        {
+            if (_dmgDirImages == null) return;
+
+            if (_dmgDirTimer > 0f)
+            {
+                _dmgDirTimer -= Time.deltaTime;
+                float alpha = Mathf.Clamp01(_dmgDirTimer / 0.15f) * 0.4f;
+                for (int i = 0; i < 4; i++)
+                    _dmgDirImages[i].color = i == _dmgDirEdge
+                        ? new Color(1f, 0f, 0f, alpha)
+                        : new Color(1f, 0f, 0f, 0f);
+            }
+            else
+            {
+                for (int i = 0; i < 4; i++)
+                    _dmgDirImages[i].color = new Color(1f, 0f, 0f, 0f);
             }
         }
 

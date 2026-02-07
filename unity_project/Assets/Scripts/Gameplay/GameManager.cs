@@ -287,6 +287,17 @@ namespace EpochBreaker.Gameplay
             OnScorePopup?.Invoke(worldPos, score);
         }
 
+        // Damage direction event: (damage source world position)
+        public static event Action<Vector2> OnDamageDirection;
+
+        /// <summary>
+        /// Notify UI of damage direction for edge flash indicator.
+        /// </summary>
+        public static void NotifyDamageDirection(Vector2 damageSourceWorldPos)
+        {
+            OnDamageDirection?.Invoke(damageSourceWorldPos);
+        }
+
         private bool _timerRunning;
 
         private LevelLoader _levelLoader;
@@ -427,6 +438,7 @@ namespace EpochBreaker.Gameplay
                     CreateHUD();
                     SaveSession(); // Persist so player can continue later
                     ScreenFlash.Flash(Color.white, 0.4f); // Level start flash
+                    CameraController.Instance?.StartLevelIntro();
                     break;
                 case GameState.Paused:
                     Time.timeScale = 0f;

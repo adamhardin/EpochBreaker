@@ -30,6 +30,9 @@ namespace EpochBreaker.Gameplay
         private const float TRAUMA_DECAY_SPEED = 2.5f; // trauma per second
         private float _shakeTime; // running time for Perlin noise seed
 
+        // Level intro pan
+        private Coroutine _introCoroutine;
+
         // Boss arena camera lock
         private bool _arenaLocked;
         private float _arenaMinX;
@@ -115,6 +118,41 @@ namespace EpochBreaker.Gameplay
             var player = GameObject.FindWithTag("Player");
             if (player != null)
                 _target = player.transform;
+        }
+
+        /// <summary>
+        /// Start the level intro pan: camera sweeps ahead then returns to player.
+        /// </summary>
+        public void StartLevelIntro()
+        {
+            if (_introCoroutine != null) StopCoroutine(_introCoroutine);
+            _introCoroutine = StartCoroutine(LevelIntroPan());
+        }
+
+        private System.Collections.IEnumerator LevelIntroPan()
+        {
+            if (_target == null) yield break;
+
+            float savedSmoothX = _smoothSpeedX;
+            _smoothSpeedX = 3f; // Slower pan for cinematic
+
+            var tempGO = new GameObject("IntroPanTarget");
+            tempGO.transform.position = _target.position + new Vector3(25f, 2f, 0f);
+
+            Transform savedTarget = _target;
+            _target = tempGO.transform;
+
+            yield return new WaitForSeconds(0.6f);
+
+            // Return to player
+            _target = savedTarget;
+            _smoothSpeedX = 5f;
+
+            yield return new WaitForSeconds(0.5f);
+
+            _smoothSpeedX = savedSmoothX;
+            Destroy(tempGO);
+            _introCoroutine = null;
         }
 
         private void LateUpdate()
