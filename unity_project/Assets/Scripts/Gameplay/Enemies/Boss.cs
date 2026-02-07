@@ -31,6 +31,7 @@ namespace EpochBreaker.Gameplay
         public float ArenaMinX => _arenaMinX;
         public float ArenaMaxX => _arenaMaxX;
         public int CurrentPhase => _currentPhase;
+        public float LastDpsCapTime { get; private set; } = -10f;
 
         // Combat
         private float _attackCooldown = 2.0f;
@@ -630,7 +631,10 @@ namespace EpochBreaker.Gameplay
 
             // DPS cap: ignore excess damage beyond MAX_DPS per second
             if (_recentDamage >= MAX_DPS)
+            {
+                LastDpsCapTime = Time.time;
                 return;
+            }
             float remaining = MAX_DPS - _recentDamage;
             amount = Mathf.Min(amount, Mathf.CeilToInt(remaining));
             if (amount <= 0) return;

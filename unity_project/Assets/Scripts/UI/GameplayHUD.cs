@@ -24,6 +24,19 @@ namespace EpochBreaker.UI
         private int _lastKnownStreak;
         private Gameplay.HealthSystem _healthSystem;
         private Gameplay.WeaponSystem _cachedWeaponSystem;
+        private Gameplay.AbilitySystem _cachedAbilitySystem;
+
+        // Sprint 4: Visible systems
+        private Text _scoreText;
+        private int _displayedScore;
+        private float _scoreScaleTimer;
+        private Image _doubleJumpIcon;
+        private Image _airDashIcon;
+        private Text _quickDrawText;
+        private float _quickDrawFlashTimer;
+        private Text _autoSelectText;
+        private Text _dpsCapText;
+        private float _dpsCapTimer;
 
         // Boss health bar
         private GameObject _bossBarRoot;
@@ -50,6 +63,11 @@ namespace EpochBreaker.UI
             UpdateModeInfo();
             UpdateKillStreak();
             UpdateBossBar();
+            UpdateRunningScore();
+            UpdateAbilityIcons();
+            UpdateQuickDraw();
+            UpdateAutoSelectReason();
+            UpdateDpsCapFeedback();
         }
 
         private void FindPlayerHealth()
@@ -59,6 +77,7 @@ namespace EpochBreaker.UI
             {
                 _healthSystem = player.GetComponent<Gameplay.HealthSystem>();
                 _cachedWeaponSystem = player.GetComponent<Gameplay.WeaponSystem>();
+                _cachedAbilitySystem = player.GetComponent<Gameplay.AbilitySystem>();
                 if (_healthSystem != null)
                 {
                     _healthSystem.OnHealthChanged += UpdateHearts;
@@ -171,6 +190,53 @@ namespace EpochBreaker.UI
 
             // Pause button (top-right corner)
             CreatePauseButton(canvasGO.transform);
+
+            // Running score (top-center)
+            var scoreGO = CreateHUDText(canvasGO.transform, "0", TextAnchor.UpperCenter);
+            _scoreText = scoreGO.GetComponent<Text>();
+            _scoreText.fontSize = 28;
+            _scoreText.color = Color.white;
+            var scoreRect = scoreGO.GetComponent<RectTransform>();
+            scoreRect.anchorMin = new Vector2(0.5f, 1);
+            scoreRect.anchorMax = new Vector2(0.5f, 1);
+            scoreRect.pivot = new Vector2(0.5f, 1);
+            scoreRect.anchoredPosition = new Vector2(0, -20);
+
+            // Ability icons (below hearts)
+            CreateAbilityIcons(canvasGO.transform);
+
+            // Quick Draw flash text (below score, hidden by default)
+            var qdGO = CreateHUDText(canvasGO.transform, "QUICK DRAW!", TextAnchor.UpperCenter);
+            _quickDrawText = qdGO.GetComponent<Text>();
+            _quickDrawText.fontSize = 20;
+            _quickDrawText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var qdRect = qdGO.GetComponent<RectTransform>();
+            qdRect.anchorMin = new Vector2(0.5f, 1);
+            qdRect.anchorMax = new Vector2(0.5f, 1);
+            qdRect.pivot = new Vector2(0.5f, 1);
+            qdRect.anchoredPosition = new Vector2(0, -50);
+
+            // Auto-select reason (below weapon name, right side)
+            var asGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
+            _autoSelectText = asGO.GetComponent<Text>();
+            _autoSelectText.fontSize = 14;
+            _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, 0f);
+            var asRect = asGO.GetComponent<RectTransform>();
+            asRect.anchorMin = new Vector2(1, 1);
+            asRect.anchorMax = new Vector2(1, 1);
+            asRect.pivot = new Vector2(1, 1);
+            asRect.anchoredPosition = new Vector2(-20, -96);
+
+            // DPS cap "RESISTED" text (center, hidden)
+            var dpsGO = CreateHUDText(canvasGO.transform, "RESISTED", TextAnchor.MiddleCenter);
+            _dpsCapText = dpsGO.GetComponent<Text>();
+            _dpsCapText.fontSize = 18;
+            _dpsCapText.color = new Color(0.5f, 0.5f, 0.5f, 0f);
+            var dpsRect = dpsGO.GetComponent<RectTransform>();
+            dpsRect.anchorMin = new Vector2(0.5f, 1);
+            dpsRect.anchorMax = new Vector2(0.5f, 1);
+            dpsRect.pivot = new Vector2(0.5f, 1);
+            dpsRect.anchoredPosition = new Vector2(0, -70);
 
             // Kill streak indicator (center-bottom area, hidden by default)
             var streakGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
@@ -409,6 +475,186 @@ namespace EpochBreaker.UI
                         _modeInfoText.text = $"Streak: {gm.StreakCount}";
                         break;
                 }
+            }
+        }
+
+        private void CreateAbilityIcons(Transform parent)
+        {
+            // Double Jump icon (below hearts, left)
+            var djGO = new GameObject("DoubleJumpIcon");
+            djGO.transform.SetParent(parent, false);
+            _doubleJumpIcon = djGO.AddComponent<Image>();
+            _doubleJumpIcon.color = new Color(0.3f, 0.3f, 0.3f, 0.3f); // Dimmed until acquired
+            var djRect = djGO.GetComponent<RectTransform>();
+            djRect.anchorMin = new Vector2(0, 1);
+            djRect.anchorMax = new Vector2(0, 1);
+            djRect.pivot = new Vector2(0, 1);
+            djRect.sizeDelta = new Vector2(28, 28);
+            djRect.anchoredPosition = new Vector2(20, -100);
+
+            // Air Dash icon (next to double jump)
+            var adGO = new GameObject("AirDashIcon");
+            adGO.transform.SetParent(parent, false);
+            _airDashIcon = adGO.AddComponent<Image>();
+            _airDashIcon.color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+            var adRect = adGO.GetComponent<RectTransform>();
+            adRect.anchorMin = new Vector2(0, 1);
+            adRect.anchorMax = new Vector2(0, 1);
+            adRect.pivot = new Vector2(0, 1);
+            adRect.sizeDelta = new Vector2(28, 28);
+            adRect.anchoredPosition = new Vector2(54, -100);
+        }
+
+        private void UpdateRunningScore()
+        {
+            if (_scoreText == null) return;
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            int runningScore = gm.ItemBonusScore + gm.EnemyBonusScore;
+            if (runningScore != _displayedScore)
+            {
+                _displayedScore = runningScore;
+                _scoreText.text = _displayedScore.ToString();
+                _scoreScaleTimer = 0.2f;
+            }
+
+            // Scale-up animation on change
+            if (_scoreScaleTimer > 0f)
+            {
+                _scoreScaleTimer -= Time.deltaTime;
+                float scale = 1f + Mathf.Clamp01(_scoreScaleTimer / 0.2f) * 0.3f;
+                _scoreText.transform.localScale = new Vector3(scale, scale, 1f);
+                _scoreText.color = Color.Lerp(Color.white, new Color(1f, 0.85f, 0.2f), _scoreScaleTimer / 0.2f);
+            }
+            else
+            {
+                _scoreText.transform.localScale = Vector3.one;
+                _scoreText.color = Color.white;
+            }
+        }
+
+        private void UpdateAbilityIcons()
+        {
+            if (_cachedAbilitySystem == null)
+            {
+                var player = GameObject.FindWithTag("Player");
+                if (player != null)
+                    _cachedAbilitySystem = player.GetComponent<Gameplay.AbilitySystem>();
+            }
+            var abs = _cachedAbilitySystem;
+            if (abs == null) return;
+
+            // Double Jump: bright when acquired + available, dim when used, grey when not acquired
+            if (_doubleJumpIcon != null)
+            {
+                if (!abs.HasDoubleJump)
+                    _doubleJumpIcon.color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+                else if (abs.DoubleJumpAvailable)
+                    _doubleJumpIcon.color = new Color(0.8f, 0.9f, 1f, 0.9f);
+                else
+                    _doubleJumpIcon.color = new Color(0.4f, 0.5f, 0.6f, 0.5f);
+            }
+
+            // Air Dash: bright when available, dim with cooldown fill, grey when not acquired
+            if (_airDashIcon != null)
+            {
+                if (!abs.HasAirDash)
+                    _airDashIcon.color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+                else if (abs.AirDashAvailable)
+                    _airDashIcon.color = new Color(0.5f, 0.8f, 1f, 0.9f);
+                else
+                {
+                    float cooldown = abs.DashCooldownRatio;
+                    _airDashIcon.color = Color.Lerp(
+                        new Color(0.5f, 0.8f, 1f, 0.9f),
+                        new Color(0.3f, 0.4f, 0.5f, 0.5f),
+                        cooldown);
+                }
+            }
+        }
+
+        private void UpdateQuickDraw()
+        {
+            var ws = _cachedWeaponSystem;
+            if (ws == null) return;
+
+            // Weapon name glow when Quick Draw active
+            if (ws.IsQuickDrawActive && _weaponText != null)
+            {
+                float pulse = Mathf.PingPong(Time.time * 4f, 1f);
+                _weaponText.color = Color.Lerp(
+                    GetWeaponDisplayColor(ws.ActiveWeaponType),
+                    new Color(1f, 0.85f, 0.2f),
+                    pulse * 0.5f);
+            }
+
+            // "QUICK DRAW!" flash text
+            if (_quickDrawText != null)
+            {
+                if (ws.IsQuickDrawActive && _quickDrawFlashTimer <= 0f)
+                {
+                    _quickDrawFlashTimer = 1f;
+                }
+                else if (!ws.IsQuickDrawActive)
+                {
+                    _quickDrawFlashTimer = 0f;
+                }
+
+                if (_quickDrawFlashTimer > 0f)
+                {
+                    _quickDrawFlashTimer -= Time.deltaTime;
+                    float alpha = Mathf.Clamp01(_quickDrawFlashTimer / 0.5f);
+                    _quickDrawText.color = new Color(1f, 0.85f, 0.2f, alpha);
+                }
+                else
+                {
+                    _quickDrawText.color = new Color(1f, 0.85f, 0.2f, 0f);
+                }
+            }
+        }
+
+        private void UpdateAutoSelectReason()
+        {
+            if (_autoSelectText == null) return;
+            var ws = _cachedWeaponSystem;
+            if (ws == null) return;
+
+            if (ws.AutoSelectReasonTimer > 0f && !string.IsNullOrEmpty(ws.LastAutoSelectReason))
+            {
+                _autoSelectText.text = $"\u2192{ws.LastAutoSelectReason}";
+                float alpha = Mathf.Clamp01(ws.AutoSelectReasonTimer / 0.5f);
+                _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, alpha);
+            }
+            else
+            {
+                _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, 0f);
+            }
+        }
+
+        private void UpdateDpsCapFeedback()
+        {
+            if (_dpsCapText == null) return;
+
+            var loader = FindAnyObjectByType<Gameplay.LevelLoader>();
+            var boss = loader?.CurrentBoss;
+
+            if (boss != null && boss.IsActive && !boss.IsDead)
+            {
+                float timeSinceCap = Time.time - boss.LastDpsCapTime;
+                if (timeSinceCap < 1f && _dpsCapTimer <= 0f)
+                    _dpsCapTimer = 0.8f;
+            }
+
+            if (_dpsCapTimer > 0f)
+            {
+                _dpsCapTimer -= Time.deltaTime;
+                float alpha = Mathf.Clamp01(_dpsCapTimer / 0.3f);
+                _dpsCapText.color = new Color(0.6f, 0.6f, 0.6f, alpha);
+            }
+            else
+            {
+                _dpsCapText.color = new Color(0.6f, 0.6f, 0.6f, 0f);
             }
         }
 

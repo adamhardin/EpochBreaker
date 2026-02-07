@@ -37,6 +37,8 @@ namespace EpochBreaker.Gameplay
         public WeaponSlotData[] Slots => _slots;
         public HeatSystem Heat => _heatSystem;
         public bool IsQuickDrawActive => _quickDrawTimer > 0f;
+        public string LastAutoSelectReason { get; private set; } = "";
+        public float AutoSelectReasonTimer { get; private set; }
 
         private void Awake()
         {
@@ -75,13 +77,30 @@ namespace EpochBreaker.Gameplay
             _fireTimer -= Time.deltaTime;
             FindTarget();
 
+            // Auto-select reason timer
+            if (AutoSelectReasonTimer > 0f)
+                AutoSelectReasonTimer -= Time.deltaTime;
+
             // Limited auto-select when not in manual override
             // Only picks Bolt, Piercer (corridor), or Slower (boss)
             if (!_manualOverride)
             {
+                int prevSlot = _activeSlot;
                 int bestSlot = (int)SelectBestWeapon();
                 if (_slots[bestSlot].Acquired)
                     _activeSlot = bestSlot;
+
+                // Track reason when auto-select changes weapon
+                if (_activeSlot != prevSlot)
+                {
+                    if (_bossInRange && _activeSlot == (int)WeaponType.Slower)
+                        LastAutoSelectReason = "SLOWER (boss)";
+                    else if (_enemiesInCorridor && _activeSlot == (int)WeaponType.Piercer)
+                        LastAutoSelectReason = "PIERCER (corridor)";
+                    else
+                        LastAutoSelectReason = "";
+                    AutoSelectReasonTimer = 2f;
+                }
             }
             else
             {

@@ -25,6 +25,9 @@ namespace EpochBreaker.Gameplay
         private Rigidbody2D _rb;
 
         public bool IsDashing => _dashTimer > 0f;
+        public bool DoubleJumpAvailable => HasDoubleJump && !_doubleJumpUsed;
+        public bool AirDashAvailable => HasAirDash && !_dashUsed && _dashCooldownTimer <= 0f;
+        public float DashCooldownRatio => _dashCooldownTimer > 0f ? _dashCooldownTimer / DASH_COOLDOWN : 0f;
 
         private void Awake()
         {

@@ -104,6 +104,28 @@ namespace EpochBreaker.UI
             CreateText(canvasGO.transform, starDisplay, 44,
                 new Color(1f, 0.85f, 0.1f), new Vector2(0, 320));
 
+            // Personal best comparison
+            int bestScore = GetBestScoreForLevel(levelCode);
+            if (score > bestScore && bestScore > 0)
+            {
+                CreateText(canvasGO.transform, $"NEW RECORD! +{score - bestScore}", 22,
+                    new Color(1f, 0.5f, 0.2f), new Vector2(0, 290));
+            }
+            else if (bestScore > 0)
+            {
+                CreateText(canvasGO.transform, $"Best: {bestScore}", 18,
+                    new Color(0.6f, 0.6f, 0.7f), new Vector2(0, 290));
+            }
+
+            // Star threshold hint
+            if (stars < 3)
+            {
+                int nextThreshold = stars == 1 ? 7500 : 13000;
+                int needed = nextThreshold - score;
+                CreateText(canvasGO.transform, $"Next star: {nextThreshold} (need {needed} more)", 16,
+                    new Color(0.5f, 0.5f, 0.6f), new Vector2(0, 268));
+            }
+
             Color statColor = new Color(0.75f, 0.75f, 0.85f);
             Color greenColor = new Color(0.4f, 0.9f, 0.4f);
             Color cyanColor = new Color(0.3f, 0.85f, 0.85f);
@@ -523,6 +545,18 @@ namespace EpochBreaker.UI
             textRect.sizeDelta = Vector2.zero;
 
             return btn;
+        }
+
+        private static int GetBestScoreForLevel(string levelCode)
+        {
+            var history = Gameplay.GameManager.LoadLevelHistory();
+            if (history?.Entries == null) return 0;
+            foreach (var entry in history.Entries)
+            {
+                if (entry.Code == levelCode)
+                    return entry.Score;
+            }
+            return 0;
         }
     }
 }
