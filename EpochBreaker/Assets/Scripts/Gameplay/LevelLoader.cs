@@ -80,7 +80,7 @@ namespace EpochBreaker.Gameplay
             var parallaxGO = new GameObject("ParallaxBackground");
             parallaxGO.transform.SetParent(_levelRoot.transform);
             var parallax = parallaxGO.AddComponent<ParallaxBackground>();
-            parallax.Initialize(Camera.main.transform, data.ID.Epoch);
+            parallax.Initialize(_mainCamera.transform, data.ID.Epoch);
 
             // Spawn entities
             SpawnEnemies(data);

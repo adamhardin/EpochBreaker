@@ -43,16 +43,17 @@ namespace EpochBreaker.Gameplay
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(this);
-                return;
-            }
+            // Always claim Instance — newest camera wins.
+            // Old camera's OnDestroy will check Instance != this and skip nulling.
+            // This avoids the race condition where Destroy() is deferred to end-of-frame
+            // but Awake() fires immediately, causing the new controller to self-destruct.
             Instance = this;
         }
 
         private void OnDestroy()
         {
+            // Only null Instance if WE are still the active singleton.
+            // If a newer camera replaced us, Instance != this, so we don't touch it.
             if (Instance == this)
                 Instance = null;
         }
