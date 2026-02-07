@@ -195,14 +195,140 @@ namespace EpochBreaker.Gameplay
 
             for (int s = 0; s < count; s++)
             {
-                int x0 = (int)(rng.Next() % (ulong)w);
-                int bw = 20 + (int)(rng.Next() % 30);
-                int bh = h / 4 + (int)(rng.Next() % (ulong)(h / 4));
+                int cx = (int)(rng.Next() % (ulong)w);
+                int baseH = h / 4 + (int)(rng.Next() % (ulong)(h / 4));
+                int baseW = 20 + (int)(rng.Next() % 30);
 
-                for (int x = x0; x < x0 + bw && x < w; x++)
-                    for (int y = 0; y < bh && y < h; y++)
-                        pixels[y * w + x] = color;
+                switch (epoch)
+                {
+                    case 0: // Stone: rocky outcrops
+                        DrawTriangle(pixels, w, h, cx, baseH, baseW, color);
+                        break;
+                    case 1: // Bronze: ziggurats (stepped pyramids)
+                        DrawZiggurat(pixels, w, h, cx, baseH, baseW, color);
+                        break;
+                    case 2: // Classical: columns
+                        DrawColumn(pixels, w, h, cx, baseH, baseW / 3, color);
+                        break;
+                    case 3: // Medieval: castle towers
+                        DrawCastleTower(pixels, w, h, cx, baseH, baseW, color);
+                        break;
+                    case 4: // Renaissance: domes
+                        DrawDome(pixels, w, h, cx, baseH, baseW, color);
+                        break;
+                    case 5: // Industrial: smokestacks
+                        DrawSmokestack(pixels, w, h, cx, baseH, baseW / 3, color);
+                        break;
+                    case 6: // Modern: skyscrapers
+                        DrawRect(pixels, w, h, cx, baseH + 20, baseW / 2, color);
+                        break;
+                    case 7: // Digital: server racks
+                        for (int r = 0; r < 3; r++)
+                            DrawRect(pixels, w, h, cx + r * (baseW / 2), baseH - r * 8, baseW / 3, color);
+                        break;
+                    case 8: // Space: satellite dishes
+                        DrawDome(pixels, w, h, cx, baseH / 2, baseW, color);
+                        DrawRect(pixels, w, h, cx, baseH, baseW / 6, color);
+                        break;
+                    case 9: // Transcendent: crystal spires
+                        DrawTriangle(pixels, w, h, cx, baseH + 30, baseW / 3, color);
+                        DrawTriangle(pixels, w, h, cx + baseW / 2, baseH + 15, baseW / 4, color);
+                        break;
+                    default:
+                        DrawRect(pixels, w, h, cx, baseH, baseW, color);
+                        break;
+                }
             }
+        }
+
+        private static void DrawRect(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            for (int x = cx - bw / 2; x < cx + bw / 2 && x < w; x++)
+                for (int y = 0; y < bh && y < h; y++)
+                    if (x >= 0) pixels[y * w + x] = color;
+        }
+
+        private static void DrawTriangle(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            for (int y = 0; y < bh && y < h; y++)
+            {
+                float ratio = (float)y / bh;
+                int halfW = (int)(bw * (1f - ratio) * 0.5f);
+                for (int x = cx - halfW; x <= cx + halfW; x++)
+                    if (x >= 0 && x < w) pixels[y * w + x] = color;
+            }
+        }
+
+        private static void DrawZiggurat(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            int steps = 4;
+            int stepH = bh / steps;
+            for (int s = 0; s < steps; s++)
+            {
+                int halfW = bw / 2 - s * (bw / (steps * 2));
+                int yStart = s * stepH;
+                for (int y = yStart; y < yStart + stepH && y < h; y++)
+                    for (int x = cx - halfW; x <= cx + halfW; x++)
+                        if (x >= 0 && x < w) pixels[y * w + x] = color;
+            }
+        }
+
+        private static void DrawColumn(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            // Shaft
+            for (int y = 0; y < bh && y < h; y++)
+                for (int x = cx - bw; x <= cx + bw; x++)
+                    if (x >= 0 && x < w) pixels[y * w + x] = color;
+            // Capital (wider top)
+            for (int y = bh; y < bh + 6 && y < h; y++)
+                for (int x = cx - bw - 3; x <= cx + bw + 3; x++)
+                    if (x >= 0 && x < w) pixels[y * w + x] = color;
+        }
+
+        private static void DrawCastleTower(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            DrawRect(pixels, w, h, cx, bh, bw, color);
+            // Battlement teeth
+            int toothW = bw / 4;
+            for (int t = 0; t < 3; t++)
+            {
+                int tx = cx - bw / 2 + t * toothW * 2;
+                for (int y = bh; y < bh + 8 && y < h; y++)
+                    for (int x = tx; x < tx + toothW && x < w; x++)
+                        if (x >= 0) pixels[y * w + x] = color;
+            }
+        }
+
+        private static void DrawDome(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            int radius = bw / 2;
+            for (int y = 0; y < bh && y < h; y++)
+            {
+                int halfW;
+                if (y >= bh - radius)
+                {
+                    float dy = (float)(y - (bh - radius)) / radius;
+                    halfW = (int)(radius * Mathf.Sqrt(Mathf.Max(0, 1f - dy * dy)));
+                }
+                else
+                {
+                    halfW = bw / 3; // Base column
+                }
+                for (int x = cx - halfW; x <= cx + halfW; x++)
+                    if (x >= 0 && x < w) pixels[y * w + x] = color;
+            }
+        }
+
+        private static void DrawSmokestack(Color32[] pixels, int w, int h, int cx, int bh, int bw, Color32 color)
+        {
+            // Tall narrow stack
+            for (int y = 0; y < bh + 20 && y < h; y++)
+                for (int x = cx - bw; x <= cx + bw; x++)
+                    if (x >= 0 && x < w) pixels[y * w + x] = color;
+            // Wider base
+            for (int y = 0; y < bh / 3 && y < h; y++)
+                for (int x = cx - bw * 2; x <= cx + bw * 2; x++)
+                    if (x >= 0 && x < w) pixels[y * w + x] = color;
         }
 
         private static void DrawNearStructures(Color32[] pixels, int w, int h, int epoch, Generative.XORShift64 rng)
@@ -282,14 +408,29 @@ namespace EpochBreaker.Gameplay
 
         private static Color[] GetEraBackgroundColors(int epoch)
         {
-            // Per-layer tint colors (subtle, low alpha since sprite already has alpha)
+            // Era-specific tint for mid/near layers
+            Color eraTint = epoch switch
+            {
+                0 => new Color(0.7f, 0.65f, 0.55f, 1f),   // Stone: warm brown
+                1 => new Color(0.85f, 0.75f, 0.5f, 1f),   // Bronze: golden
+                2 => new Color(0.7f, 0.75f, 0.9f, 1f),    // Classical: marble blue
+                3 => new Color(0.6f, 0.6f, 0.7f, 1f),     // Medieval: grey stone
+                4 => new Color(0.85f, 0.8f, 0.7f, 1f),    // Renaissance: warm ivory
+                5 => new Color(0.65f, 0.6f, 0.55f, 1f),   // Industrial: sooty
+                6 => new Color(0.7f, 0.75f, 0.8f, 1f),    // Modern: steel blue
+                7 => new Color(0.5f, 0.6f, 0.8f, 1f),     // Digital: blue glow
+                8 => new Color(0.6f, 0.55f, 0.75f, 1f),   // Space: purple
+                9 => new Color(0.6f, 0.8f, 0.85f, 1f),    // Transcendent: cyan
+                _ => new Color(0.8f, 0.8f, 0.9f, 1f),
+            };
+
             return new Color[]
             {
                 Color.white,                                    // Sky: no tint
-                new Color(0.8f, 0.8f, 0.9f, 1f),              // Far: slight blue
-                new Color(0.85f, 0.85f, 0.9f, 1f),            // Mid: slight blue
-                new Color(0.9f, 0.9f, 0.95f, 1f),             // Near: very slight
-                new Color(1f, 1f, 1f, 0.6f),                  // Foreground: semi-transparent
+                new Color(eraTint.r * 0.8f, eraTint.g * 0.8f, eraTint.b * 0.9f, 1f), // Far
+                eraTint,                                        // Mid: era-specific
+                Color.Lerp(eraTint, Color.white, 0.3f),        // Near: lighter
+                new Color(1f, 1f, 1f, 0.6f),                   // Foreground: semi-transparent
             };
         }
     }

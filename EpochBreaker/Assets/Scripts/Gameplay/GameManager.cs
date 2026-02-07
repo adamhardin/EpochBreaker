@@ -400,7 +400,7 @@ namespace EpochBreaker.Gameplay
                 case GameState.Playing:
                     Time.timeScale = 1f;
                     _timerRunning = true;
-                    AudioManager.PlayMusic(PlaceholderAudio.GetGameplayMusic());
+                    AudioManager.PlayMusic(PlaceholderAudio.GetGameplayMusic(CurrentEpoch));
                     CreateHUD();
                     SaveSession(); // Persist so player can continue later
                     ScreenFlash.Flash(Color.white, 0.4f); // Level start flash

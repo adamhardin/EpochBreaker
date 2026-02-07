@@ -72,6 +72,9 @@ namespace EpochBreaker.Gameplay
         // Phase transition invulnerability
         private float _phaseInvulnTimer;
 
+        // Era-based behavior ratios (set in Initialize)
+        private float _shootChance = 0.4f; // Chance to shoot vs charge in Phase 2+
+
         public void Initialize(BossType type, LevelRenderer tilemapRenderer, float arenaMinX, float arenaMaxX)
         {
             Type = type;
@@ -92,6 +95,17 @@ namespace EpochBreaker.Gameplay
             _baseChargeSpeed = _chargeSpeed;
 
             _baseAttackCooldown = _attackCooldown;
+
+            // Era-based behavior: early eras charge-heavy, late eras shoot-heavy
+            if (era <= 2)
+                _shootChance = 0.2f;   // 20% shoot, 80% charge
+            else if (era <= 5)
+                _shootChance = 0.4f;   // 40% shoot, 60% charge (balanced)
+            else if (era <= 8)
+                _shootChance = 0.65f;  // 65% shoot, 35% charge
+            else
+                _shootChance = 0.5f;   // Era 9: balanced (teleport handled separately)
+
             _phaseTimer = 0f;
             _recentDamage = 0f;
             _isSheltered = false;
@@ -273,7 +287,11 @@ namespace EpochBreaker.Gameplay
                 float distToPlayer = Mathf.Abs(_playerTransform.position.x - transform.position.x);
                 if (distToPlayer < 12f)
                 {
-                    StartCharge();
+                    // Late-era bosses sometimes shoot even in Phase 1
+                    if (Random.value < _shootChance * 0.5f)
+                        ShootAtPlayer();
+                    else
+                        StartCharge();
                     _attackTimer = _attackCooldown;
                 }
             }
@@ -308,18 +326,14 @@ namespace EpochBreaker.Gameplay
                     _sr.flipX = dir < 0;
             }
 
-            // Attack with projectiles and charges
+            // Attack with projectiles and charges (era-based ratio)
             _attackTimer -= Time.fixedDeltaTime;
             if (_attackTimer <= 0f && _playerTransform != null)
             {
-                if (Random.value < 0.4f)
-                {
+                if (Random.value < _shootChance)
                     ShootAtPlayer();
-                }
                 else
-                {
                     StartCharge();
-                }
                 _attackTimer = _attackCooldown * 0.7f;
             }
         }
@@ -392,19 +406,14 @@ namespace EpochBreaker.Gameplay
                     _sr.flipX = dir < 0;
             }
 
-            // Rapid attacks
+            // Rapid attacks (era-based ratio: late eras spread-heavy)
             _attackTimer -= Time.fixedDeltaTime;
             if (_attackTimer <= 0f && _playerTransform != null)
             {
-                // Alternate between charge and multi-shot
-                if (Random.value < 0.5f)
-                {
+                if (Random.value < _shootChance)
                     ShootSpread();
-                }
                 else
-                {
                     StartCharge();
-                }
                 _attackTimer = _attackCooldown * 0.5f;
             }
         }

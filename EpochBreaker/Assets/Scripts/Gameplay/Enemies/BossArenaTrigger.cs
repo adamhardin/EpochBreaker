@@ -94,7 +94,8 @@ namespace EpochBreaker.Gameplay
 
                 var cell = tilemap.LevelToCell(wallX, tileY);
                 var tile = ScriptableObject.CreateInstance<UnityEngine.Tilemaps.Tile>();
-                tile.sprite = PlaceholderAssets.GetTileSprite((byte)Generative.TileType.Ground, 0);
+                int epoch = GameManager.Instance != null ? GameManager.Instance.CurrentEpoch : 0;
+                tile.sprite = PlaceholderAssets.GetTileSprite((byte)Generative.TileType.Ground, epoch);
                 tile.color = new Color(0.4f, 0.35f, 0.3f);
                 tile.colliderType = UnityEngine.Tilemaps.Tile.ColliderType.Grid;
                 tilemap.GroundTilemap.SetTile(cell, tile);

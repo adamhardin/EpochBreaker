@@ -595,15 +595,37 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Driving chiptune loop — Am→F→C→G progression, 8 bars at 128 BPM.
-        /// Four channels: driving triangle bass, syncopated square lead,
-        /// triangle kick drum, noise snare + hi-hat.
+        /// Era-varied chiptune loop — Am→F→C→G progression, 8 bars.
+        /// Era 0-2: 110 BPM, triangle lead (ancient, gentle).
+        /// Era 3-5: 128 BPM, square lead (driving, medieval-industrial).
+        /// Era 6-8: 140 BPM, sawtooth lead (aggressive, modern-digital).
+        /// Era 9: 120 BPM, ethereal triangle+square with delay effect.
         /// </summary>
-        public static AudioClip GetGameplayMusic()
+        public static AudioClip GetGameplayMusic(int epoch = -1)
         {
-            if (_cache.TryGetValue("music_gameplay", out var c)) return c;
+            string key = epoch >= 0 ? $"music_gameplay_{epoch}" : "music_gameplay";
+            if (_cache.TryGetValue(key, out var c)) return c;
 
-            float bpm = 128f;
+            // Era-based tempo and instrument
+            float bpm;
+            Wave leadWave;
+            float leadVol;
+            if (epoch >= 0 && epoch <= 2)
+            {
+                bpm = 110f; leadWave = Wave.Triangle; leadVol = 0.12f;
+            }
+            else if (epoch >= 6 && epoch <= 8)
+            {
+                bpm = 140f; leadWave = Wave.Sawtooth; leadVol = 0.08f;
+            }
+            else if (epoch == 9)
+            {
+                bpm = 120f; leadWave = Wave.Triangle; leadVol = 0.1f;
+            }
+            else
+            {
+                bpm = 128f; leadWave = Wave.Square; leadVol = 0.1f;
+            }
             float beat = 60f / bpm;
             int bars = 8;
             float totalDur = bars * 4 * beat;
@@ -629,7 +651,7 @@ namespace EpochBreaker.Gameplay
                 }
             }
 
-            // ── Lead channel (square, syncopated melody) ──
+            // ── Lead channel (era-varied waveform, syncopated melody) ──
             // First 4 bars: ascending pattern
             float[][] leadA = {
                 new[] { _A4, 0f, _C5, _A4, _E5, 0f, _C5, _E5 },  // Am
@@ -653,7 +675,7 @@ namespace EpochBreaker.Gameplay
                 {
                     if (pattern[n] <= 0f) continue;
                     AddTone(buf, barStart + n * eighth, eighth * 0.75f,
-                        pattern[n], pattern[n], Wave.Square, 0.1f, 0.005f, 0.015f);
+                        pattern[n], pattern[n], leadWave, leadVol, 0.005f, 0.015f);
                 }
             }
 
@@ -675,10 +697,18 @@ namespace EpochBreaker.Gameplay
                 }
             }
 
+            // Era 9: add echo/delay effect for ethereal feel
+            if (epoch == 9)
+            {
+                int delaySamples = (int)(0.15f * SAMPLE_RATE);
+                for (int i = delaySamples; i < buf.Length; i++)
+                    buf[i] += buf[i - delaySamples] * 0.3f;
+            }
+
             ApplyLoopFade(buf);
 
-            var clip = MakeClip("Music_Gameplay", buf);
-            _cache["music_gameplay"] = clip;
+            var clip = MakeClip($"Music_Gameplay_{epoch}", buf);
+            _cache[key] = clip;
             return clip;
         }
 
