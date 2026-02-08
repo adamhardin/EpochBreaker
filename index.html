@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en-us">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>EpochBreaker</title>
+    <!-- Minimum recommended browser window: 1280x720 -->
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #1a1a2e;
+        }
+        #unity-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #1a1a2e;
+        }
+        #unity-canvas {
+            background: #0a0a1a;
+            max-width: 77vw;
+            max-height: 77vh;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges; /* Firefox fallback */
+        }
+        #unity-loading-bar {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+        #unity-progress-bar-empty {
+            width: 200px;
+            height: 12px;
+            margin: 10px auto;
+            background: #333;
+            border-radius: 6px;
+        }
+        #unity-progress-bar-full {
+            width: 0%;
+            height: 100%;
+            background: #4a9eff;
+            border-radius: 6px;
+            transition: width 0.2s;
+        }
+        #unity-loading-text {
+            color: #8888aa;
+            font-family: monospace;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div id="unity-container">
+        <canvas id="unity-canvas" tabindex="-1"></canvas>
+        <div id="unity-loading-bar">
+            <div id="unity-progress-bar-empty">
+                <div id="unity-progress-bar-full"></div>
+            </div>
+            <div id="unity-loading-text">Loading Epoch Breaker...</div>
+        </div>
+    </div>
+
+    <script>
+        var canvas = document.querySelector("#unity-canvas");
+        var loadingBar = document.querySelector("#unity-loading-bar");
+        var progressBarFull = document.querySelector("#unity-progress-bar-full");
+        var loadingText = document.querySelector("#unity-loading-text");
+
+        // Landscape sizing: fit 16:9 ratio in viewport at 77% max size
+        function resizeCanvas() {
+            var vw = window.innerWidth * 0.77;
+            var vh = window.innerHeight * 0.77;
+            var targetRatio = 16 / 9;
+            var w, h;
+
+            if (vw / vh < targetRatio) {
+                w = vw;
+                h = vw / targetRatio;
+            } else {
+                h = vh;
+                w = vh * targetRatio;
+            }
+
+            canvas.style.width = Math.floor(w) + "px";
+            canvas.style.height = Math.floor(h) + "px";
+
+            // Set higher internal resolution for sharper rendering
+            canvas.width = 1920;
+            canvas.height = 1080;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        var buildUrl = "Build";
+        var loaderUrl = buildUrl + "/WebGL.loader.js";
+        var config = {
+            dataUrl: buildUrl + "/WebGL.data.unityweb",
+            frameworkUrl: buildUrl + "/WebGL.framework.js.unityweb",
+            codeUrl: buildUrl + "/WebGL.wasm.unityweb",
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "DefaultCompany",
+            productName: "EpochBreaker",
+            productVersion: "0.1.0",
+        };
+
+        var script = document.createElement("script");
+        script.src = loaderUrl;
+        script.onload = function () {
+            createUnityInstance(canvas, config, function (progress) {
+                progressBarFull.style.width = (100 * progress) + "%";
+                loadingText.textContent = "Loading... " + Math.round(100 * progress) + "%";
+            }).then(function (unityInstance) {
+                window.unityInstance = unityInstance;
+                loadingBar.style.display = "none";
+            }).catch(function (message) {
+                alert(message);
+            });
+        };
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>
