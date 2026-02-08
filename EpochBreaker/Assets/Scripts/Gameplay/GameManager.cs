@@ -174,6 +174,7 @@ namespace EpochBreaker.Gameplay
         private const string PREF_RANDOMIZE = "EpochBreaker_Randomize";
         private const string PREF_LEGENDS_UNLOCKED = "EpochBreaker_LegendsUnlocked";
         private const string PREF_REPLAY_CAMPAIGN = "EpochBreaker_ReplayCampaign";
+        private const string PREF_CAMPAIGN_MODE = "EpochBreaker_CampaignMode";
         private const string LEGENDS_PREFS_KEY = "EpochBreaker_Legends";
         private const int MAX_LEGENDS_ENTRIES = 20;
 
@@ -189,19 +190,25 @@ namespace EpochBreaker.Gameplay
             AchievementManager.Instance != null && AchievementManager.Instance.IsUnlocked(AchievementType.EpochExplorer);
 
         /// <summary>
-        /// Legacy property — now derived from CampaignCompleted and ReplayCampaignEnabled.
-        /// Returns true if the game should start in The Breach mode (randomized).
+        /// Legacy shim — returns true if The Breach mode is active (not Campaign).
         /// </summary>
         public bool RandomizeEnabled
         {
-            get => CampaignCompleted && !ReplayCampaignEnabled;
-            set { } // No-op — mode is now automatic
+            get => !CampaignModeEnabled;
+            set { } // No-op
         }
 
         /// <summary>
-        /// When true, forces Campaign mode even after Campaign completion.
-        /// Reset after completing the replay.
+        /// When true, StartGame() will begin Campaign mode instead of The Breach.
+        /// Set from Settings menu. Automatically cleared on Campaign completion.
         /// </summary>
+        public bool CampaignModeEnabled
+        {
+            get => PlayerPrefs.GetInt(PREF_CAMPAIGN_MODE, 0) == 1;
+            set { PlayerPrefs.SetInt(PREF_CAMPAIGN_MODE, value ? 1 : 0); PlayerPrefs.Save(); }
+        }
+
+        /// <summary>Legacy property — migrated to CampaignModeEnabled.</summary>
         public bool ReplayCampaignEnabled
         {
             get => PlayerPrefs.GetInt(PREF_REPLAY_CAMPAIGN, 0) == 1;
@@ -379,6 +386,13 @@ namespace EpochBreaker.Gameplay
             gameObject.AddComponent<TutorialManager>();
             gameObject.AddComponent<AccessibilityManager>();
             gameObject.AddComponent<DifficultyManager>();
+
+            // Migrate legacy ReplayCampaignEnabled → CampaignModeEnabled
+            if (ReplayCampaignEnabled && !CampaignModeEnabled)
+            {
+                CampaignModeEnabled = true;
+                ReplayCampaignEnabled = false;
+            }
 
             // Persistent background camera — prevents "No cameras rendering" when
             // scene cameras are destroyed during transitions back to title screen
@@ -584,6 +598,7 @@ namespace EpochBreaker.Gameplay
                     _timerRunning = false;
                     _levelLoader.CleanupLevel();
                     ClearSession(); // Campaign completed
+                    CampaignModeEnabled = false; // Auto-clear: return to The Breach default
                     AudioManager.StopMusic();
                     AudioManager.PlaySFX(PlaceholderAudio.GetLevelCompleteSFX());
                     LegendsUnlocked = true;
@@ -693,15 +708,8 @@ namespace EpochBreaker.Gameplay
             FriendChallengeScore = 0;
             IsGhostReplay = false;
 
-            // Determine game mode: Campaign by default, The Breach after Campaign completion
-            if (CampaignCompleted && !ReplayCampaignEnabled)
-            {
-                // The Breach: random epoch, random seed, endless exploration
-                CurrentGameMode = GameMode.TheBreach;
-                GlobalLives = DEATHS_PER_LEVEL;
-                LevelSource = "TheBreach";
-            }
-            else
+            // Campaign only if explicitly enabled from Settings; The Breach is default
+            if (CampaignModeEnabled)
             {
                 // Campaign: 10 epochs in order, start with 2 lives
                 CurrentGameMode = GameMode.Campaign;
@@ -710,6 +718,13 @@ namespace EpochBreaker.Gameplay
                 GlobalLives = 2;
                 CurrentLevelID = LevelID.GenerateRandom(0);
                 LevelSource = "Campaign";
+            }
+            else
+            {
+                // The Breach: random epoch, random seed, endless exploration (default)
+                CurrentGameMode = GameMode.TheBreach;
+                GlobalLives = DEATHS_PER_LEVEL;
+                LevelSource = "TheBreach";
             }
 
             TransitionTo(GameState.Loading);
@@ -1743,6 +1758,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public void StartGhostReplay(string levelCode)
         {
+            if (!GhostReplaySystem.ENABLED) return;
             if (!LevelID.TryParse(levelCode, out LevelID levelID))
             {
                 Debug.LogWarning($"Invalid ghost replay level code: {levelCode}");

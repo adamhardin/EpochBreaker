@@ -151,7 +151,7 @@ Full specification: [Level-Generation-Technical-Spec.md](docs/Level-Generation-T
 
 **Live demo:** [https://adamhardin.github.io/EpochBreaker/](https://adamhardin.github.io/EpochBreaker/)
 
-The game runs as a WebGL build hosted on GitHub Pages. Keyboard controls: WASD/arrows to move, Space to jump, Z to stomp, X to attack, Escape to pause.
+The game runs as a WebGL build hosted on GitHub Pages. Keyboard controls: WASD/arrows to move, Space to jump, Down/S (while airborne) to stomp, R to cycle weapons, Escape to pause.
 
 ### How the browser build works
 

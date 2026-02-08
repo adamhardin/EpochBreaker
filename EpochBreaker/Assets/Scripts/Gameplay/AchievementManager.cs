@@ -82,6 +82,7 @@ namespace EpochBreaker.Gameplay
         public int TotalItemsCollected;
         public int TotalLevelsCompleted;
         public int EpochsCompleted;  // Bitmask of completed epochs (bits 0-9)
+        public int CampaignEpochsCompleted;  // Bitmask of epochs completed in Campaign mode only
     }
 
     /// <summary>
@@ -348,6 +349,15 @@ namespace EpochBreaker.Gameplay
             if (_saveData.EpochsCompleted == 0x3FF) // All 10 epochs (bits 0-9)
                 TryUnlock(AchievementType.EpochExplorer);
 
+            // Track Campaign-mode epoch completions separately (for cosmetic unlocks)
+            if (GameManager.Instance?.CurrentGameMode == GameMode.Campaign)
+            {
+                bool wasNew = (_saveData.CampaignEpochsCompleted & (1 << epoch)) == 0;
+                _saveData.CampaignEpochsCompleted |= (1 << epoch);
+                if (wasNew)
+                    CosmeticManager.NotifyNewUnlocksForEpoch(epoch);
+            }
+
             // Perfect run (3 stars)
             if (stars >= 3)
                 TryUnlock(AchievementType.PerfectRun);
@@ -526,6 +536,31 @@ namespace EpochBreaker.Gameplay
                 if (a.Unlocked) unlocked++;
             }
             return (unlocked, _saveData.Achievements.Count);
+        }
+
+        /// <summary>
+        /// Check if a specific epoch has been completed in Campaign mode.
+        /// Used by CosmeticManager for epoch-based cosmetic unlocks.
+        /// </summary>
+        public bool IsCampaignEpochCompleted(int epoch)
+        {
+            if (_saveData == null || epoch < 0 || epoch > 9) return false;
+            return (_saveData.CampaignEpochsCompleted & (1 << epoch)) != 0;
+        }
+
+        /// <summary>
+        /// Get the number of distinct epochs completed in Campaign mode.
+        /// </summary>
+        public int GetCampaignEpochCount()
+        {
+            if (_saveData == null) return 0;
+            int count = 0;
+            for (int i = 0; i < 10; i++)
+            {
+                if ((_saveData.CampaignEpochsCompleted & (1 << i)) != 0)
+                    count++;
+            }
+            return count;
         }
 
         /// <summary>

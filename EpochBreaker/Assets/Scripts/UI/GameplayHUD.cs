@@ -64,6 +64,8 @@ namespace EpochBreaker.UI
         private Text _eraCardText;
         private float _eraCardTimer;
         private Color _eraCardColor;
+        private Text _modeSubtitleText;
+        private float _modeSubtitleTimer;
 
         // Special attack meter
         private Gameplay.SpecialAttackSystem _cachedSpecialAttack;
@@ -79,18 +81,27 @@ namespace EpochBreaker.UI
         // Sprint 8: Friend challenge target score display
         private Text _friendTargetText;
 
-        // Weapon wheel
+        // Weapon wheel (dynamic — only shows acquired weapons + Unarmed)
         private GameObject _weaponWheelRoot;
         private CanvasGroup _weaponWheelGroup;
-        private Image[] _weaponSlotImages;
+        private RectTransform _wheelRingRect;
+        private RectTransform _wheelBgRect;
+        private GameObject[] _wheelSlotGOs;
+        private Image[] _wheelSlotImages;
+        private int[] _wheelSlotWeaponIdx; // -1 = unarmed, 0-5 = weapon type
+        private int _wheelVisibleCount;
         private Text _weaponWheelLabel;
         private float _weaponWheelTimer;
-        private int _lastActiveSlot = -1;
-        private const float WHEEL_DISPLAY_DURATION = 1.5f;
-        private const float WHEEL_FADE_IN = 0.15f;
-        private const float WHEEL_FADE_OUT = 0.3f;
-        private const float WHEEL_RADIUS = 85f;
-        private const float WHEEL_SLOT_SIZE = 40f;
+        private int _lastWheelState = -99; // -1 = unarmed, 0-5 = weapon, -99 = uninitialized
+        private int _lastAcquiredCount = -1;
+        private const float WHEEL_HIGHLIGHT_DURATION = 1.5f;
+        private const float WHEEL_RESTING_ALPHA = 0.9f;
+        private const float WHEEL_SLOT_SIZE = 50f;
+
+        // Weapon upgrade notification
+        private Text _upgradeNotifyText;
+        private float _upgradeNotifyTimer;
+        private int _lastTierHash = -1;
 
         private const int MAX_HEARTS = 5;
 
@@ -104,6 +115,12 @@ namespace EpochBreaker.UI
 
             // Subscribe to damage direction events
             Gameplay.GameManager.OnDamageDirection += HandleDamageDirection;
+
+            // Subscribe to weapon upgrade events
+            Gameplay.WeaponSystem.OnWeaponUpgraded += HandleWeaponUpgrade;
+
+            // Subscribe to cosmetic unlock events
+            Gameplay.CosmeticManager.OnCosmeticUnlocked += HandleCosmeticUnlock;
 
             // Subscribe to achievement unlock events
             if (Gameplay.AchievementManager.Instance != null)
@@ -128,9 +145,11 @@ namespace EpochBreaker.UI
             UpdateComboCounter();
             UpdateAchievementToast();
             UpdateEraCard();
+            UpdateModeSubtitle();
             UpdateDamageDirection();
             UpdateSpecialAttackMeter();
             UpdateFriendTarget();
+            UpdateUpgradeNotification();
         }
 
         private void FindPlayerHealth()
@@ -156,6 +175,8 @@ namespace EpochBreaker.UI
 
             Gameplay.GameManager.OnScorePopup -= HandleScorePopup;
             Gameplay.GameManager.OnDamageDirection -= HandleDamageDirection;
+            Gameplay.WeaponSystem.OnWeaponUpgraded -= HandleWeaponUpgrade;
+            Gameplay.CosmeticManager.OnCosmeticUnlocked -= HandleCosmeticUnlock;
 
             if (Gameplay.AchievementManager.Instance != null)
                 Gameplay.AchievementManager.Instance.OnAchievementUnlocked -= HandleAchievementUnlock;
@@ -264,7 +285,7 @@ namespace EpochBreaker.UI
             scoreRect.anchorMin = new Vector2(0.5f, 1);
             scoreRect.anchorMax = new Vector2(0.5f, 1);
             scoreRect.pivot = new Vector2(0.5f, 1);
-            scoreRect.anchoredPosition = new Vector2(0, -20);
+            scoreRect.anchoredPosition = new Vector2(0, -46); // Below mode info text at -20
             scoreRect.sizeDelta = new Vector2(600, 40); // Cap width to prevent overlap with hearts/weapon
 
             // Ability icons (below hearts)
@@ -388,6 +409,30 @@ namespace EpochBreaker.UI
                 _eraCardTimer = 2.5f;
             }
 
+            // Mode subtitle (below era card — explains the current game mode)
+            var modeSubGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+            _modeSubtitleText = modeSubGO.GetComponent<Text>();
+            _modeSubtitleText.fontSize = 20;
+            _modeSubtitleText.color = new Color(0.7f, 0.7f, 0.8f, 0f);
+            var modeSubRect = modeSubGO.GetComponent<RectTransform>();
+            modeSubRect.anchorMin = new Vector2(0.5f, 0.5f);
+            modeSubRect.anchorMax = new Vector2(0.5f, 0.5f);
+            modeSubRect.pivot = new Vector2(0.5f, 0.5f);
+            modeSubRect.sizeDelta = new Vector2(600, 30);
+            modeSubRect.anchoredPosition = new Vector2(0, 10);
+
+            if (gm != null)
+            {
+                _modeSubtitleText.text = gm.CurrentGameMode switch
+                {
+                    Gameplay.GameMode.TheBreach => "Randomized epochs \u2014 survive as long as you can",
+                    Gameplay.GameMode.Campaign => "Sequential epochs \u2014 unlock cosmetics",
+                    Gameplay.GameMode.Streak => "Endless random levels \u2014 survive the streak",
+                    _ => ""
+                };
+                _modeSubtitleTimer = 3f;
+            }
+
             // Damage direction indicators (4 screen edges)
             _dmgDirImages = new Image[4];
             for (int i = 0; i < 4; i++)
@@ -461,6 +506,18 @@ namespace EpochBreaker.UI
                 _friendTargetText.text = $"Target: {gm.FriendChallengeScore:N0}";
             }
 
+            // Weapon upgrade notification (center-bottom, hidden by default)
+            var upgradeGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
+            _upgradeNotifyText = upgradeGO.GetComponent<Text>();
+            _upgradeNotifyText.fontSize = 28;
+            _upgradeNotifyText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var upgradeRect = upgradeGO.GetComponent<RectTransform>();
+            upgradeRect.anchorMin = new Vector2(0.5f, 0);
+            upgradeRect.anchorMax = new Vector2(0.5f, 0);
+            upgradeRect.pivot = new Vector2(0.5f, 0);
+            upgradeRect.sizeDelta = new Vector2(400, 40);
+            upgradeRect.anchoredPosition = new Vector2(0, 120);
+
             // Boss health bar (hidden by default, shown when boss is active)
             CreateBossBar(canvasGO.transform);
 
@@ -512,95 +569,236 @@ namespace EpochBreaker.UI
             var ws = _cachedWeaponSystem;
             if (ws == null) return;
 
-            // Show active weapon name + tier with color (always visible, top-right)
-            string typeName = ws.ActiveWeaponType.ToString();
-            Color typeColor = GetWeaponDisplayColor(ws.ActiveWeaponType);
-            string tierSuffix = ws.ActiveWeaponTier != Generative.WeaponTier.Starting
-                ? $" [{ws.ActiveWeaponTier}]" : "";
-            _weaponText.text = $"{typeName}{tierSuffix}";
-            _weaponText.color = typeColor;
-
-            // Weapon wheel: show on weapon change, fade out after duration
-            int currentSlot = (int)ws.ActiveWeaponType;
-            if (currentSlot != _lastActiveSlot && _lastActiveSlot >= 0)
+            // Top-right weapon text
+            if (ws.IsUnarmed)
             {
-                _weaponWheelTimer = WHEEL_DISPLAY_DURATION;
-                UpdateWeaponWheelSlots(ws, currentSlot);
+                _weaponText.text = "Unarmed";
+                _weaponText.color = Color.gray;
             }
-            else if (_lastActiveSlot < 0 && _weaponSlotImages != null)
+            else
             {
-                // First frame: initialize slot visuals without showing wheel
-                UpdateWeaponWheelSlots(ws, currentSlot);
+                string typeName = ws.ActiveWeaponType.ToString();
+                Color typeColor = GetWeaponDisplayColor(ws.ActiveWeaponType);
+                string tierSuffix = ws.ActiveWeaponTier != Generative.WeaponTier.Starting
+                    ? $" [{ws.ActiveWeaponTier}]" : "";
+                _weaponText.text = $"{typeName}{tierSuffix}";
+                _weaponText.color = typeColor;
             }
-            _lastActiveSlot = currentSlot;
 
-            // Fade logic
+            // Rebuild wheel when acquired count or tier state changes (weapon pickup/upgrade)
+            int tierHash = 0;
+            for (int i = 0; i < Gameplay.WeaponSystem.SLOT_COUNT; i++)
+                if (ws.Slots[i].Acquired) tierHash += (int)ws.Slots[i].Tier * (i + 1);
+            if (ws.AcquiredWeaponCount != _lastAcquiredCount || tierHash != _lastTierHash)
+            {
+                RebuildWheelSlots(ws);
+                UpdateWeaponWheelSlots(ws);
+                _lastTierHash = tierHash;
+            }
+
+            // Highlight on weapon/unarmed change
+            int currentState = ws.IsUnarmed ? -1 : (int)ws.ActiveWeaponType;
+            if (currentState != _lastWheelState)
+            {
+                if (_lastWheelState != -99)
+                    _weaponWheelTimer = WHEEL_HIGHLIGHT_DURATION;
+                UpdateWeaponWheelSlots(ws);
+            }
+            _lastWheelState = currentState;
+
+            // Always-visible fade: full alpha on change, settle back to resting
             if (_weaponWheelGroup != null)
             {
                 if (_weaponWheelTimer > 0f)
                 {
                     _weaponWheelTimer -= Time.deltaTime;
-                    float elapsed = WHEEL_DISPLAY_DURATION - _weaponWheelTimer;
-
-                    if (elapsed < WHEEL_FADE_IN)
-                        _weaponWheelGroup.alpha = Mathf.Clamp01(elapsed / WHEEL_FADE_IN);
-                    else if (_weaponWheelTimer < WHEEL_FADE_OUT)
-                        _weaponWheelGroup.alpha = Mathf.Clamp01(_weaponWheelTimer / WHEEL_FADE_OUT);
-                    else
-                        _weaponWheelGroup.alpha = 1f;
+                    float t = Mathf.Clamp01(_weaponWheelTimer / WHEEL_HIGHLIGHT_DURATION);
+                    _weaponWheelGroup.alpha = Mathf.Lerp(WHEEL_RESTING_ALPHA, 1f, t);
                 }
                 else
                 {
-                    _weaponWheelGroup.alpha = 0f;
+                    _weaponWheelGroup.alpha = WHEEL_RESTING_ALPHA;
                 }
             }
         }
 
-        // Weapon types displayed in the wheel (excludes deprecated Slower)
-        private static readonly Generative.WeaponType[] WHEEL_WEAPON_TYPES = {
-            Generative.WeaponType.Bolt,
-            Generative.WeaponType.Piercer,
-            Generative.WeaponType.Spreader,
-            Generative.WeaponType.Chainer,
-            Generative.WeaponType.Cannon
-        };
-
-        private void UpdateWeaponWheelSlots(Gameplay.WeaponSystem ws, int activeSlot)
+        private void UpdateWeaponWheelSlots(Gameplay.WeaponSystem ws)
         {
-            if (_weaponSlotImages == null) return;
-            var slots = ws.Slots;
+            if (_wheelSlotImages == null) return;
 
-            for (int wi = 0; wi < WHEEL_WEAPON_TYPES.Length && wi < _weaponSlotImages.Length; wi++)
+            int activeWeaponIdx = ws.IsUnarmed ? -1 : (int)ws.ActiveWeaponType;
+
+            for (int i = 0; i < _wheelVisibleCount; i++)
             {
-                int slotIdx = (int)WHEEL_WEAPON_TYPES[wi];
-                Color weaponColor = GetWeaponDisplayColor(WHEEL_WEAPON_TYPES[wi]);
-                if (slotIdx == activeSlot)
+                if (_wheelSlotImages[i] == null) continue;
+                int weaponIdx = _wheelSlotWeaponIdx[i];
+
+                if (weaponIdx == activeWeaponIdx)
                 {
-                    // Active: full color, larger
-                    _weaponSlotImages[wi].color = weaponColor;
-                    _weaponSlotImages[wi].rectTransform.localScale = Vector3.one * 1.3f;
-                }
-                else if (slotIdx < slots.Length && slots[slotIdx].Acquired)
-                {
-                    // Acquired but not active: weapon color at 60% alpha
-                    weaponColor.a = 0.6f;
-                    _weaponSlotImages[wi].color = weaponColor;
-                    _weaponSlotImages[wi].rectTransform.localScale = Vector3.one;
+                    // Active slot: bright + scaled up
+                    Color c = weaponIdx == -1
+                        ? new Color(0.7f, 0.7f, 0.7f, 1f)
+                        : GetWeaponDisplayColor((Generative.WeaponType)weaponIdx);
+                    _wheelSlotImages[i].color = c;
+                    _wheelSlotImages[i].rectTransform.localScale = Vector3.one * 1.3f;
                 }
                 else
                 {
-                    // Not acquired: dark gray
-                    _weaponSlotImages[wi].color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
-                    _weaponSlotImages[wi].rectTransform.localScale = Vector3.one;
+                    // Inactive acquired slot: weapon-tinted, slightly dim
+                    Color c = weaponIdx == -1
+                        ? new Color(0.5f, 0.5f, 0.5f, 0.5f)
+                        : GetWeaponDisplayColor((Generative.WeaponType)weaponIdx);
+                    c.a = 0.6f;
+                    _wheelSlotImages[i].color = c;
+                    _wheelSlotImages[i].rectTransform.localScale = Vector3.one;
                 }
             }
 
             // Update center label
             if (_weaponWheelLabel != null)
             {
-                _weaponWheelLabel.text = ws.ActiveWeaponType.ToString();
-                _weaponWheelLabel.color = GetWeaponDisplayColor(ws.ActiveWeaponType);
+                if (ws.IsUnarmed)
+                {
+                    _weaponWheelLabel.text = "Unarmed";
+                    _weaponWheelLabel.color = Color.gray;
+                }
+                else
+                {
+                    _weaponWheelLabel.text = ws.ActiveWeaponType.ToString();
+                    _weaponWheelLabel.color = GetWeaponDisplayColor(ws.ActiveWeaponType);
+                }
             }
+        }
+
+        private void RebuildWheelSlots(Gameplay.WeaponSystem ws)
+        {
+            // Destroy old slots
+            if (_wheelSlotGOs != null)
+            {
+                for (int i = 0; i < _wheelSlotGOs.Length; i++)
+                {
+                    if (_wheelSlotGOs[i] != null)
+                        Destroy(_wheelSlotGOs[i]);
+                }
+            }
+
+            // Build list: unarmed + acquired weapons in order
+            var slots = ws.Slots;
+            int count = 1; // unarmed always present
+            for (int i = 0; i < Gameplay.WeaponSystem.SLOT_COUNT; i++)
+            {
+                if (i == (int)Generative.WeaponType.Slower) continue;
+                if (slots[i].Acquired) count++;
+            }
+
+            _wheelVisibleCount = count;
+            _wheelSlotGOs = new GameObject[count];
+            _wheelSlotImages = new Image[count];
+            _wheelSlotWeaponIdx = new int[count];
+
+            // Slot 0 = unarmed, rest = acquired weapons in type order
+            _wheelSlotWeaponIdx[0] = -1;
+            int idx = 1;
+            for (int i = 0; i < Gameplay.WeaponSystem.SLOT_COUNT; i++)
+            {
+                if (i == (int)Generative.WeaponType.Slower) continue;
+                if (slots[i].Acquired)
+                {
+                    _wheelSlotWeaponIdx[idx] = i;
+                    idx++;
+                }
+            }
+
+            // Size scales with slot count
+            float radius;
+            float bgSize;
+            if (count <= 1)
+            {
+                radius = 0f;
+                bgSize = 80f;
+            }
+            else
+            {
+                radius = 30f + count * 12f;
+                bgSize = radius * 2f + WHEEL_SLOT_SIZE;
+            }
+
+            // Resize ring and bg
+            if (_wheelRingRect != null)
+                _wheelRingRect.sizeDelta = new Vector2(bgSize + 12f, bgSize + 12f);
+            if (_wheelBgRect != null)
+                _wheelBgRect.sizeDelta = new Vector2(bgSize, bgSize);
+
+            var rootRect = _weaponWheelRoot.GetComponent<RectTransform>();
+            if (rootRect != null)
+                rootRect.sizeDelta = new Vector2(bgSize + 12f, bgSize + 12f);
+
+            // Create slot GameObjects
+            for (int i = 0; i < count; i++)
+            {
+                int weaponIdx = _wheelSlotWeaponIdx[i];
+                string slotName;
+                Sprite slotSprite;
+
+                if (weaponIdx == -1)
+                {
+                    slotName = "Slot_Unarmed";
+                    slotSprite = Gameplay.PlaceholderAssets.GetParticleSprite();
+                }
+                else
+                {
+                    var weaponType = (Generative.WeaponType)weaponIdx;
+                    slotName = $"Slot_{weaponType}";
+                    slotSprite = Gameplay.PlaceholderAssets.GetWeaponPickupSprite(
+                        weaponType, slots[weaponIdx].Tier);
+                }
+
+                var slotGO = new GameObject(slotName);
+                slotGO.transform.SetParent(_weaponWheelRoot.transform, false);
+                _wheelSlotGOs[i] = slotGO;
+                _wheelSlotImages[i] = slotGO.AddComponent<Image>();
+                _wheelSlotImages[i].sprite = slotSprite;
+                _wheelSlotImages[i].preserveAspect = true;
+                _wheelSlotImages[i].raycastTarget = false;
+
+                var slotRect = slotGO.GetComponent<RectTransform>();
+                slotRect.sizeDelta = new Vector2(WHEEL_SLOT_SIZE, WHEEL_SLOT_SIZE);
+
+                if (count <= 1)
+                {
+                    slotRect.anchoredPosition = Vector2.zero;
+                }
+                else
+                {
+                    float angle = 90f - (360f * i / count);
+                    float rad = angle * Mathf.Deg2Rad;
+                    float x = Mathf.Cos(rad) * radius;
+                    float y = Mathf.Sin(rad) * radius;
+                    slotRect.anchoredPosition = new Vector2(x, y);
+                }
+
+                _wheelSlotImages[i].color = new Color(0.5f, 0.5f, 0.55f, 0.6f);
+
+                // Tier pips: small dots below slot indicating weapon tier (0 for Starting, 1 for Medium, 2 for Heavy)
+                if (weaponIdx >= 0)
+                {
+                    int tier = (int)slots[weaponIdx].Tier;
+                    for (int p = 0; p < tier; p++)
+                    {
+                        var pipGO = new GameObject($"Pip_{i}_{p}");
+                        pipGO.transform.SetParent(slotGO.transform, false);
+                        var pipImg = pipGO.AddComponent<Image>();
+                        pipImg.color = new Color(1f, 0.85f, 0.2f, 0.8f);
+                        pipImg.raycastTarget = false;
+                        var pipRect = pipGO.GetComponent<RectTransform>();
+                        pipRect.sizeDelta = new Vector2(8, 8);
+                        float pipX = tier == 1 ? 0f : (p - (tier - 1) * 0.5f) * 12f;
+                        pipRect.anchoredPosition = new Vector2(pipX, -WHEEL_SLOT_SIZE * 0.5f - 6f);
+                    }
+                }
+            }
+
+            _lastAcquiredCount = ws.AcquiredWeaponCount;
         }
 
         private static Color GetWeaponDisplayColor(Generative.WeaponType type)
@@ -621,54 +819,47 @@ namespace EpochBreaker.UI
             _weaponWheelRoot = new GameObject("WeaponWheel");
             _weaponWheelRoot.transform.SetParent(parent, false);
             _weaponWheelGroup = _weaponWheelRoot.AddComponent<CanvasGroup>();
-            _weaponWheelGroup.alpha = 0f;
+            _weaponWheelGroup.alpha = WHEEL_RESTING_ALPHA;
             _weaponWheelGroup.blocksRaycasts = false;
             _weaponWheelGroup.interactable = false;
 
             var rootRect = _weaponWheelRoot.AddComponent<RectTransform>();
             rootRect.anchorMin = new Vector2(0, 0);
             rootRect.anchorMax = new Vector2(0, 0);
-            rootRect.pivot = new Vector2(0, 0);
-            rootRect.anchoredPosition = new Vector2(120, 120);
-            rootRect.sizeDelta = new Vector2(WHEEL_RADIUS * 2 + WHEEL_SLOT_SIZE, WHEEL_RADIUS * 2 + WHEEL_SLOT_SIZE);
+            rootRect.pivot = new Vector2(0.5f, 0.5f);
+            rootRect.anchoredPosition = new Vector2(130, 220);
+            rootRect.sizeDelta = new Vector2(80, 80); // resized by RebuildWheelSlots
 
-            // 5 weapon slot images arranged radially (Slower excluded)
-            int slotCount = WHEEL_WEAPON_TYPES.Length;
-            _weaponSlotImages = new Image[slotCount];
-            // 5 slots at 72° intervals: 90° (top), 18°, 306°, 234°, 162°
-            float[] angles = { 90f, 18f, 306f, 234f, 162f };
+            // Outline ring
+            var ringGO = new GameObject("WheelRing");
+            ringGO.transform.SetParent(_weaponWheelRoot.transform, false);
+            var ringImg = ringGO.AddComponent<Image>();
+            ringImg.sprite = Gameplay.PlaceholderAssets.GetParticleSprite();
+            ringImg.color = new Color(0.3f, 0.25f, 0.5f, 0.8f);
+            ringImg.raycastTarget = false;
+            _wheelRingRect = ringGO.GetComponent<RectTransform>();
+            _wheelRingRect.anchoredPosition = Vector2.zero;
 
-            for (int i = 0; i < slotCount; i++)
-            {
-                var weaponType = WHEEL_WEAPON_TYPES[i];
-                var slotGO = new GameObject($"Slot_{weaponType}");
-                slotGO.transform.SetParent(_weaponWheelRoot.transform, false);
-                _weaponSlotImages[i] = slotGO.AddComponent<Image>();
-                _weaponSlotImages[i].sprite = Gameplay.PlaceholderAssets.GetWeaponPickupSprite(
-                    weaponType, Generative.WeaponTier.Starting);
-                _weaponSlotImages[i].preserveAspect = true;
-                _weaponSlotImages[i].raycastTarget = false;
+            // Solid dark background
+            var bgGO = new GameObject("WheelBg");
+            bgGO.transform.SetParent(_weaponWheelRoot.transform, false);
+            var bgImg = bgGO.AddComponent<Image>();
+            bgImg.sprite = Gameplay.PlaceholderAssets.GetParticleSprite();
+            bgImg.color = new Color(0.08f, 0.06f, 0.18f, 0.92f);
+            bgImg.raycastTarget = false;
+            _wheelBgRect = bgGO.GetComponent<RectTransform>();
+            _wheelBgRect.anchoredPosition = Vector2.zero;
 
-                var slotRect = slotGO.GetComponent<RectTransform>();
-                slotRect.sizeDelta = new Vector2(50f, 50f);
-
-                float rad = angles[i] * Mathf.Deg2Rad;
-                float x = Mathf.Cos(rad) * WHEEL_RADIUS;
-                float y = Mathf.Sin(rad) * WHEEL_RADIUS;
-                slotRect.anchoredPosition = new Vector2(x, y);
-
-                // Default: dark gray, hidden
-                _weaponSlotImages[i].color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
-            }
-
-            // Center label showing active weapon name
+            // Center label
             var labelGO = CreateHUDText(_weaponWheelRoot.transform, "", TextAnchor.MiddleCenter);
             _weaponWheelLabel = labelGO.GetComponent<Text>();
-            _weaponWheelLabel.fontSize = 16;
+            _weaponWheelLabel.fontSize = 18;
             _weaponWheelLabel.raycastTarget = false;
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchoredPosition = Vector2.zero;
             labelRect.sizeDelta = new Vector2(120, 30);
+
+            // Slots are created dynamically by RebuildWheelSlots
         }
 
         private void CreateHeatBar(Transform parent)
@@ -733,7 +924,7 @@ namespace EpochBreaker.UI
             if (gm == null) return;
 
             int preserved = Mathf.Max(0, gm.TotalRelics - gm.RelicsDestroyed);
-            _relicText.text = $"Relics: {preserved}/{gm.TotalRelics} recovered";
+            _relicText.text = $"Relics Preserved: {preserved}/{gm.TotalRelics}";
 
             // Gold when all preserved, red-tinted when some lost
             _relicText.color = gm.RelicsDestroyed > 0
@@ -1254,6 +1445,16 @@ namespace EpochBreaker.UI
             _eraCardText.color = new Color(_eraCardColor.r, _eraCardColor.g, _eraCardColor.b, alpha);
         }
 
+        private void UpdateModeSubtitle()
+        {
+            if (_modeSubtitleText == null || _modeSubtitleTimer <= 0f) return;
+            _modeSubtitleTimer -= Time.deltaTime;
+            float fadeIn = Mathf.Clamp01((3f - _modeSubtitleTimer) / 0.5f);
+            float fadeOut = Mathf.Clamp01(_modeSubtitleTimer / 0.5f);
+            float alpha = Mathf.Min(fadeIn, fadeOut) * 0.8f;
+            _modeSubtitleText.color = new Color(0.7f, 0.7f, 0.8f, alpha);
+        }
+
         private static Color GetEraAccentColor(int epoch)
         {
             return epoch switch
@@ -1436,6 +1637,28 @@ namespace EpochBreaker.UI
                 _friendTargetText.text = $"Target: {target:N0} (need {remaining:N0})";
                 _friendTargetText.color = new Color(0.5f, 0.8f, 1f);
             }
+        }
+
+        private void HandleCosmeticUnlock(string cosmeticName)
+        {
+            _achievementQueue.Enqueue($"NEW: {cosmeticName} unlocked!");
+        }
+
+        private void HandleWeaponUpgrade(Generative.WeaponType type, Generative.WeaponTier tier)
+        {
+            if (_upgradeNotifyText == null) return;
+            _upgradeNotifyText.text = $"{type} \u2192 {tier}";
+            _upgradeNotifyTimer = 2f;
+        }
+
+        private void UpdateUpgradeNotification()
+        {
+            if (_upgradeNotifyText == null || _upgradeNotifyTimer <= 0f) return;
+            _upgradeNotifyTimer -= Time.deltaTime;
+            float alpha = Mathf.Clamp01(_upgradeNotifyTimer / 0.5f);
+            float scale = 1f + Mathf.Clamp01((_upgradeNotifyTimer - 1.5f) / 0.5f) * 0.3f;
+            _upgradeNotifyText.color = new Color(1f, 0.85f, 0.2f, alpha);
+            _upgradeNotifyText.transform.localScale = new Vector3(scale, scale, 1f);
         }
 
         private void CreatePauseButton(Transform parent)

@@ -8,7 +8,7 @@ namespace EpochBreaker.Generative
     /// including full support for the destructible environment system.
     ///
     /// Checks performed:
-    ///   1. Start/Goal Accessible - player position empty with solid below
+    ///   1. Start/Exit Portal Accessible - player position empty with solid below
     ///   2. Reachability - BFS from start to goal with jump physics; treats
     ///      Soft/Medium destructible tiles as breakable (traversable) with Starting weapon
     ///   3. Weapon Progression - left-to-right primary path walk verifying no
@@ -72,10 +72,10 @@ namespace EpochBreaker.Generative
             // Check 1: Start position is valid (empty tile with solid below)
             result.StartAccessible = IsPositionAccessible(level, level.Layout.StartX, level.Layout.StartY);
 
-            // Check 2: Goal position is valid
-            result.GoalAccessible = IsPositionAccessible(level, level.Layout.GoalX, level.Layout.GoalY);
+            // Check 2: Exit portal position is valid
+            result.ExitPortalAccessible = IsPositionAccessible(level, level.Layout.ExitPortalX, level.Layout.ExitPortalY);
 
-            // Check 3: Reachability -- BFS from start to goal respecting
+            // Check 3: Reachability -- BFS from start to exit portal respecting
             //          jump physics and treating Soft/Medium destructibles
             //          as traversable.
             result.Reachable = CheckReachability(level);
@@ -109,7 +109,7 @@ namespace EpochBreaker.Generative
 
             // Overall pass -- every individual check must succeed
             result.Passed = result.StartAccessible
-                         && result.GoalAccessible
+                         && result.ExitPortalAccessible
                          && result.Reachable
                          && result.WeaponProgressionValid
                          && result.DestructionPathsValid
@@ -239,7 +239,7 @@ namespace EpochBreaker.Generative
             }
 
             int startKey = level.Layout.StartY * width + level.Layout.StartX;
-            int goalKey = level.Layout.GoalY * width + level.Layout.GoalX;
+            int exitPortalKey = level.Layout.ExitPortalY * width + level.Layout.ExitPortalX;
 
             if (!standable.Contains(startKey))
             {
@@ -247,10 +247,10 @@ namespace EpochBreaker.Generative
                 if (startKey < 0) return false;
             }
 
-            if (!standable.Contains(goalKey))
+            if (!standable.Contains(exitPortalKey))
             {
-                goalKey = FindNearestStandable(standable, level.Layout.GoalX, level.Layout.GoalY, width);
-                if (goalKey < 0) return false;
+                exitPortalKey = FindNearestStandable(standable, level.Layout.ExitPortalX, level.Layout.ExitPortalY, width);
+                if (exitPortalKey < 0) return false;
             }
 
             // BFS with adjacency defined by jump physics.
@@ -273,7 +273,7 @@ namespace EpochBreaker.Generative
             while (queue.Count > 0)
             {
                 int current = queue.Dequeue();
-                if (current == goalKey)
+                if (current == exitPortalKey)
                     return true;
 
                 int cx = current % width;
@@ -1121,7 +1121,7 @@ namespace EpochBreaker.Generative
 
         // Individual check results
         public bool StartAccessible;
-        public bool GoalAccessible;
+        public bool ExitPortalAccessible;
         public bool Reachable;
         public bool WeaponProgressionValid;
         public bool DestructionPathsValid;
@@ -1145,7 +1145,7 @@ namespace EpochBreaker.Generative
             {
                 $"Validation: {(Passed ? "PASSED" : "FAILED")}",
                 $"  Start accessible:        {StartAccessible}",
-                $"  Goal accessible:         {GoalAccessible}",
+                $"  Exit portal accessible:         {ExitPortalAccessible}",
                 $"  Reachable:               {Reachable}",
                 $"  Weapon progression:      {WeaponProgressionValid}",
                 $"  Destruction paths:       {DestructionPathsValid}",

@@ -36,9 +36,24 @@ namespace EpochBreaker.Gameplay
     /// <summary>
     /// Static database of weapon stats per type and tier.
     /// All tuning values are centralized here for easy adjustment.
+    ///
+    /// DPS Rebalance (Build 036): Target ~60% DPS increase per tier, consistent
+    /// across weapons. Fire rates unchanged (feel good). Damage multipliers reduced
+    /// from old (1+t)*base formula to explicit per-tier values.
+    /// Multi-hit weapons (Spreader count, Piercer pierce, Chainer chain) balanced
+    /// on single-target DPS; AoE effectiveness is their tier scaling advantage.
     /// </summary>
     public static class WeaponDatabase
     {
+        // Explicit per-tier damage values: [Starting, Medium, Heavy]
+        // Target: ~60% DPS increase per tier step
+        private static readonly float[] BoltDamage     = { 1.0f, 1.3f, 1.6f };   // DPS: 4.0 → 6.5 → 10.7
+        private static readonly float[] PiercerDamage  = { 0.7f, 1.0f, 1.4f };   // DPS: 2.3 → 3.8 → 6.4
+        private static readonly float[] SpreaderDamage = { 0.5f, 0.7f, 0.9f };   // Per-proj DPS: 1.4 → 2.3 → 3.6
+        private static readonly float[] ChainerDamage  = { 0.6f, 0.85f, 1.2f };  // DPS: 1.5 → 2.4 → 4.0
+        private static readonly float[] SlowerDamage   = { 0.5f, 0.7f, 0.9f };   // DPS: 1.0 → 1.6 → 2.3
+        private static readonly float[] CannonDamage   = { 3.0f, 4.5f, 6.5f };   // DPS: 5.0 → 8.2 → 13.0
+
         public static WeaponStats GetStats(WeaponType type, WeaponTier tier)
         {
             int t = (int)tier;
@@ -48,35 +63,35 @@ namespace EpochBreaker.Gameplay
                 WeaponType.Bolt => new WeaponStats
                 {
                     FireRate = 0.25f - t * 0.05f,
-                    DamageMultiplier = 1f + t,
+                    DamageMultiplier = BoltDamage[t],
                     Range = 12f,
-                    ProjectileSpeed = 24f,
+                    ProjectileSpeed = 24f * (1f + t * 0.15f),
                     ProjectileCount = 1,
                 },
                 WeaponType.Piercer => new WeaponStats
                 {
                     FireRate = 0.30f - t * 0.04f,
-                    DamageMultiplier = (1f + t) * 0.7f,
+                    DamageMultiplier = PiercerDamage[t],
                     Range = 14f,
-                    ProjectileSpeed = 28f,
+                    ProjectileSpeed = 28f * (1f + t * 0.15f),
                     ProjectileCount = 1,
                     PierceCount = 2 + t,
                 },
                 WeaponType.Spreader => new WeaponStats
                 {
                     FireRate = 0.35f - t * 0.05f,
-                    DamageMultiplier = (1f + t) * 0.5f,
+                    DamageMultiplier = SpreaderDamage[t],
                     Range = 8f,
-                    ProjectileSpeed = 20f,
+                    ProjectileSpeed = 20f * (1f + t * 0.15f),
                     ProjectileCount = 3 + t, // 3 → 4 → 5 per tier
                     SpreadAngle = 15f,
                 },
                 WeaponType.Chainer => new WeaponStats
                 {
                     FireRate = 0.40f - t * 0.05f,
-                    DamageMultiplier = (1f + t) * 0.6f,
+                    DamageMultiplier = ChainerDamage[t],
                     Range = 10f,
-                    ProjectileSpeed = 22f,
+                    ProjectileSpeed = 22f * (1f + t * 0.15f),
                     ProjectileCount = 1,
                     ChainCount = 2 + t, // 2 → 3 → 4 per tier
                     ChainRange = 4f + t, // 4 → 5 → 6 per tier
@@ -84,9 +99,9 @@ namespace EpochBreaker.Gameplay
                 WeaponType.Slower => new WeaponStats
                 {
                     FireRate = 0.50f - t * 0.05f,
-                    DamageMultiplier = (1f + t) * 0.5f,
+                    DamageMultiplier = SlowerDamage[t],
                     Range = 10f,
-                    ProjectileSpeed = 18f,
+                    ProjectileSpeed = 18f * (1f + t * 0.15f),
                     ProjectileCount = 1,
                     SlowDuration = 3f + t, // 3s → 4s → 5s per tier
                     SlowFactor = 0.5f - t * 0.1f, // 50% → 60% → 70% slow
@@ -94,9 +109,9 @@ namespace EpochBreaker.Gameplay
                 WeaponType.Cannon => new WeaponStats
                 {
                     FireRate = 0.60f - t * 0.05f,
-                    DamageMultiplier = (1f + t) * 3f,
+                    DamageMultiplier = CannonDamage[t],
                     Range = 12f,
-                    ProjectileSpeed = 16f,
+                    ProjectileSpeed = 16f * (1f + t * 0.15f),
                     ProjectileCount = 1,
                     HeatPerShot = 10f,
                     BreaksAllMaterials = true,

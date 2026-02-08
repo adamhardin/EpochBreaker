@@ -5,7 +5,7 @@ namespace EpochBreaker.Gameplay
 {
     /// <summary>
     /// Generates a level from a LevelID and creates all gameplay objects:
-    /// tilemap, player, enemies, weapon pickups, rewards, checkpoints, goal, boss.
+    /// tilemap, player, enemies, weapon pickups, rewards, checkpoints, exit portal, boss.
     /// </summary>
     public class LevelLoader : MonoBehaviour
     {
@@ -89,7 +89,7 @@ namespace EpochBreaker.Gameplay
             SpawnRewards(data);
             SpawnExtraLives(data);
             SpawnCheckpoints(data);
-            SpawnGoal(data);
+            SpawnExitPortal(data);
             SpawnBoss(data);
 
             // Set initial checkpoint
@@ -672,23 +672,42 @@ namespace EpochBreaker.Gameplay
             return y;
         }
 
-        private void SpawnGoal(LevelData data)
+        private void SpawnExitPortal(LevelData data)
         {
-            Vector3 goalPos = _tilemapRenderer.LevelToWorld(data.Layout.GoalX, data.Layout.GoalY);
+            Vector3 portalPos = _tilemapRenderer.LevelToWorld(data.Layout.ExitPortalX, data.Layout.ExitPortalY);
 
-            var go = new GameObject("Goal");
+            var go = new GameObject("ExitPortal");
             go.transform.SetParent(_levelRoot.transform);
-            go.transform.position = goalPos;
+            go.transform.position = portalPos;
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = PlaceholderAssets.GetGoalSprite();
+            sr.sprite = PlaceholderAssets.GetExitPortalSprite();
             sr.sortingOrder = 6;
 
             var col = go.AddComponent<BoxCollider2D>();
             col.isTrigger = true;
             col.size = new Vector2(2.5f, 3.5f);
 
-            go.AddComponent<GoalTrigger>();
+            var portal = go.AddComponent<ExitPortal>();
+
+            // Boss-gating: lock portal if level has a boss arena
+            bool hasBoss = false;
+            if (data.Layout.Zones != null)
+            {
+                for (int i = 0; i < data.Layout.Zones.Length; i++)
+                {
+                    if (data.Layout.Zones[i].Type == Generative.ZoneType.BossArena)
+                    {
+                        hasBoss = true;
+                        break;
+                    }
+                }
+            }
+
+            if (hasBoss)
+                portal.SetLocked();
+            else
+                portal.Activate();
         }
 
         private void SpawnBoss(LevelData data)

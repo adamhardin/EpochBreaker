@@ -1083,10 +1083,11 @@ namespace EpochBreaker.Gameplay
                 GameManager.Instance.RecordBossKillScore(500);
             }
 
-            // Epic boss death sound + big shake + hit-stop (8 frames / ~133ms)
+            // Epic boss death: strong shake + hit-stop + dramatic time-slow
             AudioManager.PlaySFX(PlaceholderAudio.GetBossDeathSFX());
-            CameraController.Instance?.AddTrauma(0.7f);
+            CameraController.Instance?.AddTrauma(1.0f);
             GameManager.HitStop(0.133f);
+            StartCoroutine(BossDeathTimeSlow());
 
             // Remove arena wall and unlock camera
             var trigger = FindAnyObjectByType<BossArenaTrigger>();
@@ -1143,7 +1144,62 @@ namespace EpochBreaker.Gameplay
                 yield return null;
             }
 
+            // Activate exit portal after boss death (camera pan + unlock)
+            var portal = ExitPortal.Instance;
+            if (portal != null && !portal.IsActive)
+            {
+                var cam = CameraController.Instance;
+                if (cam != null)
+                {
+                    cam.PanToPosition(portal.transform.position, 1.0f, 0.5f, () =>
+                    {
+                        portal.Activate();
+                    });
+                }
+                else
+                {
+                    portal.Activate();
+                }
+            }
+
+            // Death particle burst — scatter particles outward from boss position
+            SpawnDeathParticles(originalPos);
+
             Destroy(gameObject);
+        }
+
+        private void SpawnDeathParticles(Vector3 center)
+        {
+            int count = 12;
+            for (int i = 0; i < count; i++)
+            {
+                var go = ObjectPool.GetParticle();
+                go.transform.position = center;
+
+                var sr = go.GetComponent<SpriteRenderer>();
+                sr.sprite = PlaceholderAssets.GetParticleSprite();
+                float hue = (float)i / count;
+                sr.color = Color.HSVToRGB(hue, 0.5f, 1f);
+                sr.sortingOrder = 15;
+                go.transform.localScale = Vector3.one * Random.Range(0.5f, 1.2f);
+
+                // Scatter outward
+                float angle = (360f * i / count) + Random.Range(-15f, 15f);
+                float rad = angle * Mathf.Deg2Rad;
+                float speed = Random.Range(4f, 10f);
+                var rb = go.GetComponent<Rigidbody2D>();
+                if (rb != null)
+                    rb.linearVelocity = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)) * speed;
+
+                go.GetComponent<PoolTimer>().StartTimer(0.6f);
+            }
+        }
+
+        private System.Collections.IEnumerator BossDeathTimeSlow()
+        {
+            Time.timeScale = 0.5f;
+            yield return new WaitForSecondsRealtime(0.3f);
+            Time.timeScale = 1f;
         }
 
         private void OnCollisionEnter2D(Collision2D collision)

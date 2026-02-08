@@ -35,6 +35,7 @@ namespace EpochBreaker.UI
         private InputField _codeInputField;
         private Text _codeErrorText;
         private GameObject _confirmNewGamePanel;
+        private GameObject _difficultyPromptPanel;
         private GameObject _devPanel;
         private bool _godModeEnabled;
         private GameObject _godModeCheckmark;
@@ -79,7 +80,16 @@ namespace EpochBreaker.UI
             // Close overlays with Escape
             if (InputManager.IsBackPressed())
             {
-                // New game confirmation dialog (highest priority)
+                // Difficulty prompt (highest priority)
+                if (_difficultyPromptPanel != null)
+                {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    Destroy(_difficultyPromptPanel);
+                    _difficultyPromptPanel = null;
+                    return;
+                }
+
+                // New game confirmation dialog
                 if (_confirmNewGamePanel != null)
                 {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
@@ -263,6 +273,7 @@ namespace EpochBreaker.UI
             _challengeEntryObj = null;
             _cosmeticsObj = null;
             _confirmNewGamePanel = null;
+            _difficultyPromptPanel = null;
             _devPanel = null;
             _godModeCheckmark = null;
             CreateUI();
@@ -373,6 +384,129 @@ namespace EpochBreaker.UI
                 });
         }
 
+        private void ShowDifficultyPrompt()
+        {
+            if (_difficultyPromptPanel != null) return;
+
+            _difficultyPromptPanel = new GameObject("DifficultyPrompt");
+            _difficultyPromptPanel.transform.SetParent(_canvasGO.transform, false);
+
+            var panelCanvas = _difficultyPromptPanel.AddComponent<Canvas>();
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 150;
+            _difficultyPromptPanel.AddComponent<GraphicRaycaster>();
+
+            // Dim overlay
+            var dimGO = new GameObject("Dim");
+            dimGO.transform.SetParent(_difficultyPromptPanel.transform, false);
+            var dimImg = dimGO.AddComponent<Image>();
+            dimImg.color = new Color(0.02f, 0.02f, 0.05f, 0.85f);
+            var dimRect = dimGO.GetComponent<RectTransform>();
+            dimRect.anchorMin = Vector2.zero;
+            dimRect.anchorMax = Vector2.one;
+            dimRect.sizeDelta = Vector2.zero;
+
+            // Dialog box
+            var boxGO = new GameObject("DialogBox");
+            boxGO.transform.SetParent(_difficultyPromptPanel.transform, false);
+            var boxImg = boxGO.AddComponent<Image>();
+            boxImg.color = new Color(0.85f, 0.65f, 0.12f, 0.9f);
+            var boxRect = boxGO.GetComponent<RectTransform>();
+            boxRect.anchorMin = new Vector2(0.5f, 0.5f);
+            boxRect.anchorMax = new Vector2(0.5f, 0.5f);
+            boxRect.sizeDelta = new Vector2(500, 300);
+            boxRect.anchoredPosition = Vector2.zero;
+
+            // Dark gap + inner border + bg (same ornate style)
+            var gapGO = new GameObject("Gap");
+            gapGO.transform.SetParent(boxGO.transform, false);
+            var gapImg = gapGO.AddComponent<Image>();
+            gapImg.color = new Color(0.06f, 0.04f, 0.10f);
+            var gapRect = gapGO.GetComponent<RectTransform>();
+            gapRect.anchorMin = Vector2.zero;
+            gapRect.anchorMax = Vector2.one;
+            gapRect.sizeDelta = new Vector2(-4, -4);
+
+            var innerGO = new GameObject("InnerBorder");
+            innerGO.transform.SetParent(gapGO.transform, false);
+            var innerImg = innerGO.AddComponent<Image>();
+            innerImg.color = new Color(0.90f, 0.70f, 0.18f, 0.75f);
+            var innerRect = innerGO.GetComponent<RectTransform>();
+            innerRect.anchorMin = Vector2.zero;
+            innerRect.anchorMax = Vector2.one;
+            innerRect.sizeDelta = new Vector2(-3, -3);
+
+            var bgGO = new GameObject("Bg");
+            bgGO.transform.SetParent(innerGO.transform, false);
+            var bgImg = bgGO.AddComponent<Image>();
+            bgImg.color = new Color(0.10f, 0.08f, 0.16f, 0.98f);
+            var bgRect = bgGO.GetComponent<RectTransform>();
+            bgRect.anchorMin = Vector2.zero;
+            bgRect.anchorMax = Vector2.one;
+            bgRect.sizeDelta = new Vector2(-3, -3);
+
+            // Title
+            var titleGO = new GameObject("Title");
+            titleGO.transform.SetParent(bgGO.transform, false);
+            var titleImg = titleGO.AddComponent<Image>();
+            titleImg.sprite = PlaceholderAssets.GetPixelTextSprite(
+                "CHOOSE YOUR CHALLENGE", new Color(1f, 0.85f, 0.2f), 3);
+            titleImg.preserveAspect = true;
+            var titleRect = titleGO.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0.5f, 0.5f);
+            titleRect.anchorMax = new Vector2(0.5f, 0.5f);
+            titleRect.sizeDelta = new Vector2(420, 30);
+            titleRect.anchoredPosition = new Vector2(0, 100);
+
+            // Subtitle
+            var subGO = CreateText(bgGO.transform,
+                "You can change this later in Settings.", 16,
+                new Color(0.6f, 0.6f, 0.7f));
+            var subRect = subGO.GetComponent<RectTransform>();
+            subRect.anchorMin = new Vector2(0.5f, 0.5f);
+            subRect.anchorMax = new Vector2(0.5f, 0.5f);
+            subRect.sizeDelta = new Vector2(400, 30);
+            subRect.anchoredPosition = new Vector2(0, 65);
+
+            System.Action<DifficultyLevel> selectDifficulty = (level) => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                if (DifficultyManager.Instance != null)
+                    DifficultyManager.Instance.CurrentDifficulty = level;
+                PlayerPrefs.SetInt("EpochBreaker_DifficultyChosen", 1);
+                PlayerPrefs.Save();
+                Destroy(_difficultyPromptPanel);
+                _difficultyPromptPanel = null;
+                GameManager.Instance?.StartGame();
+            };
+
+            // EASY button
+            CreateMenuButton(bgGO.transform, "EASY", new Vector2(-150, 10),
+                new Vector2(130, 50), new Color(0.25f, 0.50f, 0.30f), () => {
+                    selectDifficulty(DifficultyLevel.Easy);
+                });
+            var easyDesc = CreateText(bgGO.transform, "More health\nWeaker enemies", 13,
+                new Color(0.5f, 0.7f, 0.5f));
+            easyDesc.GetComponent<RectTransform>().anchoredPosition = new Vector2(-150, -35);
+
+            // NORMAL button (recommended)
+            CreateMenuButton(bgGO.transform, "NORMAL", new Vector2(0, 10),
+                new Vector2(130, 50), new Color(0.35f, 0.40f, 0.55f), () => {
+                    selectDifficulty(DifficultyLevel.Normal);
+                });
+            var normDesc = CreateText(bgGO.transform, "Recommended", 13,
+                new Color(0.6f, 0.6f, 0.8f));
+            normDesc.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, -35);
+
+            // HARD button
+            CreateMenuButton(bgGO.transform, "HARD", new Vector2(150, 10),
+                new Vector2(130, 50), new Color(0.55f, 0.25f, 0.25f), () => {
+                    selectDifficulty(DifficultyLevel.Hard);
+                });
+            var hardDesc = CreateText(bgGO.transform, "Less health\nStronger enemies", 13,
+                new Color(0.8f, 0.5f, 0.5f));
+            hardDesc.GetComponent<RectTransform>().anchoredPosition = new Vector2(150, -35);
+        }
+
         private void CreateMainMenu(Transform parent)
         {
             bool hasSavedSession = GameManager.HasSavedSession();
@@ -416,11 +550,14 @@ namespace EpochBreaker.UI
             }
             else
             {
-                // Play Game button (primary)
+                // Play Game button (primary) — first-play shows difficulty prompt
                 CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 110),
                     new Vector2(260, 55), new Color(0.2f, 0.55f, 0.3f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                        GameManager.Instance?.StartGame();
+                        if (PlayerPrefs.GetInt("EpochBreaker_DifficultyChosen", 0) == 0)
+                            ShowDifficultyPrompt();
+                        else
+                            GameManager.Instance?.StartGame();
                     });
 
                 // Enter Code button
@@ -805,8 +942,8 @@ namespace EpochBreaker.UI
                 "Mid", new Vector2(itemStart + itemSpacing, row3Y), 48f);
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetCheckpointSprite(CheckpointType.PreBoss),
                 "Boss", new Vector2(itemStart + itemSpacing * 2, row3Y), 48f);
-            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetGoalSprite(),
-                "Goal", new Vector2(itemStart + itemSpacing * 3, row3Y), 48f);
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetExitPortalSprite(),
+                "Exit", new Vector2(itemStart + itemSpacing * 3, row3Y), 48f);
 
             // ACHIEVEMENTS and LEGENDS — stacked vertically LEFT of the legend panel
             float btnX = -660f;
@@ -1154,25 +1291,34 @@ namespace EpochBreaker.UI
                     _accessibilitySubPanel.SetActive(true);
                 });
 
-            // Replay Campaign button (only shown after Campaign completion)
+            // Campaign toggle — always visible; label changes based on completion status
             sy -= ITEM_SPACING;
-            bool campaignCompleted = AchievementManager.Instance != null
-                && AchievementManager.Instance.IsUnlocked(AchievementType.EpochExplorer);
-            if (campaignCompleted)
             {
-                bool replayActive = GameManager.Instance != null && GameManager.Instance.ReplayCampaignEnabled;
-                CreateMenuButton(_settingsMenuContent.transform,
-                    replayActive ? "REPLAY CAMPAIGN (ON)" : "REPLAY CAMPAIGN",
-                    new Vector2(0, sy),
-                    new Vector2(300, BTN_HEIGHT),
-                    replayActive ? new Color(0.7f, 0.55f, 0.2f) : new Color(0.55f, 0.45f, 0.15f), () => {
+                bool campaignCompleted = AchievementManager.Instance != null
+                    && AchievementManager.Instance.IsUnlocked(AchievementType.EpochExplorer);
+                bool campaignActive = GameManager.Instance != null && GameManager.Instance.CampaignModeEnabled;
+                string campaignLabel = campaignCompleted
+                    ? (campaignActive ? "REPLAY CAMPAIGN (ON)" : "REPLAY CAMPAIGN")
+                    : (campaignActive ? "START CAMPAIGN (ON)" : "START CAMPAIGN");
+                Color campaignColor = campaignActive
+                    ? new Color(0.7f, 0.55f, 0.2f) : new Color(0.55f, 0.45f, 0.15f);
+                CreateMenuButton(_settingsMenuContent.transform, campaignLabel,
+                    new Vector2(0, sy), new Vector2(300, BTN_HEIGHT), campaignColor, () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (GameManager.Instance != null)
                         {
-                            GameManager.Instance.ReplayCampaignEnabled = !GameManager.Instance.ReplayCampaignEnabled;
+                            GameManager.Instance.CampaignModeEnabled = !GameManager.Instance.CampaignModeEnabled;
                             RebuildUI();
                         }
                     });
+                if (campaignActive)
+                {
+                    sy -= 22f;
+                    var feedbackGO = CreateText(_settingsMenuContent.transform,
+                        "Next PLAY will start Campaign mode", 14, new Color(1f, 0.85f, 0.3f));
+                    var feedbackRect = feedbackGO.GetComponent<RectTransform>();
+                    feedbackRect.anchoredPosition = new Vector2(0, sy);
+                }
             }
 
             // Tutorial buttons
@@ -1324,9 +1470,9 @@ namespace EpochBreaker.UI
 
             // Streak info
             var streakGO = CreateText(_aboutSubPanel.transform,
-                "THE BREACH (default after Campaign)\n" +
+                "THE BREACH (default mode)\n" +
                 "Random levels, any epoch. Endless exploration.\n" +
-                "Play forever — replay Campaign from Settings.\n" +
+                "Start Campaign from Settings to unlock cosmetics.\n" +
                 "STREAK: 10 lives, how far can you go?", 16,
                 new Color(0.85f, 0.75f, 0.55f));
             var streakRect = streakGO.GetComponent<RectTransform>();

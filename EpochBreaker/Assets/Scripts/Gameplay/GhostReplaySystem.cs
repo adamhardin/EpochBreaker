@@ -11,6 +11,13 @@ namespace EpochBreaker.Gameplay
     /// </summary>
     public class GhostReplaySystem : MonoBehaviour
     {
+        /// <summary>
+        /// Master toggle for ghost replay. Disabled for Build 036 as an audio debugging
+        /// measure — ghost I/O and object spawning may contribute to boss Phase 3 squeal.
+        /// Flip to true to re-enable the entire system.
+        /// </summary>
+        public const bool ENABLED = false;
+
         private const float SAMPLE_INTERVAL = 0.2f;
         private const string GHOST_PREFS_PREFIX = "Ghost_";
         private const string GHOST_INDEX_KEY = "EpochBreaker_GhostIndex";
@@ -50,6 +57,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public void StartRecording()
         {
+            if (!ENABLED) return;
             _recording = true;
             _recordTimer = 0f;
             _samples.Clear();
@@ -72,6 +80,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public void SaveGhost(string levelCode, int score)
         {
+            if (!ENABLED) return;
             string key = GHOST_PREFS_PREFIX + levelCode;
 
             // Check existing best score
@@ -129,6 +138,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public static bool HasGhost(string levelCode)
         {
+            if (!ENABLED) return false;
             string key = GHOST_PREFS_PREFIX + levelCode;
             return !string.IsNullOrEmpty(PlayerPrefs.GetString(key, ""));
         }
@@ -147,6 +157,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public void StartPlayback(string levelCode)
         {
+            if (!ENABLED) return;
             string key = GHOST_PREFS_PREFIX + levelCode;
             string data = PlayerPrefs.GetString(key, "");
             if (string.IsNullOrEmpty(data))

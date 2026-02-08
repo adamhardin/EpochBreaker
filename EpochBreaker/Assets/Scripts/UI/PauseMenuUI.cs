@@ -17,6 +17,7 @@ namespace EpochBreaker.UI
         private GameObject _audioSubPanel;
         private GameObject _accessibilitySubPanel;
         private GameObject _difficultySubPanel;
+        private GameObject _controlsSubPanel;
 
         private void Start()
         {
@@ -39,6 +40,12 @@ namespace EpochBreaker.UI
                 else if (_difficultySubPanel != null && _difficultySubPanel.activeSelf)
                 {
                     _difficultySubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                    InputManager.PausePressed = false;
+                }
+                else if (_controlsSubPanel != null && _controlsSubPanel.activeSelf)
+                {
+                    _controlsSubPanel.SetActive(false);
                     _settingsMenuContent.SetActive(true);
                     InputManager.PausePressed = false;
                 }
@@ -189,6 +196,14 @@ namespace EpochBreaker.UI
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _difficultySubPanel.SetActive(true);
+                }, new Vector2(300, 48));
+
+            // Controls button
+            CreateButton(_settingsMenuContent.transform, "CONTROLS", new Vector2(0, -120),
+                new Color(0.4f, 0.4f, 0.45f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _controlsSubPanel.SetActive(true);
                 }, new Vector2(300, 48));
 
             // Hint
@@ -373,6 +388,48 @@ namespace EpochBreaker.UI
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             _difficultySubPanel.SetActive(false);
+
+            // ── Controls sub-panel ──
+            _controlsSubPanel = new GameObject("ControlsSubPanel");
+            _controlsSubPanel.transform.SetParent(panelGO.transform, false);
+            var ctrlRect = _controlsSubPanel.AddComponent<RectTransform>();
+            ctrlRect.anchorMin = Vector2.zero;
+            ctrlRect.anchorMax = Vector2.one;
+            ctrlRect.sizeDelta = Vector2.zero;
+
+            CreateText(_controlsSubPanel.transform, "CONTROLS", 28,
+                new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
+
+            CreateButton(_controlsSubPanel.transform, "BACK", new Vector2(-190, 170),
+                new Color(0.4f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _controlsSubPanel.SetActive(false);
+                    _settingsMenuContent.SetActive(true);
+                }, new Vector2(100, 40), 20);
+
+            // Controls reference rows
+            string[] actions = { "Move", "Jump", "Stomp", "Cycle Weapon", "Pause" };
+            string[] keys = {
+                "Arrow Keys / WASD",
+                "Space / W / Up Arrow",
+                "Down / S (while airborne)",
+                "R",
+                "Escape"
+            };
+            Color labelColor = new Color(0.85f, 0.85f, 0.95f);
+            Color valueColor = new Color(0.7f, 0.8f, 0.6f);
+            for (int i = 0; i < actions.Length; i++)
+            {
+                float y = 100f - i * 48f;
+                CreateText(_controlsSubPanel.transform, actions[i], 18, labelColor, new Vector2(-100, y));
+                var valGO = CreateText(_controlsSubPanel.transform, keys[i], 18, valueColor, new Vector2(100, y));
+                valGO.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 30);
+            }
+
+            CreateText(_controlsSubPanel.transform, "Press Esc/` to go back", 14,
+                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
+
+            _controlsSubPanel.SetActive(false);
 
             _settingsContent.SetActive(false);
         }

@@ -167,6 +167,69 @@ namespace EpochBreaker.Gameplay
             _introCoroutine = null;
         }
 
+        /// <summary>
+        /// Pan camera to a world position, hold briefly, then return to player.
+        /// Used for portal activation cinematic after boss death.
+        /// Any player input during the pan snaps back immediately.
+        /// </summary>
+        public void PanToPosition(Vector3 worldPos, float panDuration = 1.0f, float holdDuration = 0.5f,
+            System.Action onArrived = null)
+        {
+            if (_introCoroutine != null) StopCoroutine(_introCoroutine);
+            _introCoroutine = StartCoroutine(PanToPositionCoroutine(worldPos, panDuration, holdDuration, onArrived));
+        }
+
+        private System.Collections.IEnumerator PanToPositionCoroutine(Vector3 worldPos, float panDuration,
+            float holdDuration, System.Action onArrived)
+        {
+            yield return null;
+
+            if (_target == null) yield break;
+
+            Transform savedTarget = _target;
+            float savedSmoothX = _smoothSpeedX;
+
+            var tempGO = new GameObject("PortalPanTarget");
+            tempGO.transform.position = worldPos + new Vector3(0f, _verticalOffset, 0f);
+            _target = tempGO.transform;
+            _smoothSpeedX = 4f;
+
+            // Pan to position (skippable on input)
+            float elapsed = 0f;
+            while (elapsed < panDuration)
+            {
+                if (InputManager.JumpPressed || InputManager.AttackPressed || InputManager.PausePressed)
+                    break;
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            onArrived?.Invoke();
+
+            // Hold briefly (skippable)
+            elapsed = 0f;
+            while (elapsed < holdDuration)
+            {
+                if (InputManager.JumpPressed || InputManager.AttackPressed || InputManager.PausePressed)
+                    break;
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            // Return to player
+            if (savedTarget != null)
+                _target = savedTarget;
+            else
+                RestorePlayerTarget();
+            _smoothSpeedX = 5f;
+
+            yield return new WaitForSeconds(0.5f);
+
+            _smoothSpeedX = savedSmoothX;
+            if (tempGO != null) Destroy(tempGO);
+            _introCoroutine = null;
+        }
+
         private void LateUpdate()
         {
             if (_target == null || _camera == null) return;

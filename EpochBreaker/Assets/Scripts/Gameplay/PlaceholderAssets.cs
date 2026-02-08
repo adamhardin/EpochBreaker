@@ -2976,11 +2976,11 @@ namespace EpochBreaker.Gameplay
 
         #endregion
 
-        #region Goal
+        #region ExitPortal
 
-        public static Sprite GetGoalSprite()
+        public static Sprite GetExitPortalSprite()
         {
-            string key = "goal";
+            string key = "exitportal";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int w = 768, h = 1024;

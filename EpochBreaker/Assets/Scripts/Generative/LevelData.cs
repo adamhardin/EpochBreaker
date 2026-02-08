@@ -109,8 +109,8 @@ namespace EpochBreaker.Generative
         public int HeightTiles;
         public int StartX;
         public int StartY;
-        public int GoalX;
-        public int GoalY;
+        public int ExitPortalX;
+        public int ExitPortalY;
 
         /// <summary>Flat array of tile IDs, row-major: Tiles[y * WidthTiles + x]</summary>
         public byte[] Tiles;

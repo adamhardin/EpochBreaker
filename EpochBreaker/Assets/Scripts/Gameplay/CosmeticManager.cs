@@ -6,29 +6,29 @@ namespace EpochBreaker.Gameplay
 
     public enum PlayerSkin
     {
-        Default,        // Original blue armor
-        Gold,           // 3-star any level
-        Shadow,         // Untouchable achievement
-        Crimson,        // Boss Killer achievement
-        Glacier,        // Cool Under Pressure achievement
-        Neon,           // Score Legend achievement
-        Archaeologist,  // Archaeologist achievement (all relics)
-        Rainbow         // All achievements unlocked
+        Default,        // Original blue armor — always available
+        Gold,           // Campaign: Epoch 0 (Stone Age)
+        Shadow,         // Campaign: Epoch 2 (Classical)
+        Crimson,        // Campaign: Epoch 4 (Renaissance)
+        Glacier,        // Campaign: Epoch 6 (Modern)
+        Neon,           // Campaign: Epoch 7 (Digital)
+        Archaeologist,  // Campaign: Epoch 8 (Spacefaring)
+        Rainbow         // Campaign: All 10 epochs completed
     }
 
     public enum TrailEffect
     {
         None,           // Default — no trail
-        Sparks,         // Unlocked at 5 levels completed
-        Frost,          // Unlocked at 10 levels completed
-        Fire,           // Unlocked at 20 levels completed
-        Glitch          // Unlocked at 50 levels completed + all achievements
+        Sparks,         // Campaign: Epoch 1 (Bronze Age)
+        Frost,          // Campaign: Epoch 3 (Medieval)
+        Fire,           // Campaign: Epoch 5 (Industrial)
+        Glitch          // Campaign: All 10 epochs completed
     }
 
     public enum ProfileFrame
     {
         None,           // No frame (default)
-        Bronze,         // Campaign complete (all 10 epochs)
+        Bronze,         // Campaign: All 10 epochs completed
         Silver,         // Streak 10+
         Gold            // Streak 25+
     }
@@ -45,6 +45,9 @@ namespace EpochBreaker.Gameplay
 
         public static CosmeticManager Instance { get; private set; }
         public static bool GodMode { get; set; }
+
+        /// <summary>Fired when a cosmetic is newly unlocked. Carries display name like "Gold Skin".</summary>
+        public static event System.Action<string> OnCosmeticUnlocked;
 
         public PlayerSkin SelectedSkin { get; private set; } = PlayerSkin.Default;
         public TrailEffect SelectedTrail { get; private set; } = TrailEffect.None;
@@ -117,13 +120,13 @@ namespace EpochBreaker.Gameplay
             return skin switch
             {
                 PlayerSkin.Default      => true,
-                PlayerSkin.Gold         => am.IsUnlocked(AchievementType.PerfectRun),
-                PlayerSkin.Shadow       => am.IsUnlocked(AchievementType.Untouchable),
-                PlayerSkin.Crimson      => am.IsUnlocked(AchievementType.BossKiller),
-                PlayerSkin.Glacier      => am.IsUnlocked(AchievementType.CoolUnderPressure),
-                PlayerSkin.Neon         => am.IsUnlocked(AchievementType.ScoreLegend),
-                PlayerSkin.Archaeologist => am.IsUnlocked(AchievementType.Archaeologist),
-                PlayerSkin.Rainbow      => AreAllAchievementsUnlocked(),
+                PlayerSkin.Gold         => am.IsCampaignEpochCompleted(0),
+                PlayerSkin.Shadow       => am.IsCampaignEpochCompleted(2),
+                PlayerSkin.Crimson      => am.IsCampaignEpochCompleted(4),
+                PlayerSkin.Glacier      => am.IsCampaignEpochCompleted(6),
+                PlayerSkin.Neon         => am.IsCampaignEpochCompleted(7),
+                PlayerSkin.Archaeologist => am.IsCampaignEpochCompleted(8),
+                PlayerSkin.Rainbow      => am.GetCampaignEpochCount() >= 10,
                 _ => false
             };
         }
@@ -132,15 +135,15 @@ namespace EpochBreaker.Gameplay
         {
             if (GodMode) return true;
             var am = AchievementManager.Instance;
-            int levelsCompleted = am != null ? am.GetTotalLevelsCompleted() : 0;
+            if (am == null) return trail == TrailEffect.None;
 
             return trail switch
             {
                 TrailEffect.None   => true,
-                TrailEffect.Sparks => levelsCompleted >= 5,
-                TrailEffect.Frost  => levelsCompleted >= 10,
-                TrailEffect.Fire   => levelsCompleted >= 20,
-                TrailEffect.Glitch => levelsCompleted >= 50 && AreAllAchievementsUnlocked(),
+                TrailEffect.Sparks => am.IsCampaignEpochCompleted(1),
+                TrailEffect.Frost  => am.IsCampaignEpochCompleted(3),
+                TrailEffect.Fire   => am.IsCampaignEpochCompleted(5),
+                TrailEffect.Glitch => am.GetCampaignEpochCount() >= 10,
                 _ => false
             };
         }
@@ -148,32 +151,15 @@ namespace EpochBreaker.Gameplay
         public bool IsFrameUnlocked(ProfileFrame frame)
         {
             if (GodMode) return true;
+            var am = AchievementManager.Instance;
             return frame switch
             {
                 ProfileFrame.None   => true,
-                ProfileFrame.Bronze => IsCampaignComplete(),
+                ProfileFrame.Bronze => am != null && am.GetCampaignEpochCount() >= 10,
                 ProfileFrame.Silver => GetBestStreak() >= 10,
                 ProfileFrame.Gold   => GetBestStreak() >= 25,
                 _ => false
             };
-        }
-
-        private bool AreAllAchievementsUnlocked()
-        {
-            var am = AchievementManager.Instance;
-            if (am == null) return false;
-            var (unlocked, total) = am.GetUnlockCount();
-            return total > 0 && unlocked >= total;
-        }
-
-        /// <summary>
-        /// Check if all 10 campaign epochs have been completed.
-        /// Uses AchievementManager's EpochExplorer achievement as proxy.
-        /// </summary>
-        private bool IsCampaignComplete()
-        {
-            var am = AchievementManager.Instance;
-            return am != null && am.IsUnlocked(AchievementType.EpochExplorer);
         }
 
         /// <summary>
@@ -191,6 +177,27 @@ namespace EpochBreaker.Gameplay
                     best = entry.StreakCount;
             }
             return best;
+        }
+
+        /// <summary>
+        /// Check if completing a campaign epoch unlocked any new cosmetics, and fire notification events.
+        /// Called by AchievementManager after recording a campaign epoch completion.
+        /// </summary>
+        public static void NotifyNewUnlocksForEpoch(int epoch)
+        {
+            // Map epoch → cosmetic reward
+            switch (epoch)
+            {
+                case 0: OnCosmeticUnlocked?.Invoke("Gold Skin"); break;
+                case 1: OnCosmeticUnlocked?.Invoke("Sparks Trail"); break;
+                case 2: OnCosmeticUnlocked?.Invoke("Shadow Skin"); break;
+                case 3: OnCosmeticUnlocked?.Invoke("Frost Trail"); break;
+                case 4: OnCosmeticUnlocked?.Invoke("Crimson Skin"); break;
+                case 5: OnCosmeticUnlocked?.Invoke("Fire Trail"); break;
+                case 6: OnCosmeticUnlocked?.Invoke("Glacier Skin"); break;
+                case 7: OnCosmeticUnlocked?.Invoke("Neon Skin"); break;
+                case 8: OnCosmeticUnlocked?.Invoke("Archaeologist Skin"); break;
+            }
         }
 
         // ── Skin colors ──
@@ -282,13 +289,13 @@ namespace EpochBreaker.Gameplay
             return skin switch
             {
                 PlayerSkin.Default      => "Always available",
-                PlayerSkin.Gold         => "3-star any level",
-                PlayerSkin.Shadow       => "Untouchable (no damage)",
-                PlayerSkin.Crimson      => "Defeat a boss",
-                PlayerSkin.Glacier      => "Cool Under Pressure",
-                PlayerSkin.Neon         => "Score Legend (25,000+)",
-                PlayerSkin.Archaeologist => "Preserve all relics",
-                PlayerSkin.Rainbow      => "All achievements",
+                PlayerSkin.Gold         => "Campaign: Stone Age (Epoch 0)",
+                PlayerSkin.Shadow       => "Campaign: Classical (Epoch 2)",
+                PlayerSkin.Crimson      => "Campaign: Renaissance (Epoch 4)",
+                PlayerSkin.Glacier      => "Campaign: Modern (Epoch 6)",
+                PlayerSkin.Neon         => "Campaign: Digital (Epoch 7)",
+                PlayerSkin.Archaeologist => "Campaign: Spacefaring (Epoch 8)",
+                PlayerSkin.Rainbow      => "Campaign: Complete all 10 epochs",
                 _ => ""
             };
         }
@@ -311,10 +318,10 @@ namespace EpochBreaker.Gameplay
             return trail switch
             {
                 TrailEffect.None   => "Always available",
-                TrailEffect.Sparks => "Complete 5 levels",
-                TrailEffect.Frost  => "Complete 10 levels",
-                TrailEffect.Fire   => "Complete 20 levels",
-                TrailEffect.Glitch => "Complete 50 levels + all achievements",
+                TrailEffect.Sparks => "Campaign: Bronze Age (Epoch 1)",
+                TrailEffect.Frost  => "Campaign: Medieval (Epoch 3)",
+                TrailEffect.Fire   => "Campaign: Industrial (Epoch 5)",
+                TrailEffect.Glitch => "Campaign: Complete all 10 epochs",
                 _ => ""
             };
         }
@@ -336,7 +343,7 @@ namespace EpochBreaker.Gameplay
             return frame switch
             {
                 ProfileFrame.None   => "Always available",
-                ProfileFrame.Bronze => "Complete all 10 epochs",
+                ProfileFrame.Bronze => "Campaign: Complete all 10 epochs",
                 ProfileFrame.Silver => "Streak of 10+",
                 ProfileFrame.Gold   => "Streak of 25+",
                 _ => ""

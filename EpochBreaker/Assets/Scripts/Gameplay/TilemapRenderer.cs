@@ -46,6 +46,7 @@ namespace EpochBreaker.Gameplay
             BuildTileAssets();
             CreateGrid();
             PopulateTilemaps();
+            TintRelicTiles();
         }
 
         public void Clear()
@@ -405,6 +406,32 @@ namespace EpochBreaker.Gameplay
                     {
                         GroundTilemap.SetTile(cell, tile);
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Apply a gold/amber tint to relic tiles so players can identify them visually.
+        /// Uses Tilemap.SetColor — a per-cell color multiplier on the existing tile.
+        /// Auto-clears when the tile is destroyed (SetTile null).
+        /// </summary>
+        private void TintRelicTiles()
+        {
+            if (DestructibleTilemap == null || _levelData == null) return;
+
+            int width = _levelData.Layout.WidthTiles;
+            int height = _levelData.Layout.HeightTiles;
+            var relicTint = new Color(1f, 0.85f, 0.4f, 1f);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int idx = y * width + x;
+                    if (!_levelData.Layout.Destructibles[idx].IsRelic) continue;
+
+                    var cell = LevelToCell(x, y);
+                    DestructibleTilemap.SetColor(cell, relicTint);
                 }
             }
         }

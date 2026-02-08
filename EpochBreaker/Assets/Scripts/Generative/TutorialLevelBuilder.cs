@@ -79,11 +79,11 @@ namespace EpochBreaker.Generative
             for (int gx = 54; gx <= 56; gx++)
                 ClearColumn(tiles, collision, width, gx);
 
-            // Goal position
+            // Exit portal position
             int startX = 2;
             int startY = GROUND_Y - 1;
-            int goalX = width - 4;
-            int goalY = GROUND_Y - 1;
+            int exitPortalX = width - 4;
+            int exitPortalY = GROUND_Y - 1;
 
             // Rewards: coins along the path as breadcrumbs
             var rewards = new List<RewardData>();
@@ -115,8 +115,8 @@ namespace EpochBreaker.Generative
                     HeightTiles = HEIGHT,
                     StartX = startX,
                     StartY = startY,
-                    GoalX = goalX,
-                    GoalY = goalY,
+                    ExitPortalX = exitPortalX,
+                    ExitPortalY = exitPortalY,
                     Tiles = tiles,
                     Collision = collision,
                     Destructibles = destructibles,
@@ -199,8 +199,8 @@ namespace EpochBreaker.Generative
 
             int startX = 2;
             int startY = GROUND_Y - 1;
-            int goalX = width - 4;
-            int goalY = GROUND_Y - 1;
+            int exitPortalX = width - 4;
+            int exitPortalY = GROUND_Y - 1;
 
             // Enemies: 3 stationary turrets (easy targets)
             var enemies = new List<EnemyData>
@@ -254,8 +254,8 @@ namespace EpochBreaker.Generative
                     HeightTiles = HEIGHT,
                     StartX = startX,
                     StartY = startY,
-                    GoalX = goalX,
-                    GoalY = goalY,
+                    ExitPortalX = exitPortalX,
+                    ExitPortalY = exitPortalY,
                     Tiles = tiles,
                     Collision = collision,
                     Destructibles = destructibles,
@@ -342,8 +342,8 @@ namespace EpochBreaker.Generative
 
             int startX = 2;
             int startY = GROUND_Y - 1;
-            int goalX = width - 4;
-            int goalY = GROUND_Y - 1;
+            int exitPortalX = width - 4;
+            int exitPortalY = GROUND_Y - 1;
 
             // Enemies: 5 mixed types
             var enemies = new List<EnemyData>
@@ -411,8 +411,8 @@ namespace EpochBreaker.Generative
                     HeightTiles = HEIGHT,
                     StartX = startX,
                     StartY = startY,
-                    GoalX = goalX,
-                    GoalY = goalY,
+                    ExitPortalX = exitPortalX,
+                    ExitPortalY = exitPortalY,
                     Tiles = tiles,
                     Collision = collision,
                     Destructibles = destructibles,

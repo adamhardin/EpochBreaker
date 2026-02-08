@@ -149,7 +149,7 @@ namespace EpochBreaker.Gameplay
             // Attack
             if (Keyboard.current != null)
             {
-                if (Keyboard.current.xKey.wasPressedThisFrame ||
+                if (Keyboard.current.rKey.wasPressedThisFrame ||
                     Keyboard.current.jKey.wasPressedThisFrame)
                     AttackPressed = true;
             }

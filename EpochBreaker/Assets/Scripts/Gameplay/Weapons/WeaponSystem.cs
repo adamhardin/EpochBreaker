@@ -32,6 +32,7 @@ namespace EpochBreaker.Gameplay
         private int _nearbyEnemyCount;
         private bool _bossInRange;
         private bool _enemiesInCorridor; // 2+ enemies roughly in a horizontal line
+        private bool _isUnarmed; // Player chose to holster all weapons
 
         // Backward-compatible properties
         public WeaponTier CurrentTier => _slots[_activeSlot].Tier;
@@ -40,8 +41,12 @@ namespace EpochBreaker.Gameplay
         public WeaponSlotData[] Slots => _slots;
         public HeatSystem Heat => _heatSystem;
         public bool IsQuickDrawActive => _quickDrawTimer > 0f;
+        public bool IsUnarmed => _isUnarmed;
         public string LastAutoSelectReason { get; private set; } = "";
         public float AutoSelectReasonTimer { get; private set; }
+
+        /// <summary>Fired when an already-acquired weapon is upgraded to a higher tier.</summary>
+        public static event System.Action<WeaponType, WeaponTier> OnWeaponUpgraded;
 
         /// <summary>Number of distinct weapon types the player has collected.</summary>
         public int AcquiredWeaponCount
@@ -114,7 +119,7 @@ namespace EpochBreaker.Gameplay
 
             // Limited auto-select when not in manual override
             // Only picks Bolt, Piercer (corridor), or Cannon (boss)
-            if (!_manualOverride)
+            if (!_manualOverride && !_isUnarmed)
             {
                 int prevSlot = _activeSlot;
                 int bestSlot = (int)SelectBestWeapon();
@@ -133,7 +138,7 @@ namespace EpochBreaker.Gameplay
                     AutoSelectReasonTimer = 2f;
                 }
             }
-            else
+            else if (_manualOverride && !_isUnarmed)
             {
                 // Overheat safety: auto-switch to Bolt if Cannon overheats
                 if (ActiveWeaponType == WeaponType.Cannon && _heatSystem.IsOverheated)
@@ -142,6 +147,9 @@ namespace EpochBreaker.Gameplay
                     _manualOverride = false;
                 }
             }
+
+            // Skip firing when unarmed
+            if (_isUnarmed) return;
 
             // Get stats for active weapon
             var stats = WeaponDatabase.GetStats(ActiveWeaponType, ActiveWeaponTier);
@@ -171,10 +179,11 @@ namespace EpochBreaker.Gameplay
             if (InputManager.AttackPressed)
             {
                 int prevSlot = _activeSlot;
+                bool wasUnarmed = _isUnarmed;
                 CycleToNextWeapon();
                 _manualOverride = true;
-                // Only grant Quick Draw if weapon actually changed
-                if (_activeSlot != prevSlot)
+                // Grant Quick Draw on any weapon change (including arming from unarmed)
+                if (!_isUnarmed && (_activeSlot != prevSlot || wasUnarmed))
                     _quickDrawTimer = QUICK_DRAW_DURATION;
             }
         }
@@ -190,8 +199,11 @@ namespace EpochBreaker.Gameplay
 
             if (!_slots[slot].Acquired || tier > _slots[slot].Tier)
             {
+                bool isUpgrade = _slots[slot].Acquired && tier > _slots[slot].Tier;
                 _slots[slot].Acquired = true;
                 _slots[slot].Tier = tier;
+                if (isUpgrade)
+                    OnWeaponUpgraded?.Invoke(type, tier);
             }
         }
 
@@ -208,17 +220,41 @@ namespace EpochBreaker.Gameplay
 
         private void CycleToNextWeapon()
         {
-            int startSlot = _activeSlot;
-            for (int i = 1; i <= SLOT_COUNT; i++)
+            if (_isUnarmed)
             {
-                int slot = (startSlot + i) % SLOT_COUNT;
-                if (slot == (int)WeaponType.Slower) continue; // Skip deprecated Slower
+                // From unarmed → first acquired weapon
+                for (int i = 0; i < SLOT_COUNT; i++)
+                {
+                    if (i == (int)WeaponType.Slower) continue;
+                    if (_slots[i].Acquired)
+                    {
+                        _activeSlot = i;
+                        _isUnarmed = false;
+                        return;
+                    }
+                }
+                return; // No weapons at all
+            }
+
+            // From current weapon → next acquired weapon in order, or unarmed
+            for (int i = 1; i < SLOT_COUNT; i++)
+            {
+                int slot = (_activeSlot + i) % SLOT_COUNT;
+                if (slot == (int)WeaponType.Slower) continue;
                 if (_slots[slot].Acquired)
                 {
+                    if (slot <= _activeSlot)
+                    {
+                        // Would wrap back to earlier slot — go unarmed instead
+                        _isUnarmed = true;
+                        return;
+                    }
                     _activeSlot = slot;
                     return;
                 }
             }
+            // No other weapons found — go unarmed
+            _isUnarmed = true;
         }
 
         /// <summary>
@@ -377,8 +413,8 @@ namespace EpochBreaker.Gameplay
             };
             projGO.transform.localScale = new Vector3(projScale, projScale, 1f);
 
-            // Color tint per weapon type
-            sr.color = GetWeaponColor(ActiveWeaponType);
+            // Color tint per weapon type, brightened by tier
+            sr.color = ApplyTierTint(GetWeaponColor(ActiveWeaponType), ActiveWeaponTier);
 
             var col = projGO.GetComponent<CircleCollider2D>();
             col.radius = 0.15f;
@@ -404,6 +440,16 @@ namespace EpochBreaker.Gameplay
                 WeaponType.Chainer => new Color(0.5f, 0.8f, 1f),     // Electric blue
                 WeaponType.Cannon => new Color(1f, 0.3f, 0.2f),      // Red
                 _ => Color.white
+            };
+        }
+
+        private static Color ApplyTierTint(Color baseColor, WeaponTier tier)
+        {
+            return tier switch
+            {
+                WeaponTier.Medium => Color.Lerp(baseColor, Color.white, 0.2f),
+                WeaponTier.Heavy => Color.Lerp(baseColor, Color.white, 0.35f),
+                _ => baseColor
             };
         }
 

@@ -80,6 +80,7 @@ namespace EpochBreaker.Gameplay
 
         // Limit concurrent SFX to prevent audio overload / high-pitched artifacts
         private const int MAX_CONCURRENT_SFX = 3;
+        private const int MAX_CONCURRENT_WEAPONS = 2; // H7 squeal mitigation: cap weapon pool overlap
 
         private void Awake()
         {
@@ -129,6 +130,7 @@ namespace EpochBreaker.Gameplay
             {
                 var lpf = gameObject.AddComponent<AudioLowPassFilter>();
                 lpf.cutoffFrequency = 3000f;
+                lpf.lowpassResonanceQ = 0.5f; // Reduce resonant peak near cutoff (H2 squeal mitigation)
             }
             catch (System.Exception)
             {
@@ -172,6 +174,14 @@ namespace EpochBreaker.Gameplay
                 now - last < MIN_REPEAT_INTERVAL)
                 return;
             Instance._lastPlayTime[clipId] = now;
+
+            // Limit concurrent weapon sounds to prevent harmonic stacking during rapid fire
+            int weaponPlaying = 0;
+            for (int i = 0; i < WEAPON_POOL_SIZE; i++)
+            {
+                if (Instance._weaponSources[i].isPlaying) weaponPlaying++;
+            }
+            if (weaponPlaying >= MAX_CONCURRENT_WEAPONS) return;
 
             // Use dedicated weapon pool — never starved by boss/environment SFX
             var src = Instance._weaponSources[Instance._weaponIndex];

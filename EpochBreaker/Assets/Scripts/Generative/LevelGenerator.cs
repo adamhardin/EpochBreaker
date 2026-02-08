@@ -169,7 +169,7 @@ namespace EpochBreaker.Generative
             GenerateTerrain(data, id.Epoch, rng);
 
             // ---- Stage 2b: Ensure Walkable Path ----
-            // Critical: guarantee a passable corridor from start to goal
+            // Critical: guarantee a passable corridor from start to exit portal
             EnsureWalkablePath(data);
 
             // Set start position (Intro zone - unaffected by boss arena)
@@ -192,11 +192,11 @@ namespace EpochBreaker.Generative
             // ---- Stage 6: Boss Arena ----
             GenerateBossArena(data, id.Epoch, intensity, rng);
 
-            // Set goal position AFTER boss arena generation, since the arena
+            // Set exit portal position AFTER boss arena generation, since the arena
             // flattens terrain at the end of the level and changes ground level
-            data.Layout.GoalX = width - 3;
-            data.Layout.GoalY = FindGroundLevel(data, width - 3) - 1;
-            if (data.Layout.GoalY < 0) data.Layout.GoalY = 1;
+            data.Layout.ExitPortalX = width - 3;
+            data.Layout.ExitPortalY = FindGroundLevel(data, width - 3) - 1;
+            if (data.Layout.ExitPortalY < 0) data.Layout.ExitPortalY = 1;
 
             // Place checkpoints
             PlaceCheckpoints(data);
@@ -617,7 +617,7 @@ namespace EpochBreaker.Generative
         }
 
         /// <summary>
-        /// Ensure a walkable path exists from start to goal at ground level.
+        /// Ensure a walkable path exists from start to exit portal at ground level.
         /// This is a critical post-processing step that guarantees level completability.
         /// It clears obstacles and softens hard materials in a 3-tile high corridor.
         ///
@@ -701,7 +701,7 @@ namespace EpochBreaker.Generative
                 prevGroundY = currentGroundY;
             }
 
-            // PASS 3: Ensure start and goal areas are fully clear
+            // PASS 3: Ensure start and exit portal areas are fully clear
             // Clear extra wide corridor at spawn point
             int startX = data.Layout.StartX;
             int startGroundY = FindGroundLevel(data, startX);
@@ -715,12 +715,12 @@ namespace EpochBreaker.Generative
                 }
             }
 
-            // Clear extra wide corridor at goal
-            int goalX = data.Layout.GoalX;
-            int goalGroundY = FindGroundLevel(data, goalX);
+            // Clear extra wide corridor at exit portal
+            int exitPortalX = data.Layout.ExitPortalX;
+            int exitPortalGroundY = FindGroundLevel(data, exitPortalX);
             for (int dx = -2; dx <= 2; dx++)
             {
-                int x = goalX + dx;
+                int x = exitPortalX + dx;
                 if (x >= 0 && x < width)
                 {
                     int groundY = FindGroundLevel(data, x);

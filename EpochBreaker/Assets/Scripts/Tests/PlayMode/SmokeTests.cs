@@ -185,8 +185,8 @@ namespace EpochBreaker.Tests.PlayMode
             Assert.AreEqual(GameState.LevelComplete, gm.CurrentState);
         }
 
-        // ── Test 7: Ghost replay path ──
-        [Test]
+        // ── Test 7: Ghost replay path (disabled Build 036 — ghost replay off for audio debugging) ──
+        [Test, Ignore("Ghost replay disabled for Build 036 audio debugging")]
         public void GhostReplay_ThenNormalPlay_NoStateCorruption()
         {
             var gm = GameManager.Instance;

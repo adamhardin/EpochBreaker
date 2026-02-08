@@ -280,8 +280,8 @@ namespace EpochBreaker.Gameplay
                 {
                     bool isMobile = Application.isMobilePlatform;
                     string hint = isMobile
-                        ? "Tap X to cycle weapons for a Quick Draw boost!"
-                        : "Press X to cycle weapons for a Quick Draw boost!";
+                        ? "Tap R to cycle weapons for a Quick Draw boost!"
+                        : "Press R to cycle weapons for a Quick Draw boost!";
                     ShowGameplayHint(hint);
                     _weaponCycleHintShown = true;
                 }
