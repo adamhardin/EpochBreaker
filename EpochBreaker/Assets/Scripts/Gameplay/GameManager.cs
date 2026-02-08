@@ -843,6 +843,8 @@ namespace EpochBreaker.Gameplay
             ObjectPool.ReturnAll();
             Projectile.ClearCachedRefs();
             EnemyBase.ClearRegistry();
+            PlaceholderAssets.ClearCache();
+            PlaceholderAudio.ClearCache();
 
             // Don't count tutorial levels toward the level counter
             if (TutorialManager.Instance == null || !TutorialManager.Instance.IsTutorialActive)

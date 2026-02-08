@@ -16,6 +16,20 @@ namespace EpochBreaker.Gameplay
         private const float PPU = 256f;
         private const int SCALE = TILE_PX / 64;
 
+        public static void ClearCache()
+        {
+            foreach (var sprite in _cache.Values)
+            {
+                if (sprite != null)
+                {
+                    var tex = sprite.texture;
+                    Object.Destroy(sprite);
+                    if (tex != null) Object.Destroy(tex);
+                }
+            }
+            _cache.Clear();
+        }
+
         #region Helpers
 
         private static void SetRect(Color[] px, int texW, int x0, int y0, int w, int h, Color c)

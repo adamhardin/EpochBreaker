@@ -14,6 +14,13 @@ namespace EpochBreaker.Gameplay
         private const int SAMPLE_RATE = 44100;
         private static readonly Dictionary<string, AudioClip> _cache = new Dictionary<string, AudioClip>();
 
+        public static void ClearCache()
+        {
+            foreach (var clip in _cache.Values)
+                if (clip != null) Object.Destroy(clip);
+            _cache.Clear();
+        }
+
         // ─── Waveform Types ───
 
         private enum Wave { Square, Triangle, Sawtooth, Noise }
