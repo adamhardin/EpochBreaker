@@ -1,7 +1,7 @@
 # Epoch Breaker — Development Roadmap
 
 **Created**: 2026-02-06 | **Updated**: 2026-02-07
-**Starting from**: v0.6.0 build 012 | **Current**: v1.0.0 build 024
+**Starting from**: v0.6.0 build 012 | **Current**: v1.0.2 build 026
 
 > **Platform note (2026-02-06):** Mobile (iOS) is deprioritized. There is no way to test
 > or prepare for mobile at this time. All development targets **Unity Editor** and

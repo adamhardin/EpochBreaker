@@ -127,7 +127,7 @@ namespace EpochBreaker.Gameplay
             // filter handles it offline instead
             #if !UNITY_WEBGL
             var lpf = gameObject.AddComponent<AudioLowPassFilter>();
-            lpf.cutoffFrequency = 2500f;
+            lpf.cutoffFrequency = 2000f;
             #endif
         }
 

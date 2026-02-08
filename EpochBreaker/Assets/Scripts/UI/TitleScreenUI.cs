@@ -35,6 +35,20 @@ namespace EpochBreaker.UI
         private InputField _codeInputField;
         private Text _codeErrorText;
         private GameObject _confirmNewGamePanel;
+        private GameObject _devPanel;
+        private bool _godModeEnabled;
+        private GameObject _godModeCheckmark;
+
+        // ── Layout Constants ──
+        // Ornate frame border is 32px at 960×540 (PPU 0.5) → ~64px at 1920×1080 ref.
+        // FRAME_INSET is the safe margin from screen edges to avoid overlapping the frame.
+        private const float FRAME_INSET = 72f;
+        private const float ITEM_SPACING = 55f;       // Standard gap between menu items
+        private const float SECTION_GAP = 70f;         // Larger gap between distinct sections
+        private const float BTN_HEIGHT = 48f;           // Standard menu button height
+        private const float SMALL_BTN_H = 36f;          // Small/secondary button height
+        private const float DEV_BTN_W = 80f;
+        private const float DEV_BTN_H = 36f;
 
         private static readonly string[] EpochNames = {
             "Stone Age", "Bronze Age", "Classical", "Medieval", "Renaissance",
@@ -113,6 +127,8 @@ namespace EpochBreaker.UI
                     _difficultySubPanel.SetActive(false);
                     _settingsMenuContent.SetActive(true);
                 }
+                else if (_devPanel != null && _devPanel.activeSelf)
+                    _devPanel.SetActive(false);
                 else if (_settingsPanel != null && _settingsPanel.activeSelf)
                     _settingsPanel.SetActive(false);
                 else if (_levelSelectorPanel != null && _levelSelectorPanel.activeSelf)
@@ -223,6 +239,9 @@ namespace EpochBreaker.UI
 
             // Level history overlay (initially hidden)
             CreateLevelHistoryOverlay(canvasGO.transform);
+
+            // Dev menu (top-left button + panel)
+            CreateDevMenu(canvasGO.transform);
         }
 
         private void RebuildUI()
@@ -233,6 +252,8 @@ namespace EpochBreaker.UI
             _challengeEntryObj = null;
             _cosmeticsObj = null;
             _confirmNewGamePanel = null;
+            _devPanel = null;
+            _godModeCheckmark = null;
             CreateUI();
         }
 
@@ -1040,25 +1061,27 @@ namespace EpochBreaker.UI
                     _settingsPanel.SetActive(false);
                 });
 
-            // Audio button
-            CreateMenuButton(_settingsMenuContent.transform, "AUDIO", new Vector2(0, 160),
-                new Vector2(300, 48), new Color(0.3f, 0.4f, 0.55f), () => {
-                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    _settingsMenuContent.SetActive(false);
-                    _audioSubPanel.SetActive(true);
-                });
+            // Settings items — y-accumulator with consistent spacing
+            float sy = 160f; // First item below title (240 - 80 = 160)
 
-            // About button
-            CreateMenuButton(_settingsMenuContent.transform, "ABOUT", new Vector2(0, 105),
-                new Vector2(300, 48), new Color(0.35f, 0.40f, 0.45f), () => {
+            CreateMenuButton(_settingsMenuContent.transform, "ABOUT", new Vector2(0, sy),
+                new Vector2(300, BTN_HEIGHT), new Color(0.35f, 0.40f, 0.45f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _aboutSubPanel.SetActive(true);
                 });
 
-            // Level History button
-            CreateMenuButton(_settingsMenuContent.transform, "LEVEL HISTORY", new Vector2(0, 50),
-                new Vector2(300, 48), new Color(0.35f, 0.45f, 0.55f), () => {
+            sy -= ITEM_SPACING;
+            CreateMenuButton(_settingsMenuContent.transform, "DIFFICULTY", new Vector2(0, sy),
+                new Vector2(300, BTN_HEIGHT), new Color(0.5f, 0.35f, 0.35f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _difficultySubPanel.SetActive(true);
+                });
+
+            sy -= ITEM_SPACING;
+            CreateMenuButton(_settingsMenuContent.transform, "LEVEL HISTORY", new Vector2(0, sy),
+                new Vector2(300, BTN_HEIGHT), new Color(0.35f, 0.45f, 0.55f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsPanel.SetActive(false);
                     if (_levelHistoryPanel != null)
@@ -1068,62 +1091,53 @@ namespace EpochBreaker.UI
                     }
                 });
 
-            // Accessibility button
-            CreateMenuButton(_settingsMenuContent.transform, "ACCESSIBILITY", new Vector2(0, -5),
-                new Vector2(300, 48), new Color(0.3f, 0.45f, 0.5f), () => {
+            sy -= ITEM_SPACING;
+            CreateMenuButton(_settingsMenuContent.transform, "AUDIO", new Vector2(0, sy),
+                new Vector2(300, BTN_HEIGHT), new Color(0.3f, 0.4f, 0.55f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _settingsMenuContent.SetActive(false);
+                    _audioSubPanel.SetActive(true);
+                });
+
+            sy -= ITEM_SPACING;
+            CreateMenuButton(_settingsMenuContent.transform, "ACCESSIBILITY", new Vector2(0, sy),
+                new Vector2(300, BTN_HEIGHT), new Color(0.3f, 0.45f, 0.5f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _accessibilitySubPanel.SetActive(true);
                 });
 
-            // Difficulty button
-            CreateMenuButton(_settingsMenuContent.transform, "DIFFICULTY", new Vector2(0, -60),
-                new Vector2(300, 48), new Color(0.5f, 0.35f, 0.35f), () => {
-                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    _settingsMenuContent.SetActive(false);
-                    _difficultySubPanel.SetActive(true);
-                });
+            // Randomize toggle (has description text below — needs extra gap after)
+            sy -= ITEM_SPACING + 5f;
+            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, sy));
 
-            // Level Select [DEV] button
-            CreateMenuButton(_settingsMenuContent.transform, "LEVEL SELECT [DEV]", new Vector2(0, -115),
-                new Vector2(300, 42), new Color(0.4f, 0.35f, 0.5f), () => {
-                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    _settingsPanel.SetActive(false);
-                    if (_levelSelectorPanel != null)
-                        _levelSelectorPanel.SetActive(true);
-                });
-
-            // Randomize toggle
-            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, -165));
-
-            // Tutorial buttons
+            // Tutorial buttons (extra gap to clear Randomize description text)
+            sy -= SECTION_GAP + 5f;
             bool tutDone = Gameplay.TutorialManager.IsTutorialCompleted();
 
-            // Replay tutorial — resets flag and immediately starts game in tutorial mode
-            CreateMenuButton(_settingsMenuContent.transform, "REPLAY TUTORIAL", new Vector2(140, -210),
-                new Vector2(150, 36), new Color(0.35f, 0.45f, 0.4f), () => {
+            CreateMenuButton(_settingsMenuContent.transform, "REPLAY TUTORIAL", new Vector2(140, sy),
+                new Vector2(150, SMALL_BTN_H), new Color(0.35f, 0.45f, 0.4f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     Gameplay.TutorialManager.ResetTutorial();
                     _settingsPanel.SetActive(false);
                     GameManager.Instance?.StartGame();
                 });
 
-            // Skip tutorial — only shown if tutorial hasn't been completed
             if (!tutDone)
             {
-                CreateMenuButton(_settingsMenuContent.transform, "SKIP TUTORIAL", new Vector2(-80, -210),
-                    new Vector2(150, 36), new Color(0.45f, 0.35f, 0.35f), () => {
+                CreateMenuButton(_settingsMenuContent.transform, "SKIP TUTORIAL", new Vector2(-80, sy),
+                    new Vector2(150, SMALL_BTN_H), new Color(0.45f, 0.35f, 0.35f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         Gameplay.TutorialManager.SetTutorialCompleted();
                         _settingsPanel.SetActive(false);
                     });
             }
 
-            // Escape hint
+            sy -= ITEM_SPACING;
             var escGO = CreateText(_settingsMenuContent.transform, "Press Esc/` to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
-            escRect.anchoredPosition = new Vector2(0, -258f);
+            escRect.anchoredPosition = new Vector2(0, sy);
 
             // ── Audio sub-panel ──
             _audioSubPanel = new GameObject("AudioSubPanel");
@@ -1896,6 +1910,284 @@ namespace EpochBreaker.UI
             );
             return new Color(baseColor.r * 0.5f, baseColor.g * 0.5f, baseColor.b * 0.5f, 1f);
         }
+
+        // =====================================================================
+        // Dev Menu
+        // =====================================================================
+
+        private void CreateDevMenu(Transform parent)
+        {
+            // DEV button — top-left, positioned inside the ornate frame safe area
+            var btnGO = new GameObject("DevButton");
+            btnGO.transform.SetParent(parent, false);
+
+            var btnImg = btnGO.AddComponent<Image>();
+            btnImg.color = new Color(0.4f, 0.3f, 0.5f);
+
+            var btn = btnGO.AddComponent<Button>();
+            btn.targetGraphic = btnImg;
+            btn.onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                if (_devPanel != null)
+                    _devPanel.SetActive(!_devPanel.activeSelf);
+            });
+
+            var colors = btn.colors;
+            colors.normalColor = btnImg.color;
+            colors.highlightedColor = new Color(0.55f, 0.45f, 0.65f);
+            colors.pressedColor = new Color(0.3f, 0.2f, 0.35f);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
+            var btnRect = btnGO.GetComponent<RectTransform>();
+            btnRect.anchorMin = new Vector2(0, 1);
+            btnRect.anchorMax = new Vector2(0, 1);
+            btnRect.pivot = new Vector2(0, 1);
+            btnRect.sizeDelta = new Vector2(DEV_BTN_W, DEV_BTN_H);
+            btnRect.anchoredPosition = new Vector2(FRAME_INSET, -FRAME_INSET);
+
+            // DEV label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(btnGO.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite("DEV", Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.sizeDelta = new Vector2(64, 24);
+            labelRect.anchoredPosition = Vector2.zero;
+
+            // Dev panel (initially hidden)
+            CreateDevPanel(parent);
+        }
+
+        private void CreateDevPanel(Transform parent)
+        {
+            // Panel positioned below the DEV button, inside frame safe area
+            float panelTop = FRAME_INSET + DEV_BTN_H + 6f;
+            float panelW = 340f;
+
+            _devPanel = new GameObject("DevPanel");
+            _devPanel.transform.SetParent(parent, false);
+            _devPanel.SetActive(false);
+
+            var panelImg = _devPanel.AddComponent<Image>();
+            panelImg.color = new Color(0.1f, 0.08f, 0.15f, 0.95f);
+
+            var panelRect = _devPanel.GetComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0, 1);
+            panelRect.anchorMax = new Vector2(0, 1);
+            panelRect.pivot = new Vector2(0, 1);
+            panelRect.anchoredPosition = new Vector2(FRAME_INSET, -panelTop);
+
+            // Y-accumulator for panel contents (relative to panel top)
+            float dy = -20f;
+
+            // Title
+            var titleGO = CreateText(_devPanel.transform, "DEVELOPMENT", 20, new Color(1f, 0.85f, 0.1f));
+            var titleRect = titleGO.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0.5f, 1);
+            titleRect.anchorMax = new Vector2(0.5f, 1);
+            titleRect.anchoredPosition = new Vector2(0, dy);
+
+            // Close button (X) top-right
+            var closeGO = new GameObject("CloseBtn");
+            closeGO.transform.SetParent(_devPanel.transform, false);
+            var closeImg = closeGO.AddComponent<Image>();
+            closeImg.color = new Color(0.6f, 0.25f, 0.25f);
+            var closeBtn = closeGO.AddComponent<Button>();
+            closeBtn.targetGraphic = closeImg;
+            closeBtn.onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                _devPanel.SetActive(false);
+            });
+            var closeRect = closeGO.GetComponent<RectTransform>();
+            closeRect.anchorMin = new Vector2(1, 1);
+            closeRect.anchorMax = new Vector2(1, 1);
+            closeRect.pivot = new Vector2(1, 1);
+            closeRect.sizeDelta = new Vector2(30, 30);
+            closeRect.anchoredPosition = new Vector2(-8, -8);
+
+            var xLabel = CreateText(closeGO.transform, "X", 16, Color.white);
+            var xRect = xLabel.GetComponent<RectTransform>();
+            xRect.anchoredPosition = Vector2.zero;
+
+            dy -= 44f; // Below title
+
+            // ── GOD MODE toggle ──
+            var godRow = new GameObject("GodModeRow");
+            godRow.transform.SetParent(_devPanel.transform, false);
+            var godRowRect = godRow.AddComponent<RectTransform>();
+            godRowRect.anchorMin = new Vector2(0, 1);
+            godRowRect.anchorMax = new Vector2(1, 1);
+            godRowRect.pivot = new Vector2(0.5f, 1);
+            godRowRect.sizeDelta = new Vector2(0, 36);
+            godRowRect.anchoredPosition = new Vector2(0, dy);
+
+            // Checkbox background
+            var checkBG = new GameObject("CheckBG");
+            checkBG.transform.SetParent(godRow.transform, false);
+            var checkBGImg = checkBG.AddComponent<Image>();
+            checkBGImg.color = new Color(0.2f, 0.18f, 0.25f);
+            var checkBGRect = checkBG.GetComponent<RectTransform>();
+            checkBGRect.anchorMin = new Vector2(0, 0.5f);
+            checkBGRect.anchorMax = new Vector2(0, 0.5f);
+            checkBGRect.pivot = new Vector2(0, 0.5f);
+            checkBGRect.sizeDelta = new Vector2(28, 28);
+            checkBGRect.anchoredPosition = new Vector2(16, 0);
+
+            // Checkmark (hidden by default)
+            _godModeCheckmark = new GameObject("Checkmark");
+            _godModeCheckmark.transform.SetParent(checkBG.transform, false);
+            var checkImg = _godModeCheckmark.AddComponent<Image>();
+            checkImg.color = new Color(0.3f, 1f, 0.4f);
+            var checkRect = _godModeCheckmark.GetComponent<RectTransform>();
+            checkRect.anchorMin = new Vector2(0.15f, 0.15f);
+            checkRect.anchorMax = new Vector2(0.85f, 0.85f);
+            checkRect.sizeDelta = Vector2.zero;
+            _godModeCheckmark.SetActive(false);
+
+            // Clickable area over checkbox + label
+            var godBtn = godRow.AddComponent<Button>();
+            var godBtnImg = godRow.AddComponent<Image>();
+            godBtnImg.color = Color.clear;
+            godBtn.targetGraphic = godBtnImg;
+            godBtn.onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                ToggleGodMode();
+            });
+
+            // GOD MODE label
+            var godLabel = CreateText(godRow.transform, "GOD MODE", 17, Color.white);
+            var godLabelRect = godLabel.GetComponent<RectTransform>();
+            godLabelRect.anchorMin = new Vector2(0, 0.5f);
+            godLabelRect.anchorMax = new Vector2(1, 0.5f);
+            godLabelRect.pivot = new Vector2(0, 0.5f);
+            godLabelRect.anchoredPosition = new Vector2(54, 0);
+            godLabelRect.sizeDelta = new Vector2(200, 28);
+            godLabel.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
+
+            dy -= ITEM_SPACING;
+
+            // ── EPOCH SELECTOR button ──
+            var devBtnW = panelW - 40f; // Inset from panel edges
+            CreateDevPanelButton(_devPanel.transform, "EPOCH SELECTOR", dy,
+                devBtnW, new Color(0.35f, 0.4f, 0.5f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _devPanel.SetActive(false);
+                    if (_levelSelectorPanel != null)
+                        _levelSelectorPanel.SetActive(true);
+                });
+
+            dy -= ITEM_SPACING;
+
+            // ── SHOW LEVEL COMPLETE button ──
+            CreateDevPanelButton(_devPanel.transform, "SHOW LEVEL COMPLETE", dy,
+                devBtnW, new Color(0.35f, 0.5f, 0.35f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _devPanel.SetActive(false);
+                    GameManager.Instance?.PreviewLevelComplete();
+                });
+
+            dy -= ITEM_SPACING;
+
+            // ── SHOW CELEBRATION button ──
+            CreateDevPanelButton(_devPanel.transform, "SHOW CELEBRATION", dy,
+                devBtnW, new Color(0.5f, 0.4f, 0.2f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    _devPanel.SetActive(false);
+                    GameManager.Instance?.PreviewCelebration();
+                });
+
+            dy -= 40f;
+
+            // Escape hint
+            var hintGO = CreateText(_devPanel.transform, "Press Esc to close", 13, new Color(0.5f, 0.5f, 0.6f));
+            var hintRect = hintGO.GetComponent<RectTransform>();
+            hintRect.anchorMin = new Vector2(0.5f, 1);
+            hintRect.anchorMax = new Vector2(0.5f, 1);
+            hintRect.anchoredPosition = new Vector2(0, dy);
+
+            // Size panel to fit contents
+            float panelH = Mathf.Abs(dy) + 24f;
+            panelRect.sizeDelta = new Vector2(panelW, panelH);
+        }
+
+        /// <summary>
+        /// Helper: create a button anchored to the top of the dev panel at a given Y offset.
+        /// Avoids the re-anchoring boilerplate that CreateMenuButton needs (it defaults to center anchor).
+        /// </summary>
+        private void CreateDevPanelButton(Transform parent, string text, float yPos,
+            float width, Color bgColor, UnityEngine.Events.UnityAction onClick)
+        {
+            var go = new GameObject("DevBtn");
+            go.transform.SetParent(parent, false);
+
+            var img = go.AddComponent<Image>();
+            img.color = bgColor;
+
+            var btn = go.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(onClick);
+
+            var colors = btn.colors;
+            colors.normalColor = bgColor;
+            colors.highlightedColor = new Color(
+                Mathf.Min(1f, bgColor.r + 0.15f),
+                Mathf.Min(1f, bgColor.g + 0.15f),
+                Mathf.Min(1f, bgColor.b + 0.15f), bgColor.a);
+            colors.pressedColor = new Color(
+                bgColor.r * 0.7f, bgColor.g * 0.7f, bgColor.b * 0.7f, bgColor.a);
+            colors.selectedColor = colors.normalColor;
+            colors.fadeDuration = 0.1f;
+            btn.colors = colors;
+
+            var rect = go.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 1);
+            rect.anchorMax = new Vector2(0.5f, 1);
+            rect.pivot = new Vector2(0.5f, 1);
+            rect.sizeDelta = new Vector2(width, 42);
+            rect.anchoredPosition = new Vector2(0, yPos);
+
+            // Pixel text label
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(go.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.sizeDelta = new Vector2(width - 16, 30);
+            labelRect.anchoredPosition = Vector2.zero;
+        }
+
+        private void ToggleGodMode()
+        {
+            _godModeEnabled = !_godModeEnabled;
+            CosmeticManager.GodMode = _godModeEnabled;
+
+            // Update checkmark visual
+            if (_godModeCheckmark != null)
+                _godModeCheckmark.SetActive(_godModeEnabled);
+
+            if (_godModeEnabled)
+            {
+                // Unlock all achievements
+                AchievementManager.Instance?.UnlockAll();
+
+                // Set unlimited lives
+                GameManager.Instance?.SetUnlimitedLives();
+            }
+        }
+
+        // =====================================================================
+        // Helpers
+        // =====================================================================
 
         private GameObject CreatePanel(Transform parent, string name, Color color)
         {

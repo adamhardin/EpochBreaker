@@ -110,8 +110,8 @@ namespace EpochBreaker.Gameplay
         private static Sprite GenerateLayerSprite(int layer, int epoch, int variation)
         {
             // Generate a simple procedural background sprite per layer
-            int width = 640; // 10 tiles wide at PPU=64
-            int height = 256;
+            int width = 1280; // 10 tiles wide at PPU=128
+            int height = 512;
             var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
 
@@ -144,7 +144,7 @@ namespace EpochBreaker.Gameplay
             tex.SetPixels32(pixels);
             tex.Apply();
 
-            return Sprite.Create(tex, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 16f);
+            return Sprite.Create(tex, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), 32f);
         }
 
         private static void FillSkyGradient(Color32[] pixels, int w, int h, int epoch)
@@ -280,8 +280,8 @@ namespace EpochBreaker.Gameplay
                 for (int x = cx - bw; x <= cx + bw; x++)
                     if (x >= 0 && x < w) pixels[y * w + x] = color;
             // Capital (wider top)
-            for (int y = bh; y < bh + 6 && y < h; y++)
-                for (int x = cx - bw - 3; x <= cx + bw + 3; x++)
+            for (int y = bh; y < bh + 12 && y < h; y++)
+                for (int x = cx - bw - 6; x <= cx + bw + 6; x++)
                     if (x >= 0 && x < w) pixels[y * w + x] = color;
         }
 
@@ -293,7 +293,7 @@ namespace EpochBreaker.Gameplay
             for (int t = 0; t < 3; t++)
             {
                 int tx = cx - bw / 2 + t * toothW * 2;
-                for (int y = bh; y < bh + 8 && y < h; y++)
+                for (int y = bh; y < bh + 16 && y < h; y++)
                     for (int x = tx; x < tx + toothW && x < w; x++)
                         if (x >= 0) pixels[y * w + x] = color;
             }

@@ -454,6 +454,7 @@ namespace EpochBreaker.Gameplay
                 case GameState.TitleScreen:
                     Time.timeScale = 1f;
                     _levelLoader.CleanupLevel();
+                    AudioManager.StopAmbient();
                     AudioManager.PlayMusic(PlaceholderAudio.GetTitleMusic());
                     CreateTitleScreen();
                     break;
@@ -1539,6 +1540,42 @@ namespace EpochBreaker.Gameplay
             }
 
             TransitionTo(GameState.Loading);
+        }
+
+        /// <summary>
+        /// Set unlimited lives for God Mode (dev menu).
+        /// </summary>
+        public void SetUnlimitedLives()
+        {
+            GlobalLives = 999;
+            LivesRemaining = 999;
+        }
+
+        /// <summary>
+        /// Preview the Level Complete screen with dummy data (dev menu).
+        /// </summary>
+        public void PreviewLevelComplete()
+        {
+            Score = 12345;
+            TotalScore = 50000;
+            TimeScore = 3000;
+            ItemBonusScore = 2000;
+            EnemyBonusScore = 1500;
+            CombatMasteryScore = 2000;
+            ExplorationScore = 1845;
+            PreservationScore = 2000;
+            EnemiesKilled = 8;
+            CurrentEpoch = 3;
+            _levelCompleteTime = Time.unscaledTime;
+            TransitionTo(GameState.LevelComplete);
+        }
+
+        /// <summary>
+        /// Preview the Celebration screen (dev menu).
+        /// </summary>
+        public void PreviewCelebration()
+        {
+            TransitionTo(GameState.Celebration);
         }
 
         /// <summary>

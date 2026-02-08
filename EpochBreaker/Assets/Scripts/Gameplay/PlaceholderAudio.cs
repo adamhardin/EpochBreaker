@@ -86,13 +86,12 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakeClip(string name, float[] data)
         {
-            // 3-pass single-pole low-pass filter (-18 dB/octave effective rolloff)
-            // Cutoff ~2 kHz at 44100 Hz sample rate (alpha ≈ 0.22, applied 3x)
-            // Tighter than previous 0.35/2-pass to eliminate high-frequency squeals
-            // from sawtooth/square harmonics, especially on WebGL where the runtime
-            // AudioLowPassFilter is unavailable.
-            const float lpAlpha = 0.22f;
-            for (int pass = 0; pass < 3; pass++)
+            // 4-pass single-pole low-pass filter (-24 dB/octave effective rolloff)
+            // Cutoff ~1.6 kHz at 44100 Hz sample rate (alpha ≈ 0.18, applied 4x)
+            // Aggressively rolls off harsh upper harmonics from procedural waveforms,
+            // especially on WebGL where the runtime AudioLowPassFilter is unavailable.
+            const float lpAlpha = 0.18f;
+            for (int pass = 0; pass < 4; pass++)
             {
                 float prev = data[0];
                 for (int i = 1; i < data.Length; i++)
@@ -111,9 +110,12 @@ namespace EpochBreaker.Gameplay
             }
             if (peak > 0.001f)
             {
-                float gain = 0.28f / peak; // lower ceiling to reduce harshness
+                float gain = 0.20f / peak; // more headroom for simultaneous playback
                 for (int i = 0; i < data.Length; i++)
-                    data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
+                {
+                    float s = data[i] * gain;
+                    data[i] = s / (1f + Mathf.Abs(s)); // Soft saturation, asymptotes at ±1
+                }
             }
 
             var clip = AudioClip.Create(name, data.Length, 1, SAMPLE_RATE, false);
@@ -598,7 +600,7 @@ namespace EpochBreaker.Gameplay
                 foreach (float note in chord)
                 {
                     AddTone(buf, barStart, 4 * beat * 0.95f,
-                        note, note, Wave.Sawtooth, 0.04f, 0.05f, 0.1f);
+                        note, note, Wave.Triangle, 0.04f, 0.05f, 0.1f);
                 }
             }
 
@@ -632,7 +634,7 @@ namespace EpochBreaker.Gameplay
             }
             else if (epoch >= 6 && epoch <= 8)
             {
-                bpm = 140f; leadWave = Wave.Sawtooth; leadVol = 0.08f;
+                bpm = 140f; leadWave = Wave.Triangle; leadVol = 0.08f;
             }
             else if (epoch == 9)
             {
@@ -759,19 +761,19 @@ namespace EpochBreaker.Gameplay
             else if (epoch >= 6 && epoch <= 8)
             {
                 bpm = variant == 1 ? 135f : 148f;
-                leadWave = variant == 1 ? Wave.Square : Wave.Sawtooth;
+                leadWave = variant == 1 ? Wave.Square : Wave.Triangle;
                 leadVol = variant == 1 ? 0.09f : 0.07f;
             }
             else if (epoch == 9)
             {
                 bpm = variant == 1 ? 115f : 126f;
-                leadWave = variant == 1 ? Wave.Square : Wave.Sawtooth;
+                leadWave = variant == 1 ? Wave.Square : Wave.Triangle;
                 leadVol = 0.09f;
             }
             else // 3-5
             {
                 bpm = variant == 1 ? 122f : 136f;
-                leadWave = variant == 1 ? Wave.Sawtooth : Wave.Square;
+                leadWave = variant == 1 ? Wave.Triangle : Wave.Square;
                 leadVol = 0.1f;
             }
 
@@ -1025,7 +1027,7 @@ namespace EpochBreaker.Gameplay
             // Industrial: rhythmic clanking, steam, gears
             var buf = MakeBuffer(3.0f);
             // Steady mechanical hum
-            AddTone(buf, 0f, 3.0f, 60f, 62f, Wave.Sawtooth, 0.05f, 0.2f, 0.2f);
+            AddTone(buf, 0f, 3.0f, 60f, 62f, Wave.Triangle, 0.04f, 0.2f, 0.2f);
             // Rhythmic clank (every 0.5s)
             for (int i = 0; i < 6; i++)
             {
@@ -1043,7 +1045,7 @@ namespace EpochBreaker.Gameplay
         {
             // Urban: city hum, distant traffic
             var buf = MakeBuffer(3.0f);
-            AddTone(buf, 0f, 3.0f, 80f, 85f, Wave.Sawtooth, 0.04f, 0.3f, 0.3f);
+            AddTone(buf, 0f, 3.0f, 80f, 85f, Wave.Triangle, 0.03f, 0.3f, 0.3f);
             AddTone(buf, 0f, 3.0f, 120f, 125f, Wave.Triangle, 0.03f, 0.3f, 0.3f);
             // Distant traffic swooshes
             AddTone(buf, 0.3f, 0.8f, 200f, 100f, Wave.Noise, 0.03f, 0.1f, 0.3f);
@@ -1054,21 +1056,21 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakeDigitalAmbient(int epoch)
         {
-            // Digital: high-frequency hum, data processing sounds
+            // Digital: low hum with soft data-processing texture
             var buf = MakeBuffer(3.0f);
-            float baseHum = epoch == 7 ? 440f : 520f;
-            // High-frequency constant hum
-            AddTone(buf, 0f, 3.0f, baseHum, baseHum + 5f, Wave.Square, 0.02f, 0.3f, 0.3f);
-            AddTone(buf, 0f, 3.0f, baseHum * 1.5f, baseHum * 1.5f + 3f, Wave.Square, 0.01f, 0.3f, 0.3f);
-            // Data processing blips
+            float baseHum = epoch == 7 ? 220f : 260f;
+            // Soft triangle hum (not square — avoids harsh buzz)
+            AddTone(buf, 0f, 3.0f, baseHum, baseHum + 3f, Wave.Triangle, 0.015f, 0.3f, 0.3f);
+            AddTone(buf, 0f, 3.0f, baseHum * 0.5f, baseHum * 0.5f + 2f, Wave.Triangle, 0.01f, 0.3f, 0.3f);
+            // Data processing blips (triangle instead of square, lower volume)
             for (int i = 0; i < 8; i++)
             {
                 float t = i * 0.37f;
-                float freq = 800f + (i % 3) * 200f;
-                AddTone(buf, t, 0.03f, freq, freq, Wave.Square, 0.02f, 0.002f, 0.01f);
+                float freq = 600f + (i % 3) * 150f;
+                AddTone(buf, t, 0.03f, freq, freq, Wave.Triangle, 0.012f, 0.002f, 0.01f);
             }
             // Low digital drone
-            AddTone(buf, 0f, 3.0f, 100f, 102f, Wave.Sawtooth, 0.03f, 0.3f, 0.3f);
+            AddTone(buf, 0f, 3.0f, 100f, 102f, Wave.Triangle, 0.02f, 0.3f, 0.3f);
             ApplyLoopFade(buf);
             return MakeClip($"Ambient_Digital_{epoch}", buf);
         }
@@ -1082,8 +1084,8 @@ namespace EpochBreaker.Gameplay
             // Ethereal high tones
             AddTone(buf, 0f, 4.0f, 660f, 665f, Wave.Triangle, 0.02f, 0.5f, 0.5f);
             AddTone(buf, 0.5f, 3.0f, 880f, 878f, Wave.Triangle, 0.015f, 0.5f, 0.5f);
-            // Shimmer
-            AddTone(buf, 1.0f, 2.0f, 1320f, 1325f, Wave.Square, 0.008f, 0.3f, 0.5f);
+            // Shimmer (triangle to avoid harsh buzz)
+            AddTone(buf, 1.0f, 2.0f, 1320f, 1325f, Wave.Triangle, 0.008f, 0.3f, 0.5f);
             // Soft noise texture
             AddTone(buf, 0f, 4.0f, 200f, 180f, Wave.Noise, 0.015f, 0.5f, 0.5f);
             ApplyLoopFade(buf);
@@ -1121,7 +1123,7 @@ namespace EpochBreaker.Gameplay
         /// <summary>Crossfade edges for seamless looping (50ms fade in/out).</summary>
         private static void ApplyLoopFade(float[] buf)
         {
-            int fadeLen = (int)(0.05f * SAMPLE_RATE);
+            int fadeLen = (int)(0.10f * SAMPLE_RATE);
             fadeLen = Mathf.Min(fadeLen, buf.Length / 4);
             for (int i = 0; i < fadeLen; i++)
             {

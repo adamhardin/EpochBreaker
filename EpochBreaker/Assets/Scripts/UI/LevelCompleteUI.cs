@@ -216,7 +216,7 @@ namespace EpochBreaker.UI
             CreateStatRow(panelGO.transform, "Combat Mastery",
                 combatMastery > 0 ? $"+{combatMastery}" : "0", rowY,
                 combatMastery > 0 ? cyanColor : statColor);
-            rowY -= 20f;
+            rowY -= rowSpacing;
 
             // Combat sub-breakdown
             int shotsFired = gm?.ShotsFired ?? 0;
@@ -286,13 +286,20 @@ namespace EpochBreaker.UI
             {
                 CreateSmallText(panelGO.transform, $"Tip: {tip}", rowY,
                     new Color(0.6f, 0.8f, 0.5f));
+                rowY -= 30f;
             }
+
+            // Auto-size score panel to fit content
+            float panelContentHeight = 185f - rowY + 30f;
+            panelRect.sizeDelta = new Vector2(420, Mathf.Max(430f, panelContentHeight));
 
             // === ITEMS PANEL (right, aligned with score panel) ===
             CreateItemsPanel(canvasGO.transform, gm);
 
             // === BOTTOM SECTION ===
-            float btnY = -210f;
+            // Compute btnY from score panel bottom edge so buttons never overlap content
+            float panelBottom = panelRect.anchoredPosition.y - panelRect.sizeDelta.y / 2f;
+            float btnY = Mathf.Min(-210f, panelBottom - 30f);
 
             // Challenge result (if friend challenge active)
             int friendTarget = gm?.FriendChallengeScore ?? 0;

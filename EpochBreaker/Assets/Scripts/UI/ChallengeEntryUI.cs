@@ -75,7 +75,7 @@ namespace EpochBreaker.UI
             var panelRect = _panel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(540, 420);
+            panelRect.sizeDelta = new Vector2(580, 420);
             panelRect.anchoredPosition = Vector2.zero;
 
             // Title
@@ -265,12 +265,12 @@ namespace EpochBreaker.UI
             textComp.color = color;
             textComp.alignment = TextAnchor.MiddleCenter;
             textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComp.horizontalOverflow = HorizontalWrapMode.Overflow;
+            textComp.horizontalOverflow = HorizontalWrapMode.Wrap;
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(500, fontSize + 20);
+            rect.sizeDelta = new Vector2(460, fontSize + 20);
             rect.anchoredPosition = position;
 
             return go;

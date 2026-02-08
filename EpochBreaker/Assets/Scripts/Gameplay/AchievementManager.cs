@@ -683,6 +683,22 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
+        /// Unlock all achievements (for dev menu God Mode).
+        /// </summary>
+        public void UnlockAll()
+        {
+            foreach (var data in _saveData.Achievements)
+            {
+                data.Unlocked = true;
+                data.Progress = data.ProgressTarget;
+            }
+            _saveData.TotalLevelsCompleted = Mathf.Max(_saveData.TotalLevelsCompleted, 100);
+            _saveData.EpochsCompleted = 0x3FF; // All 10 epochs
+            _saveDirty = true;
+            FlushSave();
+        }
+
+        /// <summary>
         /// Reset all achievements (for testing).
         /// </summary>
         public void ResetAllAchievements()

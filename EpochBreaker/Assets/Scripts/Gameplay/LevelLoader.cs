@@ -623,7 +623,7 @@ namespace EpochBreaker.Gameplay
         {
             if (_checkpointPlatformSprite != null) return _checkpointPlatformSprite;
 
-            int w = 96, h = 32;
+            int w = 192, h = 64;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
@@ -638,13 +638,13 @@ namespace EpochBreaker.Gameplay
                 for (int x = 0; x < w; x++)
                 {
                     int idx = y * w + x;
-                    if (y >= h - 4)
+                    if (y >= h - 8)
                         px[idx] = stoneDark; // Bottom edge shadow
-                    else if (y <= 3)
+                    else if (y <= 7)
                         px[idx] = stoneLight; // Top highlight
-                    else if (x <= 3)
+                    else if (x <= 7)
                         px[idx] = stoneLight; // Left highlight
-                    else if (x >= w - 4)
+                    else if (x >= w - 8)
                         px[idx] = stoneDark; // Right shadow
                     else
                         px[idx] = stone;
@@ -653,7 +653,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            _checkpointPlatformSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 64f);
+            _checkpointPlatformSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 128f);
             _checkpointPlatformSprite.name = "checkpoint_platform";
             return _checkpointPlatformSprite;
         }

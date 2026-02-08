@@ -67,3 +67,12 @@ DerivedData/
 *.zip
 *.tar.gz
 *.7z
+
+# Local-only folders (not part of the game — keep locally, don't push)
+agents/
+training/
+docs/archive/
+
+# Build logs
+build-log.txt
+unity-build.log

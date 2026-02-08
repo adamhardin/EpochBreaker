@@ -79,6 +79,7 @@ namespace EpochBreaker.Gameplay
 
         public void TakeDamage(int amount, Vector2 damageSource)
         {
+            if (CosmeticManager.GodMode) return;
             if (IsInvulnerable || IsDead) return;
 
             CurrentHealth = Mathf.Max(0, CurrentHealth - amount);

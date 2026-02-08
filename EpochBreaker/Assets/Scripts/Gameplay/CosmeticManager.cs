@@ -44,6 +44,7 @@ namespace EpochBreaker.Gameplay
         private const string PREF_FRAME = "EpochBreaker_Cosmetic_Frame";
 
         public static CosmeticManager Instance { get; private set; }
+        public static bool GodMode { get; set; }
 
         public PlayerSkin SelectedSkin { get; private set; } = PlayerSkin.Default;
         public TrailEffect SelectedTrail { get; private set; } = TrailEffect.None;
@@ -109,6 +110,7 @@ namespace EpochBreaker.Gameplay
 
         public bool IsSkinUnlocked(PlayerSkin skin)
         {
+            if (GodMode) return true;
             var am = AchievementManager.Instance;
             if (am == null) return skin == PlayerSkin.Default;
 
@@ -128,6 +130,7 @@ namespace EpochBreaker.Gameplay
 
         public bool IsTrailUnlocked(TrailEffect trail)
         {
+            if (GodMode) return true;
             var am = AchievementManager.Instance;
             int levelsCompleted = am != null ? am.GetTotalLevelsCompleted() : 0;
 
@@ -144,6 +147,7 @@ namespace EpochBreaker.Gameplay
 
         public bool IsFrameUnlocked(ProfileFrame frame)
         {
+            if (GodMode) return true;
             return frame switch
             {
                 ProfileFrame.None   => true,
