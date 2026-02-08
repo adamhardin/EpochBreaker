@@ -77,7 +77,7 @@ namespace EpochBreaker.Gameplay
             }
         }
 
-        public void TakeDamage(int amount, Vector2 damageSource)
+        public void TakeDamage(int amount, Vector2 damageSource, bool isEnvironmental = false)
         {
             if (CosmeticManager.GodMode) return;
             if (IsInvulnerable || IsDead) return;
@@ -95,7 +95,7 @@ namespace EpochBreaker.Gameplay
                 _spriteRenderer.color = Color.white;
 
             // Notify achievement system that player took damage
-            GameManager.Instance?.RecordPlayerDamage();
+            GameManager.Instance?.RecordPlayerDamage(isEnvironmental);
 
             // Notify UI for damage direction indicator
             GameManager.NotifyDamageDirection(damageSource);

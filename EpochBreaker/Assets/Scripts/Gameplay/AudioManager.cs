@@ -121,14 +121,6 @@ namespace EpochBreaker.Gameplay
                 _weaponSources[i].playOnAwake = false;
             }
 
-            // Runtime low-pass filter on the GameObject to tame high-frequency artifacts
-            // from overlapping procedural square/sawtooth waves
-            // Note: AudioLowPassFilter is not supported in WebGL — the MakeClip 3-pass
-            // filter handles it offline instead
-            #if !UNITY_WEBGL
-            var lpf = gameObject.AddComponent<AudioLowPassFilter>();
-            lpf.cutoffFrequency = 2000f;
-            #endif
         }
 
         public static void PlaySFX(AudioClip clip, float volume = 1f)

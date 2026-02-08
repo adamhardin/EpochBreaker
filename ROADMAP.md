@@ -1,7 +1,7 @@
 # Epoch Breaker — Development Roadmap
 
 **Created**: 2026-02-06 | **Updated**: 2026-02-07
-**Starting from**: v0.6.0 build 012 | **Current**: v1.0.2 build 026
+**Starting from**: v0.6.0 build 012 | **Current**: v1.1.0 build 028
 
 > **Platform note (2026-02-06):** Mobile (iOS) is deprioritized. There is no way to test
 > or prepare for mobile at this time. All development targets **Unity Editor** and
@@ -9,6 +9,122 @@
 > to a future release and removed from v0.9.0 scope. Mobile-specific features (haptics,
 > safe area insets, touch UX, battery/thermal) are out of scope until a mobile test
 > environment is available.
+
+---
+
+## v1.1.0: "Maximize Fun" — Expert Review Improvements
+
+> **Source**: Expert game design review against 12-competency framework (see `docs/EXPERT-REVIEW-v1.0.2.md`).
+> Review identified 4 competencies needing remediation: Weapon System (C3), Mobile UX (C4),
+> Difficulty & Bosses (H6), Scoring & Achievements (H7). The 12 findings below address all of them.
+
+### Sprint 10: Tutorialization & Onboarding (Critical)
+
+These are the highest fun-per-effort changes. They unlock existing systems that players currently can't discover.
+
+| # | Finding | File(s) | Change |
+|---|---------|---------|--------|
+| 1 | Weapon cycling never taught | TutorialManager.cs | Add hint in Tutorial Level 2 on first weapon pickup: "Press X to switch weapons!" Show Quick Draw glow as visual incentive |
+| 2 | Hazards never introduced | TutorialManager.cs | Add context-sensitive hint on first hazard trigger: "Careful! Breaking some blocks releases hazards." One-time, dismissable |
+| 3 | Boss Phase 3 pillar shelter untaught | Boss.cs | Flash shelter pillar with pulsing color when boss hides behind it. Add "Destroy the pillar!" hint on first encounter |
+| 4 | No tutorial replay from menu | TitleScreenUI.cs | Add "Replay Tutorial" option in Settings menu |
+
+**Competency impact**: C3 Weapon System (+8), H6 Difficulty & Bosses (+5)
+
+### Sprint 11: Campaign & Difficulty Rebalance
+
+| # | Finding | File(s) | Change |
+|---|---------|---------|--------|
+| 5 | Campaign too punishing (2 global lives) | GameManager.cs | Remove global lives from Campaign mode. Deaths cost time/score but never cause Game Over. Campaign is the "see everything" mode; Streak remains the challenge mode. Per-level deaths (DEATHS_PER_LEVEL) still apply — dying too many times on a single level skips it |
+| 6 | Era 0 boss is boring (charge-only) | Boss.cs | Give Primitive boss a simple telegraphed projectile in Phase 2 (slow speed, long cooldown ~3s). Shorten patrol distance so charges feel more frequent |
+| 7 | Teleport Dash has no telegraph | Boss.cs | Add 0.3–0.5s shimmer/fade animation before Renaissance boss teleport. Preserves the visual language of readability |
+
+**Competency impact**: H6 Difficulty & Bosses (+7)
+
+### Sprint 12: Scoring & Combat Polish
+
+| # | Finding | File(s) | Change |
+|---|---------|---------|--------|
+| 8 | Combo resets on environmental damage | GameManager.cs | Only reset combo on enemy-sourced damage. Hazard chip damage triggers a 1-second grace period instead of immediate reset |
+| 9 | Level Complete 5-second mandatory wait | GameManager.cs | Reduce `LevelCompleteMinDelay` from 5.0 to 2.5 seconds |
+| 10 | Flying enemies have no satisfying counterplay | PlayerController.cs, EnemyBase.cs | Stomp creates a 2-tile downward shockwave that damages flying enemies. OR: flying enemies briefly pause when hit (0.3s hover), giving auto-aim a better window |
+
+**Competency impact**: H7 Scoring & Achievements (+7), H6 (+3)
+
+### Sprint 13: Weapon Visibility & UI
+
+| # | Finding | File(s) | Change |
+|---|---------|---------|--------|
+| 11 | Weapon legend shows only 3 of 6 types | TitleScreenUI.cs | Expand legend row to show all 6 weapon type icons with labels. Players can see what each pickup looks like before playing |
+| 12 | README status outdated | README.md | Update status to v1.0.3 build 027, current feature set |
+
+**Competency impact**: C3 Weapon System (+5)
+
+### Sprint 10-13 Dependencies
+
+```
+Sprint 10 (Tutorialization)    <- HIGHEST PRIORITY, no dependencies
+Sprint 11 (Campaign rebalance) <- Independent, can parallelize with 10
+Sprint 12 (Scoring polish)     <- Independent
+Sprint 13 (Weapon UI + docs)   <- Independent, lowest effort
+```
+
+All sprints are independent and can be implemented in any order or in parallel. Sprint 10 has the highest fun-per-effort ratio.
+
+### Expected Competency Scores After v1.1.0
+
+| # | Competency | Current | Target | Delta |
+|---|-----------|---------|--------|-------|
+| C3 | Weapon System & Power Fantasy | 72 | 85+ | +13 |
+| C4 | Mobile UX & Touch Controls | 82 | 85+ | +3 |
+| H6 | Difficulty Curve & Boss Design | 73 | 88+ | +15 |
+| H7 | Scoring & Achievement Design | 78 | 85+ | +7 |
+
+Target: 12/12 competencies passing (currently 8/12).
+
+**Status**: All 12 findings implemented in build 028.
+
+---
+
+## v1.1.0: Build 028 — Maximize Fun (Expert Review)
+
+All 12 findings from expert review implemented:
+
+- **Tutorialization**: Weapon cycling hint on 2nd pickup ("Press X to cycle weapons for Quick Draw boost!"), hazard hint on first trigger, boss pillar flash + "Destroy the pillar!" hint. Tutorial replay already existed in Settings.
+- **Campaign rebalance**: Infinite lives in Campaign mode (deaths cost time/score, never Game Over). Era 0 boss gains projectile in Phase 2 (30% shoot, 70% charge). Teleport Dash gets 0.4s shimmer telegraph before teleporting.
+- **Scoring polish**: Combo only resets on enemy-sourced damage; environmental hazard damage gets 1s grace period (cancelled by kills). LevelCompleteMinDelay reduced 5.0→2.5s. Stomp shockwave damages all enemies within 2 tiles (flying counterplay).
+- **Weapon UI**: Legend expanded from 3 tiers to all 6 weapon types (Bolt, Piercer, Spreader, Chainer, Slower, Cannon).
+
+---
+
+## v1.0.3: Build 027 — Audio Quality, UI Layout, Repo Cleanup
+
+- Audio quality overhaul: doubled loop crossfade (50→100ms), replaced all Sawtooth waves in ambient loops and music leads with Triangle, soft-clip normalization (target 0.28→0.20, tanh-like saturation), strengthened LPF (alpha 0.22→0.18, 3→4 passes, runtime cutoff 2500→2000Hz)
+- ChallengeEntryUI: panel widened 540→580, text wrap mode fixed, width reduced 500→460
+- LevelCompleteUI: combat mastery spacing fixed, score panel auto-sizes, buttons positioned dynamically below content
+- Settings menu reordered: About, Difficulty, Level History, Audio, Accessibility
+- Repo cleanup: removed stale `unity_project/` duplicate, archived 17 outdated docs, excluded `agents/`, `training/`, `docs/archive/` from GitHub via `.gitignore`
+
+---
+
+## v1.0.2: Build 026 — Playtest Feedback
+
+- Audio squeal fix (3-pass LP filter, capped SFX frequencies)
+- Dedicated weapon audio pool (boss fire rate fix)
+- Level Complete redesign (full score details, COPY button, aligned panels)
+- Pixel text scale bump for legibility
+- Tutorial off by default
+- Epoch 9 death→GameOver fix
+
+---
+
+## v1.0.1: Build 025 — QC Playtest Fixes
+
+- WebGL AudioLowPassFilter guard
+- Epoch display off-by-one
+- Button label raycastTarget fix (all UI)
+- Hover/press color states on all buttons
+- Escape→Backquote alternative for WebGL fullscreen
 
 ---
 
@@ -281,5 +397,10 @@ DEFERRED: Mobile Readiness          <- no test environment, deferred to future r
 | v0.7.0 | 013 | Fix bugs, rebalance scoring, add animations | Playable and fair | Done |
 | v0.8.0 | 014 | Boss variety, special attacks, abilities, daily challenges | Content-complete | Done |
 | v0.9.0 | 015-020 | Cosmetics, social, polish, UI reorganization | Ship-ready (desktop/web) | Done |
-| v0.9.8 | 021 | Level complete fix, camera fix, QC pass | Bug-free baseline | **Next** |
+| v0.9.8 | 021-022 | QC bug fix sprint, camera fix, level complete fix | Bug-free baseline | Done |
+| v1.0.0 | 024 | Automated QC: 12 smoke tests, singleton warnings, validation | Automated testing | Done |
+| v1.0.1 | 025 | QC playtest fixes, WebGL guards, button states | Playtested | Done |
+| v1.0.2 | 026 | Playtest feedback: audio, UI legibility, tutorial | Playtest-hardened | Done |
+| v1.0.3 | 027 | Audio quality overhaul, UI layout fixes, repo cleanup | Clean codebase | Done |
+| v1.1.0 | TBD | Expert review: tutorialization, campaign rebalance, boss fixes, scoring polish | Fun-maximized | **Next** |
 | Future | TBD | Mobile readiness (touch, haptics, safe area, perf) | Ship-ready (iOS) | Deferred |

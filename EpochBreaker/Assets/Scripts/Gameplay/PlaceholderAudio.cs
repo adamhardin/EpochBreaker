@@ -31,16 +31,42 @@ namespace EpochBreaker.Gameplay
 
         // ─── Core Synthesis ───
 
-        private static float SampleWave(Wave type, float phase, int sampleIdx)
+        /// <summary>
+        /// PolyBLEP (Polynomial Band-Limited Step) anti-aliasing correction.
+        /// Smooths hard transitions in square/sawtooth waves to eliminate
+        /// aliased harmonics above Nyquist — no post-processing filter needed.
+        /// </summary>
+        private static float PolyBLEP(float t, float dt)
         {
+            if (t < dt)
+            {
+                t /= dt;
+                return t + t - t * t - 1f;
+            }
+            if (t > 1f - dt)
+            {
+                t = (t - 1f) / dt;
+                return t * t + t + t + 1f;
+            }
+            return 0f;
+        }
+
+        private static float SampleWave(Wave type, float phase, float dt, int sampleIdx)
+        {
+            float p = phase % 1f;
             switch (type)
             {
                 case Wave.Square:
-                    return (phase % 1f) < 0.5f ? 0.8f : -0.8f;
+                    float sq = p < 0.5f ? 1f : -1f;
+                    sq += PolyBLEP(p, dt);
+                    sq -= PolyBLEP((p + 0.5f) % 1f, dt);
+                    return sq * 0.8f;
                 case Wave.Triangle:
-                    return 4f * Mathf.Abs((phase % 1f) - 0.5f) - 1f;
+                    return 4f * Mathf.Abs(p - 0.5f) - 1f;
                 case Wave.Sawtooth:
-                    return 2f * (phase % 1f) - 1f;
+                    float saw = 2f * p - 1f;
+                    saw -= PolyBLEP(p, dt);
+                    return saw;
                 case Wave.Noise:
                     int x = sampleIdx * 1103515245 + 12345;
                     return ((x >> 16) & 0x7FFF) / 16384f - 1f;
@@ -71,7 +97,8 @@ namespace EpochBreaker.Gameplay
                 float t = (float)i / SAMPLE_RATE;
                 float progress = (float)i / sampleCount;
                 float freq = Mathf.Lerp(startFreq, endFreq, progress);
-                phase += freq / SAMPLE_RATE;
+                float dt = freq / SAMPLE_RATE;
+                phase += dt;
 
                 // Attack/release envelope
                 float env = 1f;
@@ -80,28 +107,14 @@ namespace EpochBreaker.Gameplay
                 if (release > 0f && t > duration - release)
                     env = Mathf.Min(env, (duration - t) / release);
 
-                buf[idx] += SampleWave(type, phase, idx) * volume * Mathf.Clamp01(env);
+                buf[idx] += SampleWave(type, phase, dt, idx) * volume * Mathf.Clamp01(env);
             }
         }
 
         private static AudioClip MakeClip(string name, float[] data)
         {
-            // 4-pass single-pole low-pass filter (-24 dB/octave effective rolloff)
-            // Cutoff ~1.6 kHz at 44100 Hz sample rate (alpha ≈ 0.18, applied 4x)
-            // Aggressively rolls off harsh upper harmonics from procedural waveforms,
-            // especially on WebGL where the runtime AudioLowPassFilter is unavailable.
-            const float lpAlpha = 0.18f;
-            for (int pass = 0; pass < 4; pass++)
-            {
-                float prev = data[0];
-                for (int i = 1; i < data.Length; i++)
-                {
-                    data[i] = prev + lpAlpha * (data[i] - prev);
-                    prev = data[i];
-                }
-            }
-
-            // Normalize to consistent peak level so all clips have equal loudness
+            // Peak normalization — scale all clips to consistent loudness
+            // No LP filter needed: PolyBLEP band-limited synthesis eliminates aliasing at source
             float peak = 0f;
             for (int i = 0; i < data.Length; i++)
             {
@@ -110,12 +123,9 @@ namespace EpochBreaker.Gameplay
             }
             if (peak > 0.001f)
             {
-                float gain = 0.20f / peak; // more headroom for simultaneous playback
+                float gain = 0.85f / peak;
                 for (int i = 0; i < data.Length; i++)
-                {
-                    float s = data[i] * gain;
-                    data[i] = s / (1f + Mathf.Abs(s)); // Soft saturation, asymptotes at ±1
-                }
+                    data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
             }
 
             var clip = AudioClip.Create(name, data.Length, 1, SAMPLE_RATE, false);
@@ -1123,7 +1133,7 @@ namespace EpochBreaker.Gameplay
         /// <summary>Crossfade edges for seamless looping (50ms fade in/out).</summary>
         private static void ApplyLoopFade(float[] buf)
         {
-            int fadeLen = (int)(0.10f * SAMPLE_RATE);
+            int fadeLen = (int)(0.05f * SAMPLE_RATE);
             fadeLen = Mathf.Min(fadeLen, buf.Length / 4);
             for (int i = 0; i < fadeLen; i++)
             {

@@ -750,15 +750,21 @@ namespace EpochBreaker.UI
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetExtraLifeSprite(),
                 "1UP", new Vector2(310, row1Y));
 
-            // Row 2: Weapons
+            // Row 2: Weapons (all 6 types)
             float row2Y = 0f;
             CreateLegendLabel(panelGO.transform, "Weapons:", new Vector2(-350, row2Y));
-            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponTier.Starting),
-                "Sword", new Vector2(-240, row2Y));
-            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponTier.Medium),
-                "Crossbow", new Vector2(-130, row2Y));
-            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponTier.Heavy),
-                "Cannon", new Vector2(-20, row2Y));
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Bolt, WeaponTier.Starting),
+                "Bolt", new Vector2(-240, row2Y));
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Piercer, WeaponTier.Starting),
+                "Piercer", new Vector2(-150, row2Y));
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Spreader, WeaponTier.Starting),
+                "Spreader", new Vector2(-60, row2Y));
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Chainer, WeaponTier.Starting),
+                "Chainer", new Vector2(30, row2Y));
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Slower, WeaponTier.Starting),
+                "Slower", new Vector2(120, row2Y));
+            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Cannon, WeaponTier.Starting),
+                "Cannon", new Vector2(210, row2Y));
 
             // Row 3: Checkpoints & Goal
             float row3Y = -95f;

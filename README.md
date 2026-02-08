@@ -98,19 +98,17 @@ Character and world evolve through all of human civilization:
 ```
 README.md                           <- You are here
 DOCUMENTATION-INDEX.md              <- Full document navigation
-GAME-DESIGN-REVIEW.md              <- Comprehensive design doc for expert review
 BUILD-LOG.md                        <- WebGL deployment history
+QC-CHECKLIST.md                     <- Systematic QC checklist (20 sections, 200+ items)
+ROADMAP.md                          <- Development roadmap with version history
 docs/
+  EXPERT-REVIEW-v1.0.2.md           <- Expert game design review (12 findings, competency scores)
   PROJECT-STRUCTURE.md              <- Directory layout, conventions
   Level-Generation-Technical-Spec.md <- Generation architecture (CRITICAL)
   Level-Generation-Research-Guide.md <- Algorithm research & code examples
   Validation-QA-Suite.md            <- Test cases for gen system
-  Expert-Review-Process.md          <- Consolidated review workflow
-  Expert-Review-Templates.md        <- Review intake & decision templates
-  Expert-Review-Report-v0.3.0.md    <- Latest expert review findings
-  Implementation-Plan-v0.4.0.md     <- Finalized implementation plan
-  Training-Plan.md                  <- 10-module expert training curriculum
-  archive/                          <- Historical docs (engine rubric, old roadmap, etc.)
+  architecture-decisions/            <- ADR-001 through ADR-006
+EpochBreaker/                        <- Unity project (all game code)
 ```
 
 ---
@@ -195,6 +193,6 @@ The GitHub Actions workflow automatically deploys whenever the `gh-pages` branch
 
 ## Status
 
-**Current version:** v0.5.0 build 011
-**Current phase:** Playable prototype with 10 eras, 3 game modes, procedural levels, parallax backgrounds, ability system
-**Last updated:** 2026-02-06
+**Current version:** v1.1.0 build 028
+**Current phase:** Feature-complete with 10 eras, 3 game modes (Campaign, Streak, FreePlay), procedural levels, 6 weapon types, 10 boss variants, daily/weekly challenges, friend challenges, ghost replay, cosmetics (skins/trails/frames), achievements, level history, accessibility options, context-sensitive gameplay hints, and runtime-generated audio/visuals
+**Last updated:** 2026-02-07

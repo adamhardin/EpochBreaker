@@ -6,9 +6,9 @@ namespace EpochBreaker.Gameplay
     /// </summary>
     public static class BuildInfo
     {
-        public const int BUILD_NUMBER = 26;
+        public const int BUILD_NUMBER = 28;
         public const string BUILD_DATE = "2026-02-07";
-        public const string VERSION = "1.0.2";
+        public const string VERSION = "1.1.0";
 
         public static string FullBuildID => $"v{VERSION} build {BUILD_NUMBER:D3} | {BUILD_DATE}";
     }

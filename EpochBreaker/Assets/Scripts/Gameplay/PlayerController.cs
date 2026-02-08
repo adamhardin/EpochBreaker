@@ -612,12 +612,50 @@ namespace EpochBreaker.Gameplay
                     TryBreakTilesBelow(contact.point);
                     _velocity.y = 8f; // Satisfying bounce after stomp
 
+                    // Stomp shockwave: damage flying enemies within 2 tiles
+                    StompShockwave();
+
                     // Enhanced ground slam if ability is available
                     var abilities = GetComponent<AbilitySystem>();
                     if (abilities != null && abilities.HasGroundSlam)
                         abilities.PerformGroundSlam();
 
                     break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Stomp shockwave: damages flying enemies within 2 tiles of landing point.
+        /// Gives the player counterplay against otherwise stomp-immune flyers.
+        /// </summary>
+        private void StompShockwave()
+        {
+            const float SHOCKWAVE_RADIUS = 2f;
+            Vector2 stompPos = transform.position;
+
+            for (int i = EnemyBase.ActiveEnemies.Count - 1; i >= 0; i--)
+            {
+                var enemyGO = EnemyBase.ActiveEnemies[i];
+                if (enemyGO == null) continue;
+
+                var enemy = enemyGO.GetComponent<EnemyBase>();
+                if (enemy == null || enemy.IsDead) continue;
+
+                float dist = Vector2.Distance(stompPos, enemyGO.transform.position);
+                if (dist <= SHOCKWAVE_RADIUS)
+                {
+                    enemy.TakeDamage(2);
+
+                    // Visual feedback: shockwave ring particle
+                    var flash = ObjectPool.GetFlash();
+                    flash.transform.position = enemyGO.transform.position;
+                    var sr = flash.GetComponent<SpriteRenderer>();
+                    sr.sprite = PlaceholderAssets.GetParticleSprite();
+                    sr.color = new Color(1f, 0.8f, 0.3f, 0.7f);
+                    sr.sortingOrder = 15;
+                    flash.transform.localScale = Vector3.one * 1.5f;
+                    flash.GetComponent<PoolTimer>().StartTimer(0.15f);
                 }
             }
         }

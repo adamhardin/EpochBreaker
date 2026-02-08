@@ -59,6 +59,10 @@ namespace EpochBreaker.Gameplay
         private float _recentDamage; // Damage taken recently, decays continuously
         private const float MAX_DPS = 15f; // Max damage per second
 
+        // Teleport telegraph
+        private float _teleportTelegraphTimer;
+        private bool _isTeleporting;
+
         // Arena pillar shelter (Phase 3 mechanic replacing shield)
         private bool _isSheltered; // Boss is behind a pillar, immune to damage
         private ArenaPillar _currentPillar; // Pillar the boss is sheltering behind
@@ -157,6 +161,8 @@ namespace EpochBreaker.Gameplay
             _attackTimer = _baseAttackCooldown; // Full cooldown before first attack
             _minionTimer = 0f;
             _shockwaveTimer = 0f;
+            _isTeleporting = false;
+            _teleportTelegraphTimer = 0f;
             IsActive = false;
 
             int era = (int)Type;
@@ -211,6 +217,23 @@ namespace EpochBreaker.Gameplay
             // Phase invulnerability timer
             if (_phaseInvulnTimer > 0f)
                 _phaseInvulnTimer -= Time.fixedDeltaTime;
+
+            // Teleport telegraph: shimmer before teleport
+            if (_isTeleporting)
+            {
+                _teleportTelegraphTimer -= Time.fixedDeltaTime;
+                if (_sr != null)
+                {
+                    float alpha = 0.3f + Mathf.PingPong(_teleportTelegraphTimer * 10f, 0.7f);
+                    _sr.color = new Color(0.6f, 0.4f, 1f, alpha);
+                }
+                if (_teleportTelegraphTimer <= 0f)
+                {
+                    _isTeleporting = false;
+                    ExecuteTeleport();
+                }
+                return; // Skip other behavior during telegraph
+            }
 
             // Check for phase transitions
             UpdatePhase();
@@ -430,7 +453,15 @@ namespace EpochBreaker.Gameplay
             if (_attackTimer <= 0f && _playerTransform != null)
             {
                 // Era-specific Phase 2 attacks
-                if (_variant == BossVariant.Medieval && Random.value < 0.3f)
+                if (_variant == BossVariant.Primitive)
+                {
+                    // Era 0: gains projectile in Phase 2 (30% shoot, 70% charge)
+                    if (Random.value < 0.3f)
+                        ShootAtPlayer();
+                    else
+                        StartCharge();
+                }
+                else if (_variant == BossVariant.Medieval && Random.value < 0.3f)
                     GroundSlamShockwave();
                 else if (_variant == BossVariant.Renaissance && Random.value < 0.25f)
                     TeleportDash();
@@ -606,6 +637,16 @@ namespace EpochBreaker.Gameplay
             _currentPillar = nearest;
             _isSheltered = true;
 
+            // Flash pillar to draw player attention
+            StartCoroutine(FlashPillar(nearest));
+
+            // Show gameplay hint on first shelter
+            if (TutorialManager.Instance != null && !TutorialManager.IsHintDismissed("pillarshelter"))
+            {
+                TutorialManager.Instance.ShowGameplayHintPublic("Destroy the pillar!");
+                TutorialManager.DismissHint("pillarshelter");
+            }
+
             float pillarX = nearest.transform.position.x;
             if (_playerTransform != null)
             {
@@ -617,6 +658,26 @@ namespace EpochBreaker.Gameplay
                     shelterX,
                     transform.position.y,
                     transform.position.z);
+            }
+        }
+
+        /// <summary>
+        /// Flash the pillar sprite to draw player attention when boss shelters.
+        /// </summary>
+        private System.Collections.IEnumerator FlashPillar(ArenaPillar pillar)
+        {
+            var pillarSR = pillar != null ? pillar.GetComponent<SpriteRenderer>() : null;
+            if (pillarSR == null) yield break;
+
+            Color origColor = pillarSR.color;
+            for (int i = 0; i < 4; i++)
+            {
+                pillarSR.color = Color.yellow;
+                yield return new WaitForSeconds(0.15f);
+                if (pillar == null || pillar.IsDestroyed) yield break;
+                pillarSR.color = origColor;
+                yield return new WaitForSeconds(0.15f);
+                if (pillar == null || pillar.IsDestroyed) yield break;
             }
         }
 
@@ -778,9 +839,23 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Era 4: Teleport dash. Boss teleports to the opposite side of the arena.
+        /// Era 4: Teleport dash. 0.4s shimmer telegraph, then teleports to opposite side.
         /// </summary>
         private void TeleportDash()
+        {
+            if (_playerTransform == null) return;
+
+            // Start telegraph: shimmer/fade for 0.4s before teleporting
+            _isTeleporting = true;
+            _teleportTelegraphTimer = 0.4f;
+            _rb.linearVelocity = new Vector2(0f, _rb.linearVelocity.y); // Stop moving
+            AudioManager.PlaySFX(PlaceholderAudio.GetChargeWindupSFX());
+        }
+
+        /// <summary>
+        /// Execute the actual teleport after telegraph completes.
+        /// </summary>
+        private void ExecuteTeleport()
         {
             if (_playerTransform == null) return;
 
@@ -814,7 +889,13 @@ namespace EpochBreaker.Gameplay
             flashGO2.GetComponent<PoolTimer>().StartTimer(0.15f);
 
             CameraController.Instance?.AddTrauma(0.2f);
-            AudioManager.PlaySFX(PlaceholderAudio.GetChargeWindupSFX());
+
+            // Reset color to phase tint
+            if (_sr != null)
+            {
+                float tint = 1f - (_currentPhase - 1) * 0.15f;
+                _sr.color = new Color(1f, tint, tint);
+            }
         }
 
         /// <summary>

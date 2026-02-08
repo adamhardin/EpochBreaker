@@ -70,7 +70,7 @@ namespace EpochBreaker.Gameplay
 
                     if (dist < radius)
                     {
-                        _cachedPlayerHealth.TakeDamage(damage, h.Position);
+                        _cachedPlayerHealth.TakeDamage(damage, h.Position, isEnvironmental: true);
                         h.DamageTimer = cooldown;
                         AchievementManager.Instance?.RecordHazardDamage();
                     }
@@ -87,6 +87,13 @@ namespace EpochBreaker.Gameplay
         {
             if (hazard == HazardType.None) return;
             if (_renderer == null) return;
+
+            // Show hazard hint on first trigger
+            if (TutorialManager.Instance != null && !TutorialManager.IsHintDismissed("hazard"))
+            {
+                TutorialManager.Instance.ShowGameplayHintPublic("Caution! Breaking some blocks releases hazards!");
+                TutorialManager.DismissHint("hazard");
+            }
 
             Vector3 worldPos = _renderer.LevelToWorld(tileX, tileY);
 
@@ -288,7 +295,7 @@ namespace EpochBreaker.Gameplay
             var health = other.GetComponent<HealthSystem>();
             if (health != null)
             {
-                health.TakeDamage(Damage, transform.position);
+                health.TakeDamage(Damage, transform.position, isEnvironmental: true);
                 AchievementManager.Instance?.RecordHazardDamage();
             }
             Destroy(gameObject);

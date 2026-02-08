@@ -288,6 +288,9 @@ namespace EpochBreaker.Gameplay
         private float _comboTimer;
         private const float COMBO_WINDOW = 2f;
 
+        // Environmental damage grace period: env damage gives 1s before combo reset
+        private float _envDamageGraceTimer;
+
         // Score popup event: (world position, score value)
         public static event Action<Vector3, int> OnScorePopup;
 
@@ -318,7 +321,7 @@ namespace EpochBreaker.Gameplay
         private GameObject _pauseMenuObj;
         private GameObject _levelCompleteObj;
         private float _levelCompleteTime;
-        private const float LevelCompleteMinDelay = 5f;
+        private const float LevelCompleteMinDelay = 2.5f;
         private GameObject _gameOverObj;
         private GameObject _touchControlsObj;
         private GameObject _celebrationObj;
@@ -410,6 +413,16 @@ namespace EpochBreaker.Gameplay
                         _comboTimer -= Time.deltaTime;
                         if (_comboTimer <= 0f)
                             ComboCount = 0;
+                    }
+                    // Environmental damage grace: reset combo after 1s if no kills
+                    if (_envDamageGraceTimer > 0f)
+                    {
+                        _envDamageGraceTimer -= Time.deltaTime;
+                        if (_envDamageGraceTimer <= 0f && ComboCount > 0)
+                        {
+                            ComboCount = 0;
+                            _comboTimer = 0f;
+                        }
                     }
                     if (InputManager.PausePressed)
                         PauseGame();
@@ -846,6 +859,7 @@ namespace EpochBreaker.Gameplay
             _noDamageKillStreak = 0;
             ComboCount = 0;
             _comboTimer = 0f;
+            _envDamageGraceTimer = 0f;
             _rewardCounts.Clear();
             _weaponCounts.Clear();
 
@@ -1039,6 +1053,9 @@ namespace EpochBreaker.Gameplay
             _noDamageKillStreak++;
             BestNoDamageStreak = Mathf.Max(BestNoDamageStreak, _noDamageKillStreak);
 
+            // Cancel environmental damage grace timer on kill
+            _envDamageGraceTimer = 0f;
+
             // Combo: kills within 2s build multiplier
             if (_comboTimer > 0f)
                 ComboCount++;
@@ -1099,12 +1116,22 @@ namespace EpochBreaker.Gameplay
         /// <summary>
         /// Record that the player took damage (for achievements and scoring).
         /// Resets no-damage kill streak for combat mastery.
+        /// Environmental damage (hazards) gets a 1s grace period before combo reset.
         /// </summary>
-        public void RecordPlayerDamage()
+        public void RecordPlayerDamage(bool isEnvironmental = false)
         {
             _noDamageKillStreak = 0;
-            ComboCount = 0;
-            _comboTimer = 0f;
+            if (isEnvironmental)
+            {
+                // 1s grace: combo resets after delay (cancelled by kills)
+                _envDamageGraceTimer = 1f;
+            }
+            else
+            {
+                ComboCount = 0;
+                _comboTimer = 0f;
+                _envDamageGraceTimer = 0f;
+            }
             AchievementManager.Instance?.RecordDamageTaken();
         }
 
@@ -1494,14 +1521,21 @@ namespace EpochBreaker.Gameplay
                 return DeathResult.Respawn;
             }
 
-            // Campaign or Streak: deduct a global life
+            // Campaign: infinite lives — never game over, always respawn or advance
+            if (CurrentGameMode == GameMode.Campaign)
+            {
+                if (DeathsThisLevel >= maxDeaths)
+                    return DeathResult.LevelFailed;
+                return DeathResult.Respawn;
+            }
+
+            // Streak: deduct a global life
             GlobalLives--;
 
             if (GlobalLives <= 0)
             {
                 // No lives left at all — game over
-                if (CurrentGameMode == GameMode.Streak)
-                    SaveStreakToLegends();
+                SaveStreakToLegends();
                 TransitionTo(GameState.GameOver);
                 return DeathResult.GameOver;
             }

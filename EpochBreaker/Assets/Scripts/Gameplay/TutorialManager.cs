@@ -38,7 +38,9 @@ namespace EpochBreaker.Gameplay
         private bool _wallJumpHintShown;
         private bool _attackHintShown;
         private bool _stuckHintShown;
+        private bool _weaponCycleHintShown;
         private int _lastWallJumpCount;
+        private int _lastWeaponsCollected;
 
         private TutorialStep[] _steps;
         private float _hintTimer;
@@ -268,7 +270,32 @@ namespace EpochBreaker.Gameplay
                 }
             }
 
+            // --- Weapon cycling hint: on 2nd weapon pickup ---
+            if (!_weaponCycleHintShown && !GameplayHintVisible &&
+                GameManager.Instance != null && GameManager.Instance.WeaponsCollected >= 2 &&
+                GameManager.Instance.WeaponsCollected > _lastWeaponsCollected)
+            {
+                _lastWeaponsCollected = GameManager.Instance.WeaponsCollected;
+                if (!IsHintDismissed("weaponcycle"))
+                {
+                    bool isMobile = Application.isMobilePlatform;
+                    string hint = isMobile
+                        ? "Tap X to cycle weapons for a Quick Draw boost!"
+                        : "Press X to cycle weapons for a Quick Draw boost!";
+                    ShowGameplayHint(hint);
+                    _weaponCycleHintShown = true;
+                }
+            }
+
             _lastPlayerPos = currentPos;
+        }
+
+        /// <summary>
+        /// Show a context-sensitive gameplay hint popup (public, for external callers like Boss/HazardSystem).
+        /// </summary>
+        public void ShowGameplayHintPublic(string text)
+        {
+            ShowGameplayHint(text);
         }
 
         /// <summary>
@@ -292,7 +319,9 @@ namespace EpochBreaker.Gameplay
             _wallJumpHintShown = false;
             _attackHintShown = false;
             _stuckHintShown = false;
+            _weaponCycleHintShown = false;
             _lastWallJumpCount = 0;
+            _lastWeaponsCollected = 0;
             _lastPlayerPos = Vector3.zero;
             _cachedPlayer = null;
             _cachedPlayerController = null;
@@ -322,7 +351,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public static void ResetDismissedHints()
         {
-            string[] hintIds = { "stuck", "walljump", "attack" };
+            string[] hintIds = { "stuck", "walljump", "attack", "weaponcycle", "hazard", "pillarshelter" };
             foreach (var id in hintIds)
             {
                 PlayerPrefs.DeleteKey(PREF_HINT_DISMISSED_PREFIX + id);

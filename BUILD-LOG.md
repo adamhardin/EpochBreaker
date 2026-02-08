@@ -35,6 +35,8 @@ Tracks each WebGL deployment to GitHub Pages. The build number displayed on the 
 | 024 | 1.0.0 | 2026-02-07 | Automated QC: 12 Play Mode smoke tests (multi-level lifecycle, death/respawn, pause/resume, ghost replay, rapid transitions), singleton lifecycle warnings on all 9 managers, post-transition validation coroutine in GameManager (Editor/Dev builds) |
 | 025 | 1.0.1 | 2026-02-07 | QC playtest fixes: WebGL AudioLowPassFilter guard, epoch display off-by-one, button label raycastTarget fix (all UI), hover/press color states on all buttons, Escape→Backquote alternative for WebGL fullscreen |
 | 026 | 1.0.2 | 2026-02-07 | Playtest feedback: audio squeal fix (3-pass LP filter, capped SFX frequencies), dedicated weapon audio pool (boss fire rate fix), Level Complete redesign (full score details, COPY button, aligned panels), pixel text scale bump for legibility, tutorial off by default, epoch 9 death→GameOver fix |
+| 027 | 1.0.3 | 2026-02-07 | Audio quality overhaul (doubled loop crossfade, Sawtooth→Triangle in ambient/music, soft-clip normalization, strengthened LPF), UI layout fixes (ChallengeEntryUI text overflow, LevelCompleteUI dynamic sizing), settings menu reorder, repo cleanup (removed stale unity_project/, archived docs, .gitignore for local-only folders) |
+| 028 | 1.1.0 | 2026-02-07 | Expert review "Maximize Fun": weapon cycling hint, hazard hint, boss pillar flash+hint, infinite campaign lives, Era 0 boss projectile in Phase 2, teleport telegraph (0.4s shimmer), combo grace for env damage, LevelComplete delay 5→2.5s, stomp shockwave (flying counterplay), weapon legend expanded to 6 types |
 
 ---
 

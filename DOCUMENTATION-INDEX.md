@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: 2026-02-07 | **Version**: v1.0.2 build 026
+**Last Updated**: 2026-02-07 | **Version**: v1.1.0 build 028
 
 ---
 
@@ -31,6 +31,14 @@
 | [docs/Level-Generation-Technical-Spec.md](docs/Level-Generation-Technical-Spec.md) | Architecture, PRNG, pipeline, schema, performance targets |
 | [docs/Level-Generation-Research-Guide.md](docs/Level-Generation-Research-Guide.md) | Algorithm comparison, code examples, biome config |
 | [docs/Validation-QA-Suite.md](docs/Validation-QA-Suite.md) | 7 test categories, 22+ test cases, failure protocol |
+
+---
+
+## Game Design Review
+
+| Document | Purpose |
+|----------|---------|
+| [docs/EXPERT-REVIEW-v1.0.2.md](docs/EXPERT-REVIEW-v1.0.2.md) | Expert design review: 12 findings, competency scores, improvement roadmap |
 
 ---
 
