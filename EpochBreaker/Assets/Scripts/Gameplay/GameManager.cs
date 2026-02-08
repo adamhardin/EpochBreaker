@@ -894,11 +894,12 @@ namespace EpochBreaker.Gameplay
 
             CurrentEpoch = CurrentLevelID.Epoch;
 
-            // GC only on epoch transitions or first load — within an epoch, caching
-            // keeps memory stable so heavy GC isn't needed every level
+            // Always unload destroyed native assets (textures, meshes) to reclaim GPU memory
+            Resources.UnloadUnusedAssets();
+
+            // Full GC only on epoch transitions — within an epoch, managed heap is stable
             if (CurrentEpoch != _previousEpoch)
             {
-                Resources.UnloadUnusedAssets();
                 System.GC.Collect();
                 _previousEpoch = CurrentEpoch;
             }
