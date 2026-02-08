@@ -16,7 +16,7 @@ Players need to share procedurally generated levels with each other. The sharing
 The level is fully determined by two parameters:
 
 - **Epoch** -- which historical era (0-9) determines tileset, enemies, music, and aesthetics.
-- **Seed** -- a 40-bit value that drives all procedural generation via xorshift64* PRNG.
+- **Seed** -- a 40-bit value that drives all procedural generation via xorshift64 PRNG.
 
 Difficulty is handled separately via `DifficultyManager` (player setting, not encoded in the level ID).
 

@@ -11,20 +11,20 @@ The game requires procedurally generated side-scrolling levels that satisfy comp
 - **Playable.** Every generated level must be completable. The player must be able to reach the exit from the start without requiring abilities or items they do not have.
 - **Difficulty-controlled.** Levels tagged as difficulty 03 must feel meaningfully different from difficulty 07. Difficulty should affect platforming precision, enemy density, and hazard frequency in a predictable, tunable way.
 - **Natural-looking.** Terrain should feel organic, not obviously random. Flat runs, slopes, caverns, and verticality should emerge naturally rather than looking like random tile noise.
-- **Fast.** Generation must complete within 150 ms on the baseline device (iPhone 11 / A13 Bionic, see ADR-005) to avoid perceptible loading stalls.
+- **Fast.** Generation must complete within 150 ms on the target platform (WebGL in modern browsers; originally baselined on iPhone 11 / A13 Bionic) to avoid perceptible loading stalls.
 
 A purely random approach (scatter tiles, place enemies) fails the playability and aesthetics constraints. A purely hand-authored approach fails the variety and sharing constraints. A hybrid pipeline is required.
 
 ## Decision
 
-Level generation uses a **three-stage pipeline**, executed sequentially and entirely deterministically from the xorshift64* PRNG state derived from the level ID seed.
+Level generation uses a **three-stage pipeline**, executed sequentially and entirely deterministically from the xorshift64 PRNG state derived from the level ID seed.
 
 ### Stage 1: PRNG Terrain Generation
 
 **Input:** Seed, biome, difficulty.
-**Output:** Raw tile grid (up to 256 x 32 tiles on baseline device).
+**Output:** Raw tile grid (up to 256 x 16 tiles on baseline device).
 
-1. Initialize the xorshift64* PRNG with the 64-bit seed from the level ID.
+1. Initialize the xorshift64 PRNG with the 64-bit seed from the level ID.
 2. Generate a 1D heightmap using our custom Perlin noise implementation (2-3 octaves), seeded from the PRNG. The heightmap defines the ground surface profile.
 3. Apply biome-specific modifiers: cave carving for underground biomes, platform islands for sky biomes, flat sections for urban biomes.
 4. Place sub-surface fill tiles, background tiles, and decorative tiles based on biome rules.
@@ -67,7 +67,7 @@ If the repair loop exhausts its iteration budget without achieving a valid level
 Level ID
    |
    v
-[Parse ID] --> seed, version, difficulty, biome
+[Parse ID] --> epoch, seed  (difficulty from DifficultyManager, not encoded in ID)
    |
    v
 [Stage 1: PRNG Terrain]  ~30-50ms
@@ -91,7 +91,7 @@ Total target: < 150 ms on A13 Bionic.
 - **Guaranteed playability.** The constraint validation stage ensures every level is completable, eliminating the most critical failure mode of pure procedural generation.
 - **Controlled difficulty.** Grammar zones and the difficulty bounds check provide two layers of difficulty tuning, giving designers precise control over the experience curve.
 - **Natural aesthetics.** Stage 1's noise-based terrain provides organic shapes, while Stage 2's authored zones ensure memorable gameplay moments. The combination avoids both "random noise" and "cookie-cutter template" failure modes.
-- **Deterministic.** All three stages derive from the same PRNG state chain. No external data, no randomness outside xorshift64*, no floating-point layout decisions.
+- **Deterministic.** All three stages derive from the same PRNG state chain. No external data, no randomness outside xorshift64, no floating-point layout decisions.
 - **Extensible.** New grammar zones can be added without changing the pipeline architecture. New biome modifiers slot into Stage 1. New validation rules slot into Stage 3.
 
 ### Negative

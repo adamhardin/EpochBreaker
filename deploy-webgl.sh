@@ -20,14 +20,26 @@ if [ ! -d "$PROJECT_DIR/Assets" ]; then
     exit 1
 fi
 
+# Parse flags
+FORCE=false
+for arg in "$@"; do
+    case "$arg" in
+        --force|-y) FORCE=true ;;
+    esac
+done
+
 # Check for uncommitted changes on current branch
 if ! git -C "$REPO_ROOT" diff-index --quiet HEAD -- 2>/dev/null; then
     echo "WARNING: You have uncommitted changes on the current branch."
     echo "They won't affect the deploy, but you may want to commit them first."
-    read -p "Continue anyway? [y/N] " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
+    if [ "$FORCE" = true ]; then
+        echo "Continuing (--force)."
+    else
+        read -p "Continue anyway? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
     fi
 fi
 

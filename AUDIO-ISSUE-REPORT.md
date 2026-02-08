@@ -374,10 +374,15 @@ The weapon audio pool (3 sources) has no MAX_CONCURRENT_WEAPON limit, unlike the
 
 **How to test:** Add a concurrency limit (max 2) to the weapon pool. (Note: this was attempted in Build 034 alongside other changes — it should be tested in isolation.)
 
-### H8: The Squeal May Be a Combination Effect
+### H8: Per-Source AudioLowPassFilter Instead of Listener-Level
+The current `AudioLowPassFilter` is attached to the GameManager GameObject and affects the **AudioListener**, meaning all audio (music, ambient, SFX, weapons) passes through a single 3000 Hz cutoff. An alternative approach: attach individual `AudioLowPassFilter` components to each `AudioSource` with per-source cutoff tuning. This would allow weapon sources to have a tighter cutoff (e.g., 2000 Hz) while leaving music and ambient with a higher cutoff (e.g., 5000 Hz) or no filter at all. Per-source filtering would prevent the single-filter resonance accumulation described in H2 and give finer control over which audio layers contribute high-frequency energy.
+
+**How to test:** Remove the listener-level `AudioLowPassFilter`. Add an `AudioLowPassFilter` to each of the 3 weapon sources (cutoff 2000 Hz) and each of the 8 SFX sources (cutoff 2500 Hz). Leave music and ambient unfiltered. Compare squeal behavior during boss Phase 3.
+
+### H9: The Squeal May Be a Combination Effect
 The most likely explanation is that no single factor causes the squeal. It may require:
 - Multiple Square-wave SFX overlapping (H1)
-- The runtime LPF adding a resonant bump (H2)
+- The runtime LPF adding a resonant bump (H2) — or per-source LPF approach (H8)
 - Normalization boosting filter artifacts (H6)
 - WebGL audio pipeline adding its own artifacts (H4)
 

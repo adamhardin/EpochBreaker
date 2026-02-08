@@ -5,16 +5,16 @@
 
 ## Context
 
-We are building a retro aesthetic side-scrolling game targeting iOS. The engine must provide:
+We are building a retro aesthetic side-scrolling game. The primary target is WebGL (browser), with iOS as a future stretch goal. The engine must provide:
 
 - A mature 2D rendering pipeline with tilemap support, sprite atlasing, and pixel-perfect camera control.
-- Reliable iOS build tooling (code signing, App Store submission, TestFlight).
+- WebGL build support for browser deployment (primary) and iOS build tooling for future mobile release.
 - A large ecosystem of documentation, assets, and community knowledge to maximise team velocity.
 - Support for C# or a similarly productive language for gameplay and procedural generation logic.
 
 Three engines were evaluated:
 
-| Criteria | Unity 2022 LTS | SpriteKit | Godot 4.x |
+| Criteria | Unity 6 (6000.x) | SpriteKit | Godot 4.x |
 |---|---|---|---|
 | 2D pipeline maturity | Excellent (Tilemap, URP 2D Renderer, Sprite Atlas v2) | Good (native Apple framework) | Good (TileMap, CanvasItem renderer) |
 | iOS tooling | Proven (IL2CPP, Xcode project export) | Native (no export step) | Functional but less battle-tested |
@@ -27,7 +27,9 @@ SpriteKit was ruled out because it locks the project to the Apple ecosystem and 
 
 ## Decision
 
-We will use **Unity 2022 LTS** (currently 2022.3.x) as the game engine.
+We will use **Unity 6** (currently 6000.3.6f1) as the game engine.
+
+> **Note (2026-02-08):** The project was originally planned for Unity 2022 LTS but migrated to Unity 6 (6000.3.6f1) before first build. All references below apply to Unity 6.
 
 All gameplay code will be written in C#. We will use the **Universal Render Pipeline (URP)** configured for 2D rendering with the 2D Renderer asset. Tilemaps will use Unity's built-in Tilemap package. The project will target the **IL2CPP** scripting backend for iOS builds.
 

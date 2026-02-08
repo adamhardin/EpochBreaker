@@ -25,7 +25,7 @@ The game's rendering workload is moderate (2D URP, tilemap, sprite particles, 2D
 
 We benchmarked the generation pipeline prototype on several devices:
 
-| Device | SoC | Gen Time (256x32) | 60fps Headroom | Notes |
+| Device | SoC | Gen Time (256x16) | 60fps Headroom | Notes |
 |---|---|---|---|---|
 | iPhone SE 2 (2020) | A13 Bionic | ~120 ms | Adequate | Smallest A13 screen (4.7") |
 | iPhone 11 | A13 Bionic | ~110 ms | Good | 6.1" display, adequate RAM (4 GB) |
@@ -38,7 +38,7 @@ The A12 Bionic (iPhone XR, XS) marginally exceeds our generation time budget and
 
 ### iOS Version Considerations
 
-- **iOS 15** is the oldest version that supports all Unity 2022 LTS features we require and provides the Metal API level we target.
+- **iOS 15** is the oldest version that supports all Unity 6 features we require and provides the Metal API level we target. (Note: project migrated from Unity 2022 LTS to Unity 6000.3.6f1 before first build.)
 - As of early 2026, iOS 15+ covers approximately 97% of active iPhone users (Apple does not publish exact figures, but adoption data from analytics services supports this estimate).
 - iOS 15 is the minimum version supported on iPhone 6s and later, but our hardware floor (A13) is more restrictive than the OS floor.
 
@@ -59,8 +59,8 @@ The Xcode project will set:
 
 To guarantee the 150 ms generation budget is met on the baseline A13 device:
 
-- Maximum level grid size: **256 x 32 tiles** (width x height).
-- On devices with A15 or later, an optional "extended level" mode may increase this to 512 x 32 tiles, detected at runtime via `SystemInfo.processorType` or generation-time benchmarking on first launch.
+- Maximum level grid size: **256 x 16 tiles** (width x height).
+- On devices with A15 or later, an optional "extended level" mode may increase this to 512 x 16 tiles, detected at runtime via `SystemInfo.processorType` or generation-time benchmarking on first launch.
 
 ## Consequences
 
@@ -75,5 +75,5 @@ To guarantee the 150 ms generation budget is met on the baseline A13 device:
 ### Negative
 
 - **Excludes iPhone XR, XS, X, 8, and older.** This removes a portion of the potential market. However, these devices are 6-8+ years old as of 2026, and their user base is declining. The performance trade-off is not worth the engineering cost of optimising for A12 and below.
-- **Level size cap on baseline.** The 256 x 32 tile limit means levels on A13 devices are shorter than what more powerful hardware could support. The optional extended mode mitigates this for newer devices, but the core experience must be designed around the 256-tile width.
+- **Level size cap on baseline.** The 256 x 16 tile limit constrains level width on A13 devices. The optional extended mode mitigates this for newer devices, but the core experience must be designed around the 256-tile width.
 - **No iPad-specific optimisation in v1.** iPads with A13 or later are supported but the game will run in iPhone compatibility mode or with simple letterboxing. A dedicated iPad layout is deferred to a future release.

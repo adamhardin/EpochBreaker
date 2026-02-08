@@ -1,6 +1,6 @@
 # Epoch Breaker -- QC Checklist
 
-**Created**: 2026-02-07 | **Version**: v1.0.0 build 024
+**Created**: 2026-02-07 | **Version**: v1.4.2 build 034
 **Purpose**: Systematic quality check for every screen, button, system, and feature in the game.
 **How to use**: Run through each section after significant changes. Check off items as verified. Note failures with build number and description for tracking.
 
@@ -80,9 +80,10 @@
 - [ ] Level code input accepts valid codes (e.g., "3-K7XM2P9A")
 - [ ] Level code input rejects invalid codes with error message
 - [ ] SETTINGS button opens settings overlay
-- [ ] COSMETICS button opens cosmetic selection
 - [ ] All buttons have legible text (no truncation, no overlap)
 - [ ] Keyboard hints display at bottom of screen
+
+> **Note (build 032):** COSMETICS was moved from the title screen main menu to Settings (after Difficulty). Verify cosmetics is accessible via Settings > Cosmetics.
 
 ### 1.5 Escape Key Navigation
 
@@ -156,9 +157,9 @@
 
 ---
 
-## 4. Cosmetics Screen
+## 4. Cosmetics Screen (via Settings)
 
-- [ ] Opens from title screen COSMETICS button
+- [ ] Opens from Settings > Cosmetics button (moved from title screen in build 032)
 - [ ] Skins section: all 8 skins listed
 - [ ] Unlocked skins selectable with visual feedback
 - [ ] Locked skins show requirement text
@@ -226,7 +227,7 @@
 ### 7.4 Buttons
 
 - [ ] CONTINUE advances to next level (Campaign/Streak)
-- [ ] CONTINUE returns to title (FreePlay modes)
+- [ ] CONTINUE returns to title (The Breach modes)
 - [ ] REPLAY restarts current level
 - [ ] MENU returns to title screen
 - [ ] SHARE copies level code to clipboard
@@ -309,7 +310,7 @@
 - [ ] Displays after running out of lives
 - [ ] Campaign: shows "Campaign ended at Epoch X: [Name]" + total score
 - [ ] Streak: shows "Streak: N levels completed" + "Saved to Legends!"
-- [ ] FreePlay: shows "Out of lives!"
+- [ ] The Breach: shows "Out of lives!"
 - [ ] RETRY starts new game
 - [ ] MAIN MENU returns to title
 - [ ] Streak score saved to Legends leaderboard
@@ -380,7 +381,7 @@
 - [ ] Weapons fire automatically when acquired
 - [ ] Manual weapon cycling via attack button
 - [ ] Quick Draw activates on manual cycle
-- [ ] All 6 weapon types function (Bolt, Piercer, Slower, Cannon, Chain, Spread)
+- [ ] All 5 weapon types function (Bolt, Piercer, Spreader, Chainer, Cannon) — Slower removed in build 032
 - [ ] Weapon tier upgrades work (Starting -> Bronze -> Silver -> Gold)
 - [ ] Heat system limits Cannon fire rate
 - [ ] Special attack charges with 3+ weapons
@@ -463,7 +464,7 @@
 - [ ] Jump/land SFX plays
 - [ ] **No high-pitched artifacts during gameplay** (known issue: builds 018-019)
 - [ ] **No audio crackling or distortion**
-- [ ] Concurrent SFX limited (max 4, no overload)
+- [ ] Concurrent SFX limited (max 3, no overload)
 - [ ] Rapid-fire prevention works (same clip within 0.05s)
 
 ### 15.3 Ambient Audio
@@ -474,9 +475,9 @@
 
 ### 15.4 Audio Filtering
 
-- [ ] Low-pass filter active (4000Hz cutoff)
+- [ ] Low-pass filter active (3000Hz cutoff — updated build 033)
 - [ ] No piercing high-frequency sounds
-- [ ] Volume normalization ceiling (0.35f) effective
+- [ ] Volume normalization target (0.40f) effective — updated build 033
 
 ---
 
@@ -605,7 +606,7 @@
 - [ ] Tutorial -> Campaign transition smooth
 - [ ] Campaign -> Game Over -> Retry flow works
 - [ ] Level Complete -> Replay -> Level Complete cycle works
-- [ ] FreePlay -> Title -> Campaign transition clean
+- [ ] The Breach -> Title -> Campaign transition clean
 
 ### 20.3 Data Boundaries
 

@@ -34,7 +34,7 @@ This guide compiles research on procedural level generation for retro side-scrol
 ```csharp
 // NOTE: If using noise-based generation, do NOT use Mathf.PerlinNoise.
 // It is not deterministic across platforms. Instead, implement a
-// deterministic noise function seeded from xorshift64*, or use the
+// deterministic noise function seeded from xorshift64, or use the
 // anchor-interpolation approach shown in the Hybrid section below.
 
 // Deterministic alternative: hash-based noise from PRNG
@@ -134,12 +134,12 @@ Combine the best aspects:
 
 IMPORTANT: Unity's `Mathf.PerlinNoise` must NOT be used for level generation.
 It is not guaranteed to produce identical results across platforms or Unity versions.
-All randomness in the generation pipeline must flow from the xorshift64* PRNG to
+All randomness in the generation pipeline must flow from the xorshift64 PRNG to
 guarantee cross-platform determinism.
 
 ```csharp
 /// <summary>
-/// Deterministic terrain height generation using xorshift64* PRNG.
+/// Deterministic terrain height generation using xorshift64 PRNG.
 /// Uses a simple octave-based approach seeded entirely from our PRNG.
 /// No Unity math functions are used for noise generation.
 /// </summary>
@@ -249,7 +249,7 @@ public bool ValidateLevel(Level level)
 
 ## Part 2: Deterministic PRNG & Seeding
 
-### 2.1 xorshift64* Algorithm (Selected)
+### 2.1 xorshift64 Algorithm (Selected)
 
 **Characteristics:**
 - Period: 2^64 - 1 (full period for any non-zero seed)
@@ -544,7 +544,7 @@ public void TestGenerationPerformance()
 ## Part 5: Implementation Roadmap
 
 ### Week 1: Core PRNG & Seeding
-- [ ] Implement xorshift64* RNG class
+- [ ] Implement xorshift64 RNG class
 - [ ] Build Level ID parser/encoder
 - [ ] Write seed derivation logic
 - [ ] Unit tests (determinism, distribution)

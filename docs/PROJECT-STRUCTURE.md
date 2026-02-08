@@ -1,12 +1,12 @@
 # Project Directory Structure & File Guide
 
-**Last Updated**: 2026-02-06 | **Version**: 2.0 | **Status**: Active
+**Last Updated**: 2026-02-08 | **Version**: 3.0 | **Status**: Active
 
 ---
 
 ## Overview
 
-Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 6000.3.6f1. All visual and audio assets are procedurally generated at runtime — there are no imported sprites, textures, or audio files.
+Epoch Breaker is a retro side-scrolling shooter built with Unity 6000.3.6f1, deployed as WebGL to GitHub Pages. All visual and audio assets are procedurally generated at runtime — there are no imported sprites, textures, or audio files.
 
 ---
 
@@ -18,29 +18,26 @@ Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 6000.3.6
 
 ---
 
-## Current Structure (v0.3.0)
+## Current Structure (v1.4.2)
 
 ```
 16 Bit Mobile Game/
 ├── README.md
-├── GAME-DESIGN-REVIEW.md                 ← Expert review document
 ├── DOCUMENTATION-INDEX.md                ← Index of all docs
 ├── BUILD-LOG.md                          ← WebGL deployment log
-├── PROJECT-LAUNCH-CHECKLIST.md
+├── QC-CHECKLIST.md                       ← Systematic QC checklist (20 sections)
+├── ROADMAP.md                            ← Development roadmap
+├── AUDIO-ISSUE-REPORT.md                 ← Audio squeal analysis for external review
 ├── .gitignore
 │
 ├── docs/                                 ← All documentation
-│   ├── Expert-Review-Report.md           (Latest expert review findings)
-│   ├── Expert-Review-Change-Log.md       (Changes from review sprints)
-│   ├── Development-Review-Workflow.md    (Review cadence and roles)
-│   ├── Expert-Review-*.md                (Review process documents)
-│   ├── Development-Roadmap.md            (Timeline, milestones)
+│   ├── EXPERT-REVIEW-v1.0.2.md           (Expert review: 12 findings, competency scores)
 │   ├── PROJECT-STRUCTURE.md              ← THIS FILE
-│   ├── Training-Plan.md                  (Training curriculum)
 │   ├── Level-Generation-Technical-Spec.md
 │   ├── Level-Generation-Research-Guide.md
 │   ├── Validation-QA-Suite.md
-│   └── Module-*-Assessment-Criteria.md   (6 training modules)
+│   ├── architecture-decisions/           (ADR-001 through ADR-006)
+│   └── archive/                          (Historical docs — .gitignored)
 │
 ├── EpochBreaker/                         ← FULL UNITY PROJECT
 │   ├── Assets/
@@ -67,7 +64,7 @@ Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 6000.3.6
 │   │   │   │   ├── CheckpointManager.cs (Checkpoint tracking)
 │   │   │   │   ├── CheckpointTrigger.cs (Checkpoint collision)
 │   │   │   │   ├── AchievementManager.cs (30 achievements, persistence)
-│   │   │   │   ├── AudioManager.cs      (Music + 8-channel SFX pool)
+│   │   │   │   ├── AudioManager.cs      (Music + 8-channel SFX pool + 3 weapon sources)
 │   │   │   │   ├── PlaceholderAssets.cs (Runtime sprite generation)
 │   │   │   │   ├── PlaceholderAudio.cs  (Runtime audio synthesis)
 │   │   │   │   ├── RewardPickup.cs      (Collectible items)
@@ -81,10 +78,10 @@ Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 6000.3.6
 │   │   │   │   └── BossArenaTrigger.cs  (Boss activation zone)
 │   │   │   │
 │   │   │   ├── Gameplay/Weapons/        (Weapon system)
-│   │   │   │   ├── WeaponSystem.cs      (6-slot, auto-select, cycling)
+│   │   │   │   ├── WeaponSystem.cs      (5-weapon, auto-select, cycling)
 │   │   │   │   ├── WeaponData.cs        (Stats database, heat system)
 │   │   │   │   ├── WeaponPickup.cs      (Weapon acquisition)
-│   │   │   │   └── Projectile.cs        (Pierce, chain, slow, heat)
+│   │   │   │   └── Projectile.cs        (Pierce, chain, heat)
 │   │   │   │
 │   │   │   ├── UI/                      (In Assembly-CSharp)
 │   │   │   │   ├── TitleScreenUI.cs     (Main menu, settings, modes)
@@ -195,6 +192,6 @@ When writing code that bridges generation and rendering:
 
 ---
 
-**Version**: 2.2
-**Last Updated**: 2026-02-07
+**Version**: 3.0
+**Last Updated**: 2026-02-08
 **Status**: Active

@@ -1,7 +1,7 @@
 # Epoch Breaker — Development Roadmap
 
-**Created**: 2026-02-06 | **Updated**: 2026-02-07
-**Starting from**: v0.6.0 build 012 | **Current**: v1.1.0 build 028
+**Created**: 2026-02-06 | **Updated**: 2026-02-08
+**Starting from**: v0.6.0 build 012 | **Current**: v1.4.2 build 034
 
 > **Platform note (2026-02-06):** Mobile (iOS) is deprioritized. There is no way to test
 > or prepare for mobile at this time. All development targets **Unity Editor** and
@@ -55,7 +55,7 @@ These are the highest fun-per-effort changes. They unlock existing systems that 
 
 | # | Finding | File(s) | Change |
 |---|---------|---------|--------|
-| 11 | Weapon legend shows only 3 of 6 types | TitleScreenUI.cs | Expand legend row to show all 6 weapon type icons with labels. Players can see what each pickup looks like before playing |
+| 11 | Weapon legend shows only 3 of 5 types | TitleScreenUI.cs | Expand legend row to show all 5 weapon type icons with labels (Slower removed in build 032). Players can see what each pickup looks like before playing |
 | 12 | README status outdated | README.md | Update status to v1.0.3 build 027, current feature set |
 
 **Competency impact**: C3 Weapon System (+5)
@@ -82,7 +82,45 @@ All sprints are independent and can be implemented in any order or in parallel. 
 
 Target: 12/12 competencies passing (currently 8/12).
 
-**Status**: All 12 findings implemented in build 028.
+**Status**: All 12 findings implemented in build 028. Subsequently, builds 029-034 added audio fixes, 2x resolution, weapon wheel, title screen overhaul, Slower weapon removal, FreePlay→The Breach rename, and ability pickup sprites.
+
+---
+
+## v1.4.2: Build 034 — Ability Pickup Sprites
+
+- Proper procedural sprites for DoubleJump (green chevrons), AirDash (blue arrow with motion trails), GroundSlam (orange impact fist), PhaseShift (cyan diamond with ghost afterimage)
+
+---
+
+## v1.4.1: Build 033 — Playtest Fixes
+
+- Cosmetics preview refresh on panel close, Campaign retry same epoch on fail, audio squeal mitigation (LP alpha 0.20, normalization 0.40, runtime LPF 3000Hz, max concurrent SFX 3), AudioListener moved to persistent GameManager
+
+---
+
+## v1.4.0: Build 032 — Title Screen & Weapon Overhaul
+
+- Title screen: Cosmetics moved to Settings, New Game resized below Continue, player character preview lower-right, Achievements/Legends repositioned
+- Weapon wheel: moved to lower-left, actual weapon sprites, 5 slots (72° intervals)
+- Slower weapon deprecated (5 weapons: Bolt, Piercer, Spreader, Chainer, Cannon)
+- FreePlay renamed to "The Breach", auto-defaults after Campaign completion
+- Randomize checkbox replaced with "Replay Campaign" in Settings
+
+---
+
+## v1.3.0: Build 031 — 2x Resolution
+
+- All procedural sprites doubled (TILE_PX 128→256, PPU 128→256, SCALE 2→4)
+- Weapon wheel HUD: radial 6-slot indicator with fade-in/fade-out
+
+---
+
+## v1.2.0: Build 030 — QC Review Fixes
+
+- Audio: 3-pass LP filter (alpha 0.25), linear normalization (0.50), runtime LPF 4000Hz, BASE_SFX_VOLUME 0.18
+- Cosmetics: fixed WeaponSystem.cs overriding skin tint
+- UI: Achievements/Legends buttons repositioned, difficulty button highlight, Campaign "Infinite lives" text, HUD deaths counter
+- Polish: LeaderboardSuffix per difficulty, ghost replay capped at 50 entries
 
 ---
 
@@ -93,7 +131,7 @@ All 12 findings from expert review implemented:
 - **Tutorialization**: Weapon cycling hint on 2nd pickup ("Press X to cycle weapons for Quick Draw boost!"), hazard hint on first trigger, boss pillar flash + "Destroy the pillar!" hint. Tutorial replay already existed in Settings.
 - **Campaign rebalance**: Infinite lives in Campaign mode (deaths cost time/score, never Game Over). Era 0 boss gains projectile in Phase 2 (30% shoot, 70% charge). Teleport Dash gets 0.4s shimmer telegraph before teleporting.
 - **Scoring polish**: Combo only resets on enemy-sourced damage; environmental hazard damage gets 1s grace period (cancelled by kills). LevelCompleteMinDelay reduced 5.0→2.5s. Stomp shockwave damages all enemies within 2 tiles (flying counterplay).
-- **Weapon UI**: Legend expanded from 3 tiers to all 6 weapon types (Bolt, Piercer, Spreader, Chainer, Slower, Cannon).
+- **Weapon UI**: Legend expanded from 3 tiers to all weapon types. (Note: Slower was subsequently removed in build 032, leaving 5 weapons: Bolt, Piercer, Spreader, Chainer, Cannon.)
 
 ---
 
@@ -283,7 +321,7 @@ Design doc Section 15.1. High-spectacle power fantasy reward for weapon collecti
 |---|---------|--------|
 | 1 | Activation | Hold jump 0.5s while grounded with 3+ weapons acquired. Visual charge-up (glow). Full invulnerability during attack |
 | 2 | Era-specific attacks | Epoch 0: Avalanche (rocks fall). 1: Bronze Storm. 2: Phalanx Volley. 3: Siege Barrage. 4: Renaissance Burst. 5: Steam Cannon. 6: Airstrike. 7: Data Storm. 8: Orbital Beam. 9: Singularity Pulse |
-| 3 | Scaling | Damage scales with weapon count (3 weapons = 1x, 6 weapons = 2.5x). 15s cooldown, reduced 2s per extra weapon beyond 3 |
+| 3 | Scaling | Damage scales with weapon count (3 weapons = 1x, 5 weapons = 2.5x). 15s cooldown, reduced 2s per extra weapon beyond 3 |
 | 4 | Screen effect | Full-screen flash in era accent color, heavy screen shake (trauma 0.8), 0.2s hit-stop |
 | 5 | HUD indicator | Charge meter below health hearts, fills when ready, depletes on use |
 
@@ -402,5 +440,10 @@ DEFERRED: Mobile Readiness          <- no test environment, deferred to future r
 | v1.0.1 | 025 | QC playtest fixes, WebGL guards, button states | Playtested | Done |
 | v1.0.2 | 026 | Playtest feedback: audio, UI legibility, tutorial | Playtest-hardened | Done |
 | v1.0.3 | 027 | Audio quality overhaul, UI layout fixes, repo cleanup | Clean codebase | Done |
-| v1.1.0 | TBD | Expert review: tutorialization, campaign rebalance, boss fixes, scoring polish | Fun-maximized | **Next** |
+| v1.1.0 | 028 | Expert review: tutorialization, campaign rebalance, boss fixes, scoring polish | Fun-maximized | Done |
+| v1.2.0 | 030 | QC review fixes: audio, cosmetics, UI, polish, difficulty UX | QC-clean | Done |
+| v1.3.0 | 031 | 2x resolution sprites, weapon wheel HUD | Visual upgrade | Done |
+| v1.4.0 | 032 | Title screen overhaul, remove Slower weapon, rename FreePlay→The Breach | UX overhaul | Done |
+| v1.4.1 | 033 | Playtest fixes: cosmetics preview, level fail retry, audio mitigation | Playtest-hardened | Done |
+| v1.4.2 | 034 | Ability pickup sprites (DoubleJump, AirDash, GroundSlam, PhaseShift) | Visual completeness | Done |
 | Future | TBD | Mobile readiness (touch, haptics, safe area, perf) | Ship-ready (iOS) | Deferred |

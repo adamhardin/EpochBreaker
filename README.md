@@ -1,6 +1,6 @@
 # Epoch Breaker
 
-A retro side-scrolling mobile shooter for iOS where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments that evolve across 10 eras of human civilization.
+A retro side-scrolling shooter where a small character collects weapon attachments that auto-fire from their body, blasting through destructible environments that evolve across 10 eras of human civilization. Playable in-browser via WebGL.
 
 ---
 
@@ -56,9 +56,12 @@ Character and world evolve through all of human civilization:
 | 9 | Space Age | Orbital, alien worlds | Energy weapons, plasma |
 | 10 | Transcendent | Reality-bending, exotic | Nanobots, antimatter, singularity |
 
-### 4. Controls (Two-Thumb Mobile Layout)
-- **Left thumb:** Virtual D-pad for movement (left/right)
-- **Right thumb:** Jump button + Target cycle button
+### 4. Controls (Keyboard)
+- **WASD / Arrow keys:** Movement (left/right)
+- **Space:** Jump (variable height with hold)
+- **X / J:** Cycle weapon (triggers Quick Draw fire-rate boost)
+- **S / Down:** Stomp (ground pound)
+- **Escape / Backquote:** Pause
 - **Hold jump when powered up:** Unleashes special attack
 
 ---
@@ -69,27 +72,25 @@ Character and world evolve through all of human civilization:
 |-----------|--------|-----------|
 | Engine | Unity 6000.3.6f1 | Best balance of 2D support, dev velocity, community resources |
 | Language | C# | Unity native |
-| PRNG | xorshift64* | Fast, deterministic, no platform-specific behavior |
+| PRNG | xorshift64 | Fast, deterministic, no platform-specific behavior |
 | Generation | Hybrid (PRNG terrain + grammar pacing + constraint validation) | Natural layouts with guaranteed playability |
-| iOS Target | iOS 15+ | Modern APIs, reasonable install base |
-| Minimum Device | iPhone 11 | 60 fps baseline target |
+| Platform | WebGL (GitHub Pages) | Browser-playable, no install required |
+| Future Target | iOS 15+ (deferred) | Mobile readiness deferred — no test environment |
 | Audio | Runtime-generated | All audio synthesized via AudioClip.Create() — zero imported assets |
 
 ---
 
 ## Performance Targets
 
-| Metric | Target | Device |
-|--------|--------|--------|
-| Frame rate | 60 fps sustained | iPhone 11+ |
-| Frame rate | 120 fps | iPhone 14 Pro+ |
-| Level generation (avg) | 100 ms | iPhone 11 |
-| Level generation (P95) | 150 ms | iPhone 11 |
-| Memory (peak) | < 100 MB | All devices |
+| Metric | Target | Platform |
+|--------|--------|----------|
+| Frame rate | 60 fps sustained | WebGL (modern browsers) |
+| Level generation (avg) | 100 ms | WebGL |
+| Level generation (P95) | 150 ms | WebGL |
+| Memory (peak) | < 100 MB | All platforms |
 | Memory (per level) | < 2 MB | Resident |
-| App launch to gameplay | < 3 seconds | All devices |
-| Destructible tiles per level | Up to 500 | All devices |
-| Simultaneous projectiles | Up to 30 | All devices |
+| Destructible tiles per level | Up to 500 | All platforms |
+| Simultaneous projectiles | Up to 30 | All platforms |
 
 ---
 
@@ -135,14 +136,14 @@ Full specification: [Level-Generation-Technical-Spec.md](docs/Level-Generation-T
 
 **Pipeline:**
 1. Seed derived from Level ID
-2. xorshift64* PRNG initialized with seed (all randomness flows from here)
+2. xorshift64 PRNG initialized with seed (all randomness flows from here)
 3. Macro layout: zones placed by grammar rules (intro, traversal, combat, puzzle, boss)
 4. Destructible terrain: walls, rocks, and breakable material placed with embedded pathways
 5. Weapons and enemies placed by PRNG within zone constraints
 6. Validation: reachability verified with minimum weapon loadout, difficulty checked
 7. Level is playable -- same seed always produces the same level
 
-**Critical constraint:** No Unity math functions (e.g., `Mathf.PerlinNoise`) in the generation pipeline. All randomness comes from xorshift64* PRNG for cross-platform determinism.
+**Critical constraint:** No Unity math functions (e.g., `Mathf.PerlinNoise`) in the generation pipeline. All randomness comes from xorshift64 PRNG for cross-platform determinism.
 
 ---
 
@@ -193,6 +194,6 @@ GitHub Pages automatically serves the latest content on the `gh-pages` branch.
 
 ## Status
 
-**Current version:** v1.1.0 build 030
-**Current phase:** Feature-complete with 10 eras, 3 game modes (Campaign, Streak, FreePlay), procedural levels, 6 weapon types, 10 boss variants, daily/weekly challenges, friend challenges, ghost replay, cosmetics (skins/trails/frames), achievements, level history, accessibility options, context-sensitive gameplay hints, and runtime-generated audio/visuals
-**Last updated:** 2026-02-07
+**Current version:** v1.4.2 build 034
+**Current phase:** Feature-complete with 10 eras, 3 game modes (Campaign, Streak, The Breach), procedural levels, 5 weapon types (Bolt, Piercer, Spreader, Chainer, Cannon), 10 boss variants, daily/weekly challenges, friend challenges, ghost replay, cosmetics (skins/trails/frames), achievements, level history, accessibility options, context-sensitive gameplay hints, 2x resolution sprites, weapon wheel HUD, ability pickup sprites, and runtime-generated audio/visuals
+**Last updated:** 2026-02-08

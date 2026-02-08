@@ -2,7 +2,7 @@
 
 ## Overview
 
-This specification defines the architecture for a deterministic, procedurally generated level system for a retro side-scrolling mobile shooter on iOS. Each level is uniquely identifiable and reconstructible via a stable seed. The core gameplay loop centers on destructible environments: the player's weapons auto-fire, blasting through walls, rocks, and terrain to reveal hidden pathways, bridges, stairs, and secret areas. Strategic preservation of material creates platforms, cover, and structural aids, rewarding players who plan their destruction carefully. The system enables infinite replayability through shareable Level IDs while maintaining consistent difficulty and design quality across 10 eras of human civilization.
+This specification defines the architecture for a deterministic, procedurally generated level system for a retro side-scrolling shooter (WebGL/browser, with iOS as a future target). Each level is uniquely identifiable and reconstructible via a stable seed. The core gameplay loop centers on destructible environments: the player's weapons auto-fire, blasting through walls, rocks, and terrain to reveal hidden pathways, bridges, stairs, and secret areas. Strategic preservation of material creates platforms, cover, and structural aids, rewarding players who plan their destruction carefully. The system enables infinite replayability through shareable Level IDs while maintaining consistent difficulty and design quality across 10 eras of human civilization.
 
 ---
 
@@ -38,26 +38,39 @@ Difficulty is handled separately via `DifficultyManager` (player setting, not en
 **Total ID Length**: 10 characters (compact, shareable format)
 
 ### Seed Generation Algorithm
+
+The actual implementation in `LevelID.GenerateRandom()`:
+
 ```
-seed = (timestamp_ms XOR user_id) + (play_count % 2^31)
+timePart   = current UTC milliseconds (64-bit)
+counterPart = atomic incrementing counter (64-bit)
+seed       = timePart ^ (counterPart << 32) ^ 0xDEADBEEFCAFEBABEUL
+
+// Scramble via one xorshift round to spread entropy
+seed ^= seed << 13
+seed ^= seed >> 7
+seed ^= seed << 17
+if seed == 0: seed = 1      // avoid PRNG fixed point
+seed &= 0xFFFFFFFFFF         // mask to 40 bits (fits 8 base32 chars)
 ```
-- Ensures uniqueness across devices
-- Allows player-specific level generation
+
+- Ensures uniqueness via millisecond timestamp + atomic counter
 - Deterministic on replay with same seed
 - Shareable: any player can enter another player's Level ID to play the identical level
+- The 40-bit mask produces 2^40 (~1.1 trillion) unique seeds per epoch
 
 ### Deterministic PRNG
 ```
-Algorithm: xorshift64* (fast, deterministic, minimal state)
-Initialization: seed = SEED64
+Algorithm: xorshift64 (Marsaglia, 2003 — plain variant, no star multiplier)
+Initialization: seed = SEED64 (non-zero)
 Output: 64-bit unsigned integer per call
 ```
 
-**Pseudocode:**
+**Pseudocode (matches XORShift64.cs):**
 ```
 class XORShift64:
     def __init__(self, seed):
-        self.state = seed if seed != 0 else DEFAULT_SEED
+        self.state = seed if seed != 0 else 1
 
     def next(self):
         x = self.state
@@ -72,10 +85,12 @@ class XORShift64:
 ```
 
 **Properties:**
-- Full 64-bit period (except seed=0)
+- Full 2^64 - 1 period (seed=0 is avoided)
 - No correlation between successive outputs
 - Zero external state modifications
-- Cross-platform deterministic (no floating-point)
+- Cross-platform deterministic (PRNG state is integer-only)
+
+> **Note:** ADR-002 originally specified xorshift64\* (with a final multiplication by 0x2545F4914F6CDD1D). The shipped implementation omits this multiplier. See ADR-002 for rationale.
 
 ---
 
@@ -300,7 +315,7 @@ Transcendent (9): soft=0.15, medium=0.15, hard=0.20, reinforced=0.35, indestruct
 #### Terrain Generation
 1. **Baseline Solid Mass**
    - Fill zone regions with solid destructible material based on era distribution
-   - All randomness sourced from xorshift64* -- no Unity math functions for generation
+   - All randomness sourced from xorshift64 -- no Unity math functions for generation
    - Indestructible boundary walls at top, bottom, and level edges
 
 2. **Embedded Pathway Carving**
@@ -726,9 +741,9 @@ The canonical performance targets are defined here. All other documents defer to
 
 | Device | Target (avg) | P95 | P99 | Max Level Size |
 |--------|-------------|-----|-----|----------------|
-| iPhone 14+ | 50 ms | 80 ms | 120 ms | 512x32 tiles |
-| iPhone 12/13 | 80 ms | 120 ms | 150 ms | 400x32 tiles |
-| iPhone 11 (baseline) | 100 ms | 150 ms | 200 ms | 256x32 tiles |
+| iPhone 14+ | 50 ms | 80 ms | 120 ms | 512x16 tiles |
+| iPhone 12/13 | 80 ms | 120 ms | 150 ms | 400x16 tiles |
+| iPhone 11 (baseline) | 100 ms | 150 ms | 200 ms | 256x16 tiles |
 
 Note: iPhone XR and older are not supported. iPhone 11 is the minimum target device.
 The commonly cited "< 150ms" target refers to the P95 on the baseline device (iPhone 11).
@@ -765,10 +780,10 @@ Test 2: Different Seed, Different Level
   assert level_1 != level_2  (allow <2% similarity)
 
 Test 3: Cross-Platform Determinism
-  // Run on iOS device, macOS simulator
-  level_ios = generate(seed, difficulty, era)
-  level_mac = generate(seed, difficulty, era)
-  assert level_ios == level_mac
+  // Run in Unity Editor and WebGL browser build
+  level_editor = generate(seed, difficulty, era)
+  level_webgl = generate(seed, difficulty, era)
+  assert level_editor == level_webgl
 
 Test 4: Performance Under Stress
   for i in 1..100:
@@ -806,7 +821,7 @@ Test 7: Level ID Shareability
 ## Implementation Roadmap
 
 ### Phase 1: Core PRNG & Seeding (Week 1)
-- [ ] Implement xorshift64* RNG
+- [x] Implement xorshift64 RNG
 - [ ] Build Level ID parser/encoder (updated ERA field)
 - [ ] Write seed derivation logic
 - [ ] Unit tests for determinism
@@ -869,7 +884,7 @@ Test 7: Level ID Shareability
 
 ## References & Research
 
-- xorshift64*: Marsaglia (2003), "Xorshift RNGs"
+- xorshift64: Marsaglia (2003), "Xorshift RNGs"
 - Procedural Content Generation: Togelius et al. (2011), "Search-Based Procedural Content Generation"
 - Wave Function Collapse: Gumin (2016), constraint-based tile generation
 - Game Design Theory: Hunicke, LeBlanc, Zubek (2004), MDA Framework
@@ -878,7 +893,7 @@ Test 7: Level ID Shareability
 - Structural Simulation: "Real-Time Structural Analysis for Games", GDC 2015
 
 **Determinism Note:** Unity's `Mathf.PerlinNoise` is explicitly excluded from the
-generation pipeline. All randomness must flow through the xorshift64* PRNG to
+generation pipeline. All randomness must flow through the xorshift64 PRNG to
 guarantee cross-platform, cross-version determinism. Destruction physics (cascade
 collapse) must also be deterministic: integer-only math, fixed-tick simulation at
 60 Hz, no floating-point accumulation.

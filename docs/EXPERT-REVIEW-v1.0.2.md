@@ -1,7 +1,7 @@
 # Expert Game Design Review — v1.0.2 build 027
 
 **Date**: 2026-02-07
-**Reviewer**: AI Expert Agent (competency framework from `docs/archive/Reviewer-Competency-Rubrics.md`)
+**Reviewer**: AI Expert Agent (competency framework from `docs/archive/Reviewer-Competency-Rubrics.md` — archived locally, not in repo)
 **Scope**: Full codebase review of all gameplay, UI, audio, level generation, and progression systems
 **Purpose**: Identify improvements to maximize fun, clarity, and player retention
 

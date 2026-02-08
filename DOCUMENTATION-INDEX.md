@@ -1,6 +1,6 @@
 # Documentation Index
 
-**Last Updated**: 2026-02-07 | **Version**: v1.1.0 build 028
+**Last Updated**: 2026-02-08 | **Version**: v1.4.2 build 034
 
 ---
 
@@ -58,7 +58,6 @@ The game is playable at **[https://adamhardin.github.io/EpochBreaker/](https://a
 
 | File | Purpose |
 |------|---------|
-| [.github/workflows/deploy-webgl.yml](.github/workflows/deploy-webgl.yml) | GitHub Actions workflow for gh-pages deployment |
 | [EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs](EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs) | Custom build script for headless WebGL builds |
 | [EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html](EpochBreaker/Assets/WebGLTemplates/EpochBreaker/index.html) | Custom HTML template (landscape 16:9, dark theme) |
 | [scripts/test-and-build.sh](scripts/test-and-build.sh) | Local test + build script |

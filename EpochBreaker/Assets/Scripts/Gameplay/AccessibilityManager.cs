@@ -54,14 +54,15 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Multiplier for HUD text sizes. Range: 0.8 to 1.5.
+        /// Multiplier for HUD text sizes. Disabled (locked to 1.0) until
+        /// UI containers are validated at non-default scales.
         /// </summary>
         public float FontSizeScale
         {
             get => _fontSizeScale;
             set
             {
-                _fontSizeScale = Mathf.Clamp(value, 0.8f, 1.5f);
+                _fontSizeScale = 1f;
                 PlayerPrefs.SetFloat(PREF_FONT_SCALE, _fontSizeScale);
                 PlayerPrefs.Save();
             }

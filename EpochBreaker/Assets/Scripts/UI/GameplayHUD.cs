@@ -1062,6 +1062,7 @@ namespace EpochBreaker.UI
                 // Set boss name (convert PascalCase enum to spaced uppercase)
                 string rawName = boss.Type.ToString();
                 string displayName = System.Text.RegularExpressions.Regex.Replace(rawName, "([a-z])([A-Z])", "$1 $2").ToUpper();
+                if (displayName.Length > 20) displayName = displayName.Substring(0, 20);
                 _bossNameText.text = displayName;
             }
 

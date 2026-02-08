@@ -39,21 +39,24 @@ Timeout: 30 seconds per 100 generations
 ```
 
 #### Test 1.3: Cross-Platform Determinism
-**Objective**: Ensure same seed produces same level on different devices/platforms
+**Objective**: Ensure same seed produces same level on different platforms
 ```
 Test Case:
-  1. On iOS device: generate level with seed=0x123456
-  2. On macOS simulator: generate same level
+  1. In Unity Editor: generate level with seed=0x123456
+  2. In WebGL browser build: generate same level
   3. Compare byte-by-byte
-  
+
 Expected Result: Exact match
-Pass Criteria: iOS output == macOS output
+Pass Criteria: Editor output == WebGL output
 Failure Criteria: Any platform-specific variation
 Test Runs: 50 levels per platform
+
+Note: iOS testing deferred — no mobile test environment available.
+When iOS becomes viable, add iOS device vs Editor comparison.
 ```
 
 #### Test 1.4: PRNG Period Validation
-**Objective**: Confirm xorshift64* has proper period and no short cycles
+**Objective**: Confirm xorshift64 has proper period and no short cycles
 ```
 Test Case:
   1. Initialize PRNG with seed=1
@@ -176,16 +179,17 @@ Test Case:
   2. Measure generation_time from seed input to playable level
   3. Record statistics: min, max, avg, p95, p99
   
-Expected Results by Device (canonical targets from Level-Generation-Technical-Spec.md):
-  | Device | Target (avg) | P95 | P99 |
-  |--------|-------------|-----|-----|
-  | iPhone 14+ | 50 ms | 80 ms | 120 ms |
-  | iPhone 12/13 | 80 ms | 120 ms | 150 ms |
-  | iPhone 11 (baseline) | 100 ms | 150 ms | 200 ms |
+Expected Results by Platform (canonical targets from Level-Generation-Technical-Spec.md):
+  | Platform | Target (avg) | P95 | P99 |
+  |----------|-------------|-----|-----|
+  | Unity Editor | 50 ms | 80 ms | 120 ms |
+  | WebGL (Chrome/Firefox) | 100 ms | 150 ms | 200 ms |
+  | WebGL (Safari) | 100 ms | 150 ms | 200 ms |
 
-Note: iPhone XR and older are not supported.
-Pass Criteria: All devices meet P95 targets
-Failure Criteria: Any device exceeds P99 by >25%
+Note: iOS device testing deferred. Original iPhone baselines preserved
+for reference: iPhone 14+ (50ms avg), iPhone 12/13 (80ms), iPhone 11 (100ms).
+Pass Criteria: All platforms meet P95 targets
+Failure Criteria: Any platform exceeds P99 by >25%
 ```
 
 #### Test 4.2: Memory Overhead
