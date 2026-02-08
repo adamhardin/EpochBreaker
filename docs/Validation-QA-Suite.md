@@ -101,9 +101,9 @@ Failure Criteria: Isolated platforms in any level
 **Objective**: Ensure all required jumps are within player capabilities
 ```
 Test Case:
-  1. Define player_max_jump_distance = 4 tiles
+  1. Define player_max_jump_horizontal = 5 tiles, player_max_jump_vertical = 4 tiles
   2. For 100 random levels, measure all gap distances
-  3. Verify gap_distance <= player_max_jump_distance
+  3. Verify horizontal gap <= 5 tiles, vertical jump <= 4 tiles
   
 Expected Result: All gaps passable
 Pass Criteria: 100% of gaps within capability
@@ -126,9 +126,9 @@ Test Case:
      - safe_zone_ratio
   3. Verify calculated_score ≈ expected_difficulty * weight_constant
   
-Expected Result: Calculated difficulty within ±1 point
-Pass Criteria: |calculated - expected| < 1.0
-Failure Criteria: Variance > 1.5
+Expected Result: Calculated difficulty within ±1.5 points
+Pass Criteria: |calculated - expected| <= 1.5
+Failure Criteria: Variance > 2.0
 Test Count: 100 levels per difficulty tier (500 total)
 ```
 

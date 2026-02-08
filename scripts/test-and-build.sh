@@ -119,14 +119,14 @@ BUILD_DIR="$PROJECT_ROOT/WebGL-Build"
     -nographics \
     -projectPath "$UNITY_PROJECT" \
     -buildTarget WebGL \
-    -executeMethod BuildScript.BuildWebGL \
+    -executeMethod EpochBreaker.Editor.WebGLBuildScript.Build \
     -logFile "$RESULTS_DIR/build-log.txt" \
     -quit
 
 if [[ $? -eq 0 ]]; then
     echo ""
     echo "BUILD SUCCEEDED"
-    echo "Output: $BUILD_DIR"
+    echo "Output: $UNITY_PROJECT/build/WebGL/WebGL"
 else
     echo ""
     echo "BUILD FAILED — check $RESULTS_DIR/build-log.txt"

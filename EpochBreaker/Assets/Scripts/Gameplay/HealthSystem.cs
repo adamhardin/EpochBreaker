@@ -28,12 +28,16 @@ namespace EpochBreaker.Gameplay
         private PlayerController _player;
         private SpriteRenderer _spriteRenderer;
         private bool _deathProcessing;
+        private Color _baseSkinColor = Color.white; // Skin tint to restore after flashing
 
         private void Awake()
         {
             CurrentHealth = MaxHealth;
             _player = GetComponent<PlayerController>();
             _spriteRenderer = GetComponent<SpriteRenderer>();
+            // Capture the skin tint set by LevelLoader so we restore to it (not white)
+            if (_spriteRenderer != null)
+                _baseSkinColor = _spriteRenderer.color;
         }
 
         private void Start()
@@ -56,7 +60,7 @@ namespace EpochBreaker.Gameplay
                 {
                     IsInvulnerable = false;
                     if (_spriteRenderer != null)
-                        _spriteRenderer.color = Color.white;
+                        _spriteRenderer.color = _baseSkinColor;
                 }
                 else
                 {
@@ -65,7 +69,9 @@ namespace EpochBreaker.Gameplay
                     if (_spriteRenderer != null)
                     {
                         float flash = Mathf.PingPong(_iFrameFlashAccum, 1f);
-                        _spriteRenderer.color = new Color(1f, 1f, 1f, flash > 0.5f ? 1f : 0.3f);
+                        Color c = _baseSkinColor;
+                        c.a = flash > 0.5f ? 1f : 0.3f;
+                        _spriteRenderer.color = c;
                     }
                 }
             }
@@ -90,9 +96,9 @@ namespace EpochBreaker.Gameplay
             // Screen shake on player damage (high trauma)
             CameraController.Instance?.AddTrauma(0.4f);
 
-            // Brief white flash before i-frame flashing
+            // Brief bright flash before i-frame flashing
             if (_spriteRenderer != null)
-                _spriteRenderer.color = Color.white;
+                _spriteRenderer.color = Color.white; // Momentary white flash (overridden by i-frame flashing)
 
             // Notify achievement system that player took damage
             GameManager.Instance?.RecordPlayerDamage(isEnvironmental);
@@ -133,7 +139,7 @@ namespace EpochBreaker.Gameplay
             IsInvulnerable = false;
             _deathProcessing = false;
             if (_spriteRenderer != null)
-                _spriteRenderer.color = Color.white;
+                _spriteRenderer.color = _baseSkinColor;
             OnHealthChanged?.Invoke(CurrentHealth, MaxHealth);
         }
 
@@ -195,7 +201,10 @@ namespace EpochBreaker.Gameplay
                 float alpha = Mathf.Lerp(1f, 0f, t);
                 float scale = Mathf.Lerp(1f, 0.3f, t * t); // ease-in shrink
 
-                _spriteRenderer.color = new Color(1f, 0.3f, 0.3f, alpha); // Red tint
+                _spriteRenderer.color = new Color(
+                    Mathf.Lerp(_baseSkinColor.r, 1f, 0.7f),
+                    _baseSkinColor.g * 0.3f,
+                    _baseSkinColor.b * 0.3f, alpha); // Red death tint blended with skin
                 transform.localScale = originalScale * scale;
 
                 // Slower spin (360 deg/s, was 720)
@@ -205,7 +214,7 @@ namespace EpochBreaker.Gameplay
             }
 
             // Reset for respawn
-            _spriteRenderer.color = originalColor;
+            _spriteRenderer.color = _baseSkinColor;
             transform.localScale = originalScale;
             transform.rotation = Quaternion.identity;
         }

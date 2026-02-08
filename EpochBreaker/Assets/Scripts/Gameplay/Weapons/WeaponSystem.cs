@@ -4,13 +4,14 @@ using EpochBreaker.Generative;
 namespace EpochBreaker.Gameplay
 {
     /// <summary>
-    /// Manages the player's 6-slot weapon inventory. Auto-fires continuously.
-    /// Limited auto-select: Bolt default, Piercer in corridors, Slower on boss.
+    /// Manages the player's weapon inventory. Auto-fires continuously.
+    /// Limited auto-select: Bolt default, Piercer in corridors, Cannon on boss.
     /// Manual cycling via Attack button with Quick Draw fire rate buff.
+    /// Slower (index 4) is deprecated and skipped in all logic.
     /// </summary>
     public class WeaponSystem : MonoBehaviour
     {
-        public const int SLOT_COUNT = 6;
+        public const int SLOT_COUNT = 6; // Array size matches WeaponType enum (0-5); slot 4 (Slower) is skipped
         private const float QUICK_DRAW_DURATION = 1.5f;
         private const float QUICK_DRAW_RATE_MULT = 0.75f; // 25% faster fire rate
         private const float CORRIDOR_VERTICAL_SPREAD = 2f; // Max Y spread for "in a line"
@@ -27,6 +28,7 @@ namespace EpochBreaker.Gameplay
         private PlayerController _player;
         private HeatSystem _heatSystem = new HeatSystem();
         private SpriteRenderer _playerSr;
+        private Color _baseSkinColor = Color.white; // Cosmetic skin tint (captured on init)
         private int _nearbyEnemyCount;
         private bool _bossInRange;
         private bool _enemiesInCorridor; // 2+ enemies roughly in a horizontal line
@@ -72,6 +74,10 @@ namespace EpochBreaker.Gameplay
             // Bolt is always acquired from the start
             _slots[0].Acquired = true;
             _activeSlot = 0;
+
+            // Capture cosmetic skin tint so Quick Draw glow blends on top instead of overwriting
+            if (_playerSr != null)
+                _baseSkinColor = _playerSr.color;
         }
 
         private void Update()
@@ -81,19 +87,19 @@ namespace EpochBreaker.Gameplay
 
             _heatSystem.Update(Time.deltaTime);
 
-            // Quick Draw timer countdown + white glow on player sprite
+            // Quick Draw timer countdown + glow on player sprite (blended on skin tint)
             if (_quickDrawTimer > 0f)
             {
                 _quickDrawTimer -= Time.deltaTime;
                 if (_playerSr != null)
                 {
                     float glow = Mathf.Lerp(0f, 0.5f, _quickDrawTimer / QUICK_DRAW_DURATION);
-                    _playerSr.color = Color.white + new Color(glow, glow, glow, 0f);
+                    _playerSr.color = _baseSkinColor + new Color(glow, glow, glow, 0f);
                 }
             }
-            else if (_playerSr != null && _playerSr.color != Color.white)
+            else if (_playerSr != null && _playerSr.color != _baseSkinColor)
             {
-                _playerSr.color = Color.white;
+                _playerSr.color = _baseSkinColor;
             }
 
             // Manual weapon cycle via Attack button
@@ -107,7 +113,7 @@ namespace EpochBreaker.Gameplay
                 AutoSelectReasonTimer -= Time.deltaTime;
 
             // Limited auto-select when not in manual override
-            // Only picks Bolt, Piercer (corridor), or Slower (boss)
+            // Only picks Bolt, Piercer (corridor), or Cannon (boss)
             if (!_manualOverride)
             {
                 int prevSlot = _activeSlot;
@@ -118,8 +124,8 @@ namespace EpochBreaker.Gameplay
                 // Track reason when auto-select changes weapon
                 if (_activeSlot != prevSlot)
                 {
-                    if (_bossInRange && _activeSlot == (int)WeaponType.Slower)
-                        LastAutoSelectReason = "SLOWER (boss)";
+                    if (_bossInRange && _activeSlot == (int)WeaponType.Cannon)
+                        LastAutoSelectReason = "CANNON (boss)";
                     else if (_enemiesInCorridor && _activeSlot == (int)WeaponType.Piercer)
                         LastAutoSelectReason = "PIERCER (corridor)";
                     else
@@ -206,6 +212,7 @@ namespace EpochBreaker.Gameplay
             for (int i = 1; i <= SLOT_COUNT; i++)
             {
                 int slot = (startSlot + i) % SLOT_COUNT;
+                if (slot == (int)WeaponType.Slower) continue; // Skip deprecated Slower
                 if (_slots[slot].Acquired)
                 {
                     _activeSlot = slot;
@@ -216,13 +223,13 @@ namespace EpochBreaker.Gameplay
 
         /// <summary>
         /// Limited auto-select: only picks from 3 options.
-        /// Bolt (default), Piercer (corridor with 2+ aligned enemies), Slower (boss active).
-        /// Chainer, Spreader, Cannon are NEVER auto-selected — manual cycling only.
+        /// Bolt (default), Piercer (corridor with 2+ aligned enemies), Cannon (boss active).
+        /// Chainer, Spreader are NEVER auto-selected — manual cycling only.
         /// </summary>
         private WeaponType SelectBestWeapon()
         {
-            if (_bossInRange && HasWeapon(WeaponType.Slower))
-                return WeaponType.Slower;
+            if (_bossInRange && HasWeapon(WeaponType.Cannon))
+                return WeaponType.Cannon;
             if (_enemiesInCorridor && HasWeapon(WeaponType.Piercer))
                 return WeaponType.Piercer;
             return WeaponType.Bolt;
@@ -395,7 +402,6 @@ namespace EpochBreaker.Gameplay
                 WeaponType.Piercer => new Color(0.6f, 0.9f, 1f),     // Light blue
                 WeaponType.Spreader => new Color(1f, 0.7f, 0.3f),    // Orange
                 WeaponType.Chainer => new Color(0.5f, 0.8f, 1f),     // Electric blue
-                WeaponType.Slower => new Color(0.6f, 0.4f, 1f),      // Purple
                 WeaponType.Cannon => new Color(1f, 0.3f, 0.2f),      // Red
                 _ => Color.white
             };

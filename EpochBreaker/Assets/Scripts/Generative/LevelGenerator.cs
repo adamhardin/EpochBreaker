@@ -1231,8 +1231,9 @@ namespace EpochBreaker.Generative
         /// <summary>
         /// Pick a weapon type appropriate for the given epoch.
         /// Epoch 0-2: Bolt, Piercer, Spreader
-        /// Epoch 3-5: adds Chainer, Slower
+        /// Epoch 3-5: adds Chainer
         /// Epoch 6-9: adds Cannon
+        /// (Slower is deprecated and never spawned.)
         /// </summary>
         private static WeaponType PickWeaponTypeForEpoch(int epoch, XORShift64 rng)
         {
@@ -1244,29 +1245,30 @@ namespace EpochBreaker.Generative
             }
             else if (epoch <= 5)
             {
-                // Mid: add Chainer and Slower
-                int r = rng.Range(0, 5);
+                // Mid: add Chainer
+                int r = rng.Range(0, 4);
                 return r switch { 0 => WeaponType.Bolt, 1 => WeaponType.Piercer, 2 => WeaponType.Spreader,
-                    3 => WeaponType.Chainer, _ => WeaponType.Slower };
+                    _ => WeaponType.Chainer };
             }
             else
             {
-                // Late: all types including Cannon
-                int r = rng.Range(0, 6);
-                return (WeaponType)r;
+                // Late: all types except Slower
+                int r = rng.Range(0, 5);
+                return r switch { 0 => WeaponType.Bolt, 1 => WeaponType.Piercer, 2 => WeaponType.Spreader,
+                    3 => WeaponType.Chainer, _ => WeaponType.Cannon };
             }
         }
 
         /// <summary>
         /// Place 1-3 utility weapon drops (non-Bolt) throughout the level.
-        /// Always places a Slower near boss arena entrance.
+        /// Places a Cannon near boss arena entrance (epoch 6+).
         /// </summary>
         private void PlaceUtilityWeaponDrops(LevelData data, int epoch, XORShift64 rng)
         {
             int width = data.Layout.WidthTiles;
 
-            // Always place a Slower pickup before the boss arena (epoch 3+)
-            if (epoch >= 3)
+            // Place a Cannon pickup before the boss arena (epoch 6+)
+            if (epoch >= 6)
             {
                 foreach (var zone in data.Layout.Zones)
                 {
@@ -1282,7 +1284,7 @@ namespace EpochBreaker.Generative
                         TileX = dropX,
                         TileY = dropY,
                         Tier = WeaponTier.Starting,
-                        Type = WeaponType.Slower,
+                        Type = WeaponType.Cannon,
                         OnPrimaryPath = true,
                         Hidden = false,
                     });

@@ -17,7 +17,6 @@ namespace EpochBreaker.UI
         private Text _modeInfoText;
         private Image _heatBarBg;
         private Image _heatBarFill;
-        private Text _weaponSlotsText;
         private Text _relicText;
         private Text _killStreakText;
         private float _killStreakFadeTimer;
@@ -79,6 +78,19 @@ namespace EpochBreaker.UI
 
         // Sprint 8: Friend challenge target score display
         private Text _friendTargetText;
+
+        // Weapon wheel
+        private GameObject _weaponWheelRoot;
+        private CanvasGroup _weaponWheelGroup;
+        private Image[] _weaponSlotImages;
+        private Text _weaponWheelLabel;
+        private float _weaponWheelTimer;
+        private int _lastActiveSlot = -1;
+        private const float WHEEL_DISPLAY_DURATION = 1.5f;
+        private const float WHEEL_FADE_IN = 0.15f;
+        private const float WHEEL_FADE_OUT = 0.3f;
+        private const float WHEEL_RADIUS = 85f;
+        private const float WHEEL_SLOT_SIZE = 40f;
 
         private const int MAX_HEARTS = 5;
 
@@ -206,18 +218,10 @@ namespace EpochBreaker.UI
             weaponRect.pivot = new Vector2(1, 1);
             weaponRect.anchoredPosition = new Vector2(-20, -20);
 
-            // Weapon slots indicator (top-right, below weapon name)
-            var slotsGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
-            _weaponSlotsText = slotsGO.GetComponent<Text>();
-            _weaponSlotsText.fontSize = 18;
-            _weaponSlotsText.color = new Color(0.7f, 0.7f, 0.7f);
-            var slotsRect = slotsGO.GetComponent<RectTransform>();
-            slotsRect.anchorMin = new Vector2(1, 1);
-            slotsRect.anchorMax = new Vector2(1, 1);
-            slotsRect.pivot = new Vector2(1, 1);
-            slotsRect.anchoredPosition = new Vector2(-20, -46);
+            // Weapon wheel (lower-left, appears on weapon cycle)
+            CreateWeaponWheel(canvasGO.transform);
 
-            // Heat bar (top-right, below weapon slots — hidden by default)
+            // Heat bar (top-right, below weapon name — hidden by default)
             CreateHeatBar(canvasGO.transform);
 
             // Era name (top-right, below heat bar)
@@ -311,7 +315,7 @@ namespace EpochBreaker.UI
             streakRect.anchoredPosition = new Vector2(0, -200);
 
             // Lives counter (below timer/relic, for Campaign/Streak)
-            if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.FreePlay)
+            if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.TheBreach)
             {
                 float livesY = (gm.TotalRelics > 0) ? -122f : -100f;
                 var livesGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperLeft);
@@ -461,7 +465,7 @@ namespace EpochBreaker.UI
             CreateBossBar(canvasGO.transform);
 
             // Mode info (top-center: epoch or streak)
-            if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.FreePlay)
+            if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.TheBreach)
             {
                 var modeGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperCenter);
                 _modeInfoText = modeGO.GetComponent<Text>();
@@ -508,7 +512,7 @@ namespace EpochBreaker.UI
             var ws = _cachedWeaponSystem;
             if (ws == null) return;
 
-            // Show active weapon name + tier with color
+            // Show active weapon name + tier with color (always visible, top-right)
             string typeName = ws.ActiveWeaponType.ToString();
             Color typeColor = GetWeaponDisplayColor(ws.ActiveWeaponType);
             string tierSuffix = ws.ActiveWeaponTier != Generative.WeaponTier.Starting
@@ -516,17 +520,86 @@ namespace EpochBreaker.UI
             _weaponText.text = $"{typeName}{tierSuffix}";
             _weaponText.color = typeColor;
 
-            // Show acquired weapon slots as dots
-            if (_weaponSlotsText != null)
+            // Weapon wheel: show on weapon change, fade out after duration
+            int currentSlot = (int)ws.ActiveWeaponType;
+            if (currentSlot != _lastActiveSlot && _lastActiveSlot >= 0)
             {
-                var slots = ws.Slots;
-                string dots = "";
-                for (int i = 0; i < slots.Length; i++)
+                _weaponWheelTimer = WHEEL_DISPLAY_DURATION;
+                UpdateWeaponWheelSlots(ws, currentSlot);
+            }
+            else if (_lastActiveSlot < 0 && _weaponSlotImages != null)
+            {
+                // First frame: initialize slot visuals without showing wheel
+                UpdateWeaponWheelSlots(ws, currentSlot);
+            }
+            _lastActiveSlot = currentSlot;
+
+            // Fade logic
+            if (_weaponWheelGroup != null)
+            {
+                if (_weaponWheelTimer > 0f)
                 {
-                    if (slots[i].Acquired)
-                        dots += i == (int)ws.ActiveWeaponType ? "\u25cf " : "\u25cb ";
+                    _weaponWheelTimer -= Time.deltaTime;
+                    float elapsed = WHEEL_DISPLAY_DURATION - _weaponWheelTimer;
+
+                    if (elapsed < WHEEL_FADE_IN)
+                        _weaponWheelGroup.alpha = Mathf.Clamp01(elapsed / WHEEL_FADE_IN);
+                    else if (_weaponWheelTimer < WHEEL_FADE_OUT)
+                        _weaponWheelGroup.alpha = Mathf.Clamp01(_weaponWheelTimer / WHEEL_FADE_OUT);
+                    else
+                        _weaponWheelGroup.alpha = 1f;
                 }
-                _weaponSlotsText.text = dots.TrimEnd();
+                else
+                {
+                    _weaponWheelGroup.alpha = 0f;
+                }
+            }
+        }
+
+        // Weapon types displayed in the wheel (excludes deprecated Slower)
+        private static readonly Generative.WeaponType[] WHEEL_WEAPON_TYPES = {
+            Generative.WeaponType.Bolt,
+            Generative.WeaponType.Piercer,
+            Generative.WeaponType.Spreader,
+            Generative.WeaponType.Chainer,
+            Generative.WeaponType.Cannon
+        };
+
+        private void UpdateWeaponWheelSlots(Gameplay.WeaponSystem ws, int activeSlot)
+        {
+            if (_weaponSlotImages == null) return;
+            var slots = ws.Slots;
+
+            for (int wi = 0; wi < WHEEL_WEAPON_TYPES.Length && wi < _weaponSlotImages.Length; wi++)
+            {
+                int slotIdx = (int)WHEEL_WEAPON_TYPES[wi];
+                Color weaponColor = GetWeaponDisplayColor(WHEEL_WEAPON_TYPES[wi]);
+                if (slotIdx == activeSlot)
+                {
+                    // Active: full color, larger
+                    _weaponSlotImages[wi].color = weaponColor;
+                    _weaponSlotImages[wi].rectTransform.localScale = Vector3.one * 1.3f;
+                }
+                else if (slotIdx < slots.Length && slots[slotIdx].Acquired)
+                {
+                    // Acquired but not active: weapon color at 60% alpha
+                    weaponColor.a = 0.6f;
+                    _weaponSlotImages[wi].color = weaponColor;
+                    _weaponSlotImages[wi].rectTransform.localScale = Vector3.one;
+                }
+                else
+                {
+                    // Not acquired: dark gray
+                    _weaponSlotImages[wi].color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+                    _weaponSlotImages[wi].rectTransform.localScale = Vector3.one;
+                }
+            }
+
+            // Update center label
+            if (_weaponWheelLabel != null)
+            {
+                _weaponWheelLabel.text = ws.ActiveWeaponType.ToString();
+                _weaponWheelLabel.color = GetWeaponDisplayColor(ws.ActiveWeaponType);
             }
         }
 
@@ -538,10 +611,64 @@ namespace EpochBreaker.UI
                 Generative.WeaponType.Piercer => new Color(0.6f, 0.9f, 1f),
                 Generative.WeaponType.Spreader => new Color(1f, 0.7f, 0.3f),
                 Generative.WeaponType.Chainer => new Color(0.5f, 0.8f, 1f),
-                Generative.WeaponType.Slower => new Color(0.6f, 0.4f, 1f),
                 Generative.WeaponType.Cannon => new Color(1f, 0.3f, 0.2f),
                 _ => Color.white
             };
+        }
+
+        private void CreateWeaponWheel(Transform parent)
+        {
+            _weaponWheelRoot = new GameObject("WeaponWheel");
+            _weaponWheelRoot.transform.SetParent(parent, false);
+            _weaponWheelGroup = _weaponWheelRoot.AddComponent<CanvasGroup>();
+            _weaponWheelGroup.alpha = 0f;
+            _weaponWheelGroup.blocksRaycasts = false;
+            _weaponWheelGroup.interactable = false;
+
+            var rootRect = _weaponWheelRoot.AddComponent<RectTransform>();
+            rootRect.anchorMin = new Vector2(0, 0);
+            rootRect.anchorMax = new Vector2(0, 0);
+            rootRect.pivot = new Vector2(0, 0);
+            rootRect.anchoredPosition = new Vector2(120, 120);
+            rootRect.sizeDelta = new Vector2(WHEEL_RADIUS * 2 + WHEEL_SLOT_SIZE, WHEEL_RADIUS * 2 + WHEEL_SLOT_SIZE);
+
+            // 5 weapon slot images arranged radially (Slower excluded)
+            int slotCount = WHEEL_WEAPON_TYPES.Length;
+            _weaponSlotImages = new Image[slotCount];
+            // 5 slots at 72° intervals: 90° (top), 18°, 306°, 234°, 162°
+            float[] angles = { 90f, 18f, 306f, 234f, 162f };
+
+            for (int i = 0; i < slotCount; i++)
+            {
+                var weaponType = WHEEL_WEAPON_TYPES[i];
+                var slotGO = new GameObject($"Slot_{weaponType}");
+                slotGO.transform.SetParent(_weaponWheelRoot.transform, false);
+                _weaponSlotImages[i] = slotGO.AddComponent<Image>();
+                _weaponSlotImages[i].sprite = Gameplay.PlaceholderAssets.GetWeaponPickupSprite(
+                    weaponType, Generative.WeaponTier.Starting);
+                _weaponSlotImages[i].preserveAspect = true;
+                _weaponSlotImages[i].raycastTarget = false;
+
+                var slotRect = slotGO.GetComponent<RectTransform>();
+                slotRect.sizeDelta = new Vector2(50f, 50f);
+
+                float rad = angles[i] * Mathf.Deg2Rad;
+                float x = Mathf.Cos(rad) * WHEEL_RADIUS;
+                float y = Mathf.Sin(rad) * WHEEL_RADIUS;
+                slotRect.anchoredPosition = new Vector2(x, y);
+
+                // Default: dark gray, hidden
+                _weaponSlotImages[i].color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
+            }
+
+            // Center label showing active weapon name
+            var labelGO = CreateHUDText(_weaponWheelRoot.transform, "", TextAnchor.MiddleCenter);
+            _weaponWheelLabel = labelGO.GetComponent<Text>();
+            _weaponWheelLabel.fontSize = 16;
+            _weaponWheelLabel.raycastTarget = false;
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchoredPosition = Vector2.zero;
+            labelRect.sizeDelta = new Vector2(120, 30);
         }
 
         private void CreateHeatBar(Transform parent)
@@ -654,7 +781,11 @@ namespace EpochBreaker.UI
 
             if (_livesText != null)
             {
-                _livesText.text = $"Lives: {gm.GlobalLives}";
+                // Campaign has infinite lives — show deaths/level instead of global lives
+                if (gm.CurrentGameMode == Gameplay.GameMode.Campaign)
+                    _livesText.text = $"Deaths: {gm.DeathsThisLevel}";
+                else
+                    _livesText.text = $"Lives: {gm.GlobalLives}";
             }
 
             if (_modeInfoText != null)

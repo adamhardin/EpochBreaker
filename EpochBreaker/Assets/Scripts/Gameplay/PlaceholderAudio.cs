@@ -113,8 +113,21 @@ namespace EpochBreaker.Gameplay
 
         private static AudioClip MakeClip(string name, float[] data)
         {
+            // 3-pass low-pass filter BEFORE normalization — attenuates broadband noise
+            // and harsh high-frequency content that PolyBLEP can't address (Noise waveforms,
+            // harmonic beating between simultaneous sources). ~2.5kHz cutoff, -18dB/oct.
+            const float lpAlpha = 0.20f;
+            for (int pass = 0; pass < 3; pass++)
+            {
+                float prev = 0f;
+                for (int i = 0; i < data.Length; i++)
+                {
+                    prev += lpAlpha * (data[i] - prev);
+                    data[i] = prev;
+                }
+            }
+
             // Peak normalization — scale all clips to consistent loudness
-            // No LP filter needed: PolyBLEP band-limited synthesis eliminates aliasing at source
             float peak = 0f;
             for (int i = 0; i < data.Length; i++)
             {
@@ -123,9 +136,11 @@ namespace EpochBreaker.Gameplay
             }
             if (peak > 0.001f)
             {
-                float gain = 0.85f / peak;
+                float gain = 0.40f / peak; // Conservative target for headroom when music+ambient+SFX overlap
                 for (int i = 0; i < data.Length; i++)
+                {
                     data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
+                }
             }
 
             var clip = AudioClip.Create(name, data.Length, 1, SAMPLE_RATE, false);
@@ -591,7 +606,7 @@ namespace EpochBreaker.Gameplay
                 for (int n = 0; n < pattern.Length; n++)
                 {
                     AddTone(buf, barStart + n * eighth, eighth * 0.8f,
-                        pattern[n], pattern[n], Wave.Square, 0.1f, 0.005f, 0.02f);
+                        pattern[n], pattern[n], Wave.Triangle, 0.1f, 0.005f, 0.02f);
                 }
             }
 
@@ -625,9 +640,9 @@ namespace EpochBreaker.Gameplay
         /// <summary>
         /// Era-varied chiptune loop — Am→F→C→G progression, 8 bars.
         /// Era 0-2: 110 BPM, triangle lead (ancient, gentle).
-        /// Era 3-5: 128 BPM, square lead (driving, medieval-industrial).
-        /// Era 6-8: 140 BPM, sawtooth lead (aggressive, modern-digital).
-        /// Era 9: 120 BPM, ethereal triangle+square with delay effect.
+        /// Era 3-5: 128 BPM, triangle lead (driving, medieval-industrial).
+        /// Era 6-8: 140 BPM, triangle lead (aggressive, modern-digital).
+        /// Era 9: 120 BPM, ethereal triangle with delay effect.
         /// </summary>
         public static AudioClip GetGameplayMusic(int epoch = -1)
         {
@@ -652,7 +667,7 @@ namespace EpochBreaker.Gameplay
             }
             else
             {
-                bpm = 128f; leadWave = Wave.Square; leadVol = 0.1f;
+                bpm = 128f; leadWave = Wave.Triangle; leadVol = 0.1f;
             }
             float beat = 60f / bpm;
             int bars = 8;
@@ -688,11 +703,12 @@ namespace EpochBreaker.Gameplay
                 new[] { _D4, 0f, _G4, _D4, _B4, 0f, _G4, _B4 },  // G
             };
             // Second 4 bars: variation (descending then ascending)
+            // Notes capped at E5 — avoids harsh harmonics from A5/F5/G5
             float[][] leadB = {
-                new[] { _E5, 0f, _A4, _C5, _E5, 0f, _A5, _E5 },  // Am
-                new[] { _C5, 0f, _F4, _A4, _C5, 0f, _F5, _C5 },  // F
-                new[] { _C5, 0f, _E4, _G4, _C5, 0f, _E5, _C5 },  // C
-                new[] { _B4, 0f, _D4, _G4, _B4, 0f, _D5, _B4 },  // G
+                new[] { _E5, 0f, _A4, _C5, _E5, 0f, _A4, _E5 },  // Am (A5→A4)
+                new[] { _C5, 0f, _F4, _A4, _C5, 0f, _C5, _A4 },  // F  (F5→C5)
+                new[] { _C5, 0f, _E4, _G4, _C5, 0f, _E5, _C5 },  // C  (unchanged, E5 ok)
+                new[] { _B4, 0f, _D4, _G4, _B4, 0f, _D5, _B4 },  // G  (unchanged)
             };
 
             for (int bar = 0; bar < bars; bar++)
@@ -719,9 +735,9 @@ namespace EpochBreaker.Gameplay
                     // Snare on beats 2 and 4 (noise burst)
                     if (b == 1 || b == 3)
                         AddTone(buf, beatStart, 0.06f, 500f, 500f, Wave.Noise, 0.1f, 0.001f, 0.03f);
-                    // Hi-hat on every eighth note (very short noise)
-                    AddTone(buf, beatStart, 0.02f, 1000f, 1000f, Wave.Noise, 0.04f, 0.001f, 0.008f);
-                    AddTone(buf, beatStart + eighth, 0.02f, 1000f, 1000f, Wave.Noise, 0.03f, 0.001f, 0.008f);
+                    // Hi-hat on every eighth note (very short noise, 700Hz to avoid 2-6kHz pain range)
+                    AddTone(buf, beatStart, 0.02f, 700f, 700f, Wave.Noise, 0.03f, 0.001f, 0.008f);
+                    AddTone(buf, beatStart + eighth, 0.02f, 700f, 700f, Wave.Noise, 0.02f, 0.001f, 0.008f);
                 }
             }
 
@@ -762,28 +778,29 @@ namespace EpochBreaker.Gameplay
             Wave leadWave;
             float leadVol;
 
+            // All leads use Triangle — avoids harsh Square harmonics in 2-6kHz range
             if (epoch >= 0 && epoch <= 2)
             {
                 bpm = variant == 1 ? 100f : 118f;
-                leadWave = variant == 1 ? Wave.Square : Wave.Triangle;
+                leadWave = Wave.Triangle;
                 leadVol = 0.11f;
             }
             else if (epoch >= 6 && epoch <= 8)
             {
                 bpm = variant == 1 ? 135f : 148f;
-                leadWave = variant == 1 ? Wave.Square : Wave.Triangle;
+                leadWave = Wave.Triangle;
                 leadVol = variant == 1 ? 0.09f : 0.07f;
             }
             else if (epoch == 9)
             {
                 bpm = variant == 1 ? 115f : 126f;
-                leadWave = variant == 1 ? Wave.Square : Wave.Triangle;
+                leadWave = Wave.Triangle;
                 leadVol = 0.09f;
             }
             else // 3-5
             {
                 bpm = variant == 1 ? 122f : 136f;
-                leadWave = variant == 1 ? Wave.Triangle : Wave.Square;
+                leadWave = Wave.Triangle;
                 leadVol = 0.1f;
             }
 
@@ -825,7 +842,7 @@ namespace EpochBreaker.Gameplay
                 leadB = new[] {
                     new[] { _B4, 0f, _E4, _G4, _B4, 0f, _E5, _B4 },
                     new[] { _G4, 0f, _C4, _E4, _G4, 0f, _C5, _G4 },
-                    new[] { _D5, 0f, _G4, _B4, _D5, 0f, _G5, _D5 },
+                    new[] { _D5, 0f, _G4, _B4, _D5, 0f, _B4, _D5 },  // G5→B4: cap at D5
                     new[] { _A4, 0f, _D4, _F4, _A4, 0f, _D5, _A4 },
                 };
             }
@@ -868,8 +885,9 @@ namespace EpochBreaker.Gameplay
                     AddTone(buf, beatStart, 0.06f, 150f, 40f, Wave.Triangle, 0.15f, 0.001f, 0.02f);
                     if (variant == 1 ? (b == 1 || b == 3) : (b == 0 || b == 2))
                         AddTone(buf, beatStart, 0.06f, 500f, 500f, Wave.Noise, 0.1f, 0.001f, 0.03f);
-                    AddTone(buf, beatStart, 0.02f, 1000f, 1000f, Wave.Noise, 0.04f, 0.001f, 0.008f);
-                    AddTone(buf, beatStart + eighth, 0.02f, 1000f, 1000f, Wave.Noise, 0.03f, 0.001f, 0.008f);
+                    // Hi-hat on every eighth note (700Hz to avoid 2-6kHz pain range)
+                    AddTone(buf, beatStart, 0.02f, 700f, 700f, Wave.Noise, 0.03f, 0.001f, 0.008f);
+                    AddTone(buf, beatStart + eighth, 0.02f, 700f, 700f, Wave.Noise, 0.02f, 0.001f, 0.008f);
                 }
             }
 
@@ -1094,8 +1112,8 @@ namespace EpochBreaker.Gameplay
             // Ethereal high tones
             AddTone(buf, 0f, 4.0f, 660f, 665f, Wave.Triangle, 0.02f, 0.5f, 0.5f);
             AddTone(buf, 0.5f, 3.0f, 880f, 878f, Wave.Triangle, 0.015f, 0.5f, 0.5f);
-            // Shimmer (triangle to avoid harsh buzz)
-            AddTone(buf, 1.0f, 2.0f, 1320f, 1325f, Wave.Triangle, 0.008f, 0.3f, 0.5f);
+            // Shimmer (lower freq to keep harmonics out of 2-6kHz pain range)
+            AddTone(buf, 1.0f, 2.0f, 990f, 994f, Wave.Triangle, 0.008f, 0.3f, 0.5f);
             // Soft noise texture
             AddTone(buf, 0f, 4.0f, 200f, 180f, Wave.Noise, 0.015f, 0.5f, 0.5f);
             ApplyLoopFade(buf);
@@ -1130,10 +1148,10 @@ namespace EpochBreaker.Gameplay
             return clip;
         }
 
-        /// <summary>Crossfade edges for seamless looping (50ms fade in/out).</summary>
+        /// <summary>Crossfade edges for seamless looping (100ms fade in/out).</summary>
         private static void ApplyLoopFade(float[] buf)
         {
-            int fadeLen = (int)(0.05f * SAMPLE_RATE);
+            int fadeLen = (int)(0.10f * SAMPLE_RATE); // 100ms — wide enough to guarantee zero-crossing
             fadeLen = Mathf.Min(fadeLen, buf.Length / 4);
             for (int i = 0; i < fadeLen; i++)
             {

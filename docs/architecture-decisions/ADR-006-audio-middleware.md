@@ -1,71 +1,84 @@
-# ADR-006: Audio Middleware
+# ADR-006: Audio System
 
 **Date:** 2026-02-04
 **Status:** Accepted
+**Revised:** 2026-02-07 (updated to reflect implemented approach)
 
 ## Context
 
-The game's retro aesthetic demands a chiptune-inspired soundtrack and retro sound effects, but with modern production quality and dynamic mixing. The audio system must support:
+The game's retro aesthetic demands a chiptune-inspired soundtrack and retro sound effects. The audio system must support:
 
-1. **Real-time adaptive mixing.** Music intensity should shift in response to gameplay (combat, exploration, boss encounters) without audible seams or pops.
-2. **Chiptune playback fidelity.** The soundtrack uses synthesised waveforms (square, triangle, sawtooth, noise) that must play back without artefacts, aliasing, or unwanted filtering.
-3. **Haptic synchronisation.** iOS Core Haptics integration requires precise timing data from the audio engine to trigger haptic feedback on beat hits, impacts, and collectible pickups.
-4. **Low-latency SFX.** Sound effects must play within one audio buffer frame (~5 ms) of the triggering event to feel responsive.
-5. **Procedural variation.** Sound effects should support randomised pitch, volume, and sample selection to avoid repetitive audio in procedurally generated levels.
-6. **Memory efficiency.** The total audio memory footprint should stay under 40 MB to fit within our overall 500 MB budget (ADR-005).
+1. **Era-adaptive music.** Each of the 10 epochs needs distinct music that matches its historical theme.
+2. **Chiptune synthesis.** The soundtrack uses synthesised waveforms (square, triangle, sawtooth, noise) for authentic retro feel.
+3. **Low-latency SFX.** Sound effects must feel responsive to gameplay events.
+4. **Procedural variation.** Pitch randomisation and multiple variants prevent repetitive audio.
+5. **Zero imported assets.** Consistent with the project's fully-procedural philosophy — all sprites and audio generated at runtime.
 
 ### Options Evaluated
 
-| Criteria | Unity Native Audio | FMOD Studio | Wwise |
+| Criteria | Unity Native Audio | FMOD Studio | Runtime Synthesis |
 |---|---|---|---|
-| Adaptive music | Limited (scripted crossfades) | Excellent (parameter-driven transitions, stingers) | Excellent |
-| Authoring tools | Unity mixer (basic) | FMOD Studio (professional DAW-like) | Wwise Authoring (professional) |
-| iOS Core Haptics integration | Manual implementation | Plugin available, timing API accessible | Manual implementation |
-| Latency | ~10-20 ms (AudioSource) | ~3-5 ms (FMOD low-level) | ~3-5 ms |
-| Memory management | Limited control | Fine-grained bank loading/unloading | Fine-grained |
-| Unity integration | Native | Official Unity plugin, well-maintained | Official Unity plugin |
-| Licensing | Included with Unity | Free under $200K revenue, then tiered | Free under $150K revenue, then tiered |
-| Team familiarity | Medium | High | Low |
+| Adaptive music | Limited (scripted crossfades) | Excellent (parameter-driven) | Full control (code-driven) |
+| Asset size | Requires imported audio files | Requires FMOD banks | Zero — all generated at runtime |
+| Chiptune quality | Depends on imported samples | Good with DSP chains | Excellent — direct waveform control |
+| Complexity | Low | Medium (external tool) | High (custom synthesis code) |
+| Dependencies | None | FMOD SDK + Studio | None |
 
-Unity's native audio system (`AudioSource`, `AudioMixer`) can handle basic requirements but lacks the authoring workflow and runtime flexibility needed for adaptive music. Building equivalent functionality from scratch on top of Unity audio would require significant engineering effort with inferior results.
+The original plan (ADR-006 v1) specified FMOD Studio as the audio middleware. During implementation, the team chose runtime synthesis instead, for two reasons:
 
-Wwise is a strong professional option but the team has no prior experience with it, and its authoring tool has a steeper learning curve. FMOD Studio offers comparable runtime capabilities with a more intuitive authoring environment and existing team expertise.
+1. **Zero-asset philosophy.** The project generates all visual assets at runtime via `PlaceholderAssets.cs`. Extending this to audio eliminates all imported media files, keeping the project fully self-contained.
+2. **Direct waveform control.** Runtime synthesis provides precise control over chiptune aesthetics — PolyBLEP anti-aliased oscillators, procedural melody generation, era-specific instrument palettes — without the overhead of an external authoring tool.
 
 ## Decision
 
-We will use **FMOD Studio** as the audio middleware, integrated via the official **FMOD for Unity** plugin.
+All audio is **synthesised at runtime** using Unity's `AudioClip.Create()` API. No external audio middleware (FMOD, Wwise) is used. No audio files are imported.
 
 ### Architecture
 
-- **FMOD Studio project** (.fspro) lives in the repository under `Audio/FMODProject/`. The sound designer authors all events, buses, snapshots, and parameter automations in FMOD Studio.
-- **FMOD Banks** are built from the Studio project and placed in `StreamingAssets/FMODbanks/`. Banks are loaded and unloaded per biome to control memory usage.
-- **Adaptive music** is implemented using FMOD's parameter system. A `GameIntensity` parameter (0.0 - 1.0) drives transitions between exploration, action, and boss music layers. The game code sets this parameter; FMOD handles all crossfading and transition logic.
-- **SFX events** use FMOD's multi-instrument and scatterer features for procedural variation (random pitch, random sample selection).
-- **Haptic bridge.** A lightweight C# wrapper reads FMOD's playback timeline markers and beat callbacks to dispatch `CHHapticEvent` calls via a native iOS plugin. This provides beat-synchronised haptics with sub-frame accuracy.
-- **Chiptune playback.** The soundtrack is authored as tracker-style sequences in FMOD Studio. Instrument DSP chains use FMOD's built-in oscillator and bitcrusher effects to produce authentic 8-bit/retro waveforms while maintaining modern mixing (EQ, compression, reverb sends for spatial depth).
+- **`PlaceholderAudio.cs`** — Central synthesis engine. Generates all music, SFX, and ambient audio clips at startup using procedural waveforms.
+  - Waveform types: Triangle, Square, Sawtooth, Noise (with PolyBLEP anti-aliasing for Square/Sawtooth)
+  - Music: 3 variants per era group (30 total), era-appropriate instrument palettes and tempos
+  - SFX: Per-weapon-type fire sounds, hit sounds, pickup sounds, UI sounds
+  - Ambient: Era-specific environmental loops (wind, machinery, digital hum)
 
-### FMOD Configuration
+- **`AudioManager.cs`** — Playback manager (singleton on GameManager GameObject, persists across scenes).
+  - 1 looping `AudioSource` for music
+  - 1 looping `AudioSource` for ambient
+  - 8-channel SFX pool (round-robin `PlayOneShot`)
+  - 3-channel dedicated weapon SFX pool (prevents weapon fire being starved by environment SFX)
+  - Runtime `AudioLowPassFilter` (4000Hz cutoff) to attenuate harsh high-frequency content
+  - Per-clip rapid-fire prevention (50ms minimum repeat interval)
+  - Concurrent SFX cap (max 4) to prevent audio overload
+  - Volume settings persisted to PlayerPrefs (Music, SFX, Weapon)
 
-- Output format: Stereo, 48 kHz, 256-sample buffer (5.3 ms latency on iOS).
-- Virtual voice limit: 32 active, 64 virtual.
-- Sample loading: Compressed in-memory for SFX (< 1 second), streaming for music tracks.
-- Bank loading strategy: Master bank always loaded; biome-specific banks loaded during level generation, unloaded on biome change.
+- **Synthesis pipeline** (in `MakeClip()`):
+  1. Waveform generation via `AddTone()` at 44100Hz sample rate
+  2. 3-pass low-pass filter (alpha 0.25) before normalization
+  3. Peak normalization to 0.50 target with hard clamp at ±1.0
+  4. `AudioClip.Create()` with PCM float data
+
+### Audio Filtering
+
+- **Compile-time:** 3-pass single-pole IIR low-pass in `MakeClip()` attenuates broadband noise content above ~3kHz
+- **Runtime:** Unity `AudioLowPassFilter` component (4000Hz cutoff) on the AudioManager GameObject, with WebGL try-catch guard for browser compatibility
 
 ## Consequences
 
 ### Positive
 
-- **Professional adaptive music.** FMOD Studio's parameter-driven transition system lets the sound designer author complex adaptive music behaviours without writing game code. Changes to music behaviour do not require code changes or builds.
-- **Low-latency playback.** FMOD's low-level API provides sub-5ms latency on iOS, meeting our responsiveness requirement for sound effects.
-- **Haptic synchronisation.** FMOD's timeline marker and beat callback APIs provide the precise timing data needed for Core Haptics integration without building a custom timing system.
-- **Memory control.** Per-biome bank loading/unloading keeps audio memory in the 20-35 MB range, well under our 40 MB budget.
-- **Procedural SFX variation.** Built-in randomisation features (multi-instruments, pitch/volume ranges) eliminate repetitive audio in procedurally generated levels without custom code.
-- **Team velocity.** The sound designer can iterate on audio independently of the engineering team, using FMOD Studio's live-update feature to audition changes in real time on a connected device.
+- **Zero imported assets.** The entire game — code, sprites, audio — ships with no media files. Build size is minimal.
+- **Perfect chiptune aesthetics.** Direct waveform synthesis produces authentic retro audio with precise control over timbre, pitch, and envelope.
+- **Era-adaptive music.** Each epoch group has 3 music variants with era-appropriate instruments and tempos, selected randomly per level.
+- **No external dependencies.** No FMOD SDK, no audio banks, no authoring tool versioning issues. The audio system is pure C#.
+- **Procedural variation.** Weapon SFX use ±10% pitch randomisation. Music variants rotate per level. No two play sessions sound identical.
 
 ### Negative
 
-- **Additional dependency.** FMOD introduces a third-party SDK into the build pipeline. FMOD Studio versions must be kept in sync with the Unity plugin version. Build documentation must include FMOD bank build steps.
-- **Licensing cost.** FMOD is free for projects earning under $200K annual revenue. Above that threshold, licensing fees apply on a tiered scale. This is an expected and acceptable cost at the revenue levels where it triggers.
-- **Plugin binary size.** The FMOD Unity plugin adds approximately 3-5 MB to the iOS binary. This is minor relative to the overall Unity binary size (ADR-001).
-- **Debugging complexity.** Audio issues may require debugging in both Unity and FMOD Studio. FMOD's profiler mitigates this but adds another tool to the workflow.
-- **Native plugin maintenance.** The haptic bridge requires a small native iOS plugin (Objective-C / Swift) that must be maintained alongside Unity and FMOD updates. This is a narrow surface area but introduces a build dependency on Xcode-compiled native code.
+- **Synthesis complexity.** The `PlaceholderAudio.cs` file is large (~1200 lines) and requires audio DSP knowledge to maintain.
+- **Limited dynamic mixing.** No parameter-driven crossfades or real-time intensity scaling (FMOD excels at this). Music transitions are handled by stopping/starting clips with a 200ms fade-in.
+- **High-frequency artifacts.** Procedural synthesis (especially noise waveforms and harmonic interference between simultaneous sources) can produce harsh high-frequency content. Mitigated by multi-stage LP filtering but requires ongoing tuning.
+- **No haptic synchronisation.** Without FMOD's timeline marker API, beat-synchronised haptics would require a custom timing system (not yet implemented).
+
+### Superseded
+
+This ADR supersedes the original v1 which specified FMOD Studio as the audio middleware. FMOD was never integrated; runtime synthesis was implemented from the start.

@@ -2,79 +2,87 @@
 
 **Date:** 2026-02-04
 **Status:** Accepted
+**Revised:** 2026-02-07 (updated to reflect implemented format)
 
 ## Context
 
 Players need to share procedurally generated levels with each other. The sharing mechanism must work across all common channels: text messages, social media posts, Discord, clipboard paste, and even verbal dictation. This means the level identifier must be:
 
 1. **Compact.** Short enough to fit in a tweet, a text message, or a screenshot without truncation.
-2. **Human-readable.** Visually parseable so players can identify the difficulty and biome at a glance.
+2. **Human-readable.** Visually parseable so players can identify the epoch at a glance.
 3. **Self-contained.** The ID alone must carry enough information to fully reconstruct the level without a server lookup.
-4. **Versioned.** The format must support future changes to the generation algorithm without breaking old IDs.
-5. **Unambiguous.** No characters that are easily confused (0/O, 1/l/I) in the seed portion.
+4. **Unambiguous.** No characters that are easily confused (0/O, 1/l/I) in the seed portion.
 
-The level is fully determined by three parameters plus the 64-bit PRNG seed (ADR-002):
+The level is fully determined by two parameters:
 
-- **Generator version** -- which generation algorithm to use.
-- **Difficulty** -- affects enemy density, platform spacing, and hazard frequency.
-- **Biome** -- determines tileset, background, and environmental hazards.
+- **Epoch** -- which historical era (0-9) determines tileset, enemies, music, and aesthetics.
+- **Seed** -- a 40-bit value that drives all procedural generation via xorshift64* PRNG.
+
+Difficulty is handled separately via `DifficultyManager` (player setting, not encoded in the level ID).
 
 ## Decision
 
 The level ID format is:
 
 ```
-LVLID_VVV_DD_BB_SSSSSSSSSSSSSSSS
+E-XXXXXXXX
 ```
 
 | Field | Chars | Description |
 |---|---|---|
-| `LVLID` | 5 | Fixed prefix. Enables clipboard detection and deep-link routing. |
-| `VVV` | 3 | Generator version, zero-padded decimal (001-999). |
-| `DD` | 2 | Difficulty tier, zero-padded decimal (01-99). |
-| `BB` | 2 | Biome code, zero-padded decimal (01-99). |
-| `SSSSSSSSSSSSSSSS` | 16 | 64-bit seed encoded as uppercase hexadecimal. |
-| Separators (`_`) | 4 | Underscores between each field. |
-| **Total** | **32 + 4 + 3 (prefix)** | **39 characters** |
+| `E` | 1 | Epoch digit (0-9). Determines era, tileset, enemies, and music. |
+| `-` | 1 | Separator. |
+| `XXXXXXXX` | 8 | 40-bit seed encoded as 8 base32 characters (alphabet: `0-9, A-V` excluding ambiguous I/O). |
+| **Total** | **10** | **10 characters** |
 
 Example:
 
 ```
-LVLID_001_03_07_A3F29C7B004E1D82
+3-K7XM2P9A
 ```
 
-This encodes: generator version 1, difficulty tier 3, biome 7, seed `0xA3F29C7B004E1D82`.
+This encodes: epoch 3 (Medieval), seed `K7XM2P9A`.
+
+### Base32 Alphabet
+
+```
+0123456789ABCDEFGHJKLMNPQRSTUVWX
+```
+
+32 characters = 5 bits each. 8 characters = 40 bits = ~1.1 trillion unique levels per epoch.
 
 ### Parsing Rules
 
-- The parser must accept both uppercase and lowercase hex digits in the seed field.
-- Unknown version numbers cause a graceful error ("This level requires a newer version of the game").
-- Difficulty and biome values outside the currently supported range produce a clear error rather than undefined behavior.
-- The `LVLID_` prefix is mandatory. Strings without it are rejected immediately, enabling fast clipboard scanning.
+- The parser accepts both uppercase and lowercase input (normalised to uppercase).
+- Epoch digit must be 0-9. Values outside this range are rejected.
+- The `-` separator is mandatory. Strings without it are rejected immediately.
+- Invalid base32 characters in the seed portion cause a parse failure.
+- Whitespace is stripped before parsing.
 
-### Deep Linking
+### Implementation
 
-The ID will also serve as a deep-link path:
-
-```
-https://ourgame.example.com/level/LVLID_001_03_07_A3F29C7B004E1D82
-```
-
-The app registers a Universal Link handler for this path pattern, extracting and parsing the ID from the URL.
+The `LevelID` struct (`Scripts/Generative/LevelID.cs`) provides:
+- `LevelID.GenerateRandom(epoch)` — creates a new random level
+- `LevelID.TryParse(code, out result)` — parses a shareable code
+- `LevelID.ToCode()` — encodes to shareable string
+- `LevelID.Next()` — derives the next level in a deterministic sequence (increments epoch, mixes seed)
 
 ## Consequences
 
 ### Positive
 
-- **Version field enables forward compatibility.** When the generation algorithm changes (new tile types, rebalanced difficulty curves), we increment the version. Old IDs with older versions continue to use the original algorithm, preserving shared levels permanently.
-- **Human-scannable metadata.** Players can see difficulty and biome at a glance without loading the level. Community sites and leaderboards can sort and filter by these fields trivially.
-- **Massive seed space.** 64 bits of seed provide 1.8 x 10^19 unique levels per version/difficulty/biome combination. Combined with 999 versions, 99 difficulties, and 99 biomes, the total addressable space is effectively inexhaustible.
-- **No server dependency.** Level sharing works entirely peer-to-peer via text. No backend infrastructure is required to store or resolve level IDs.
-- **Deep-link ready.** The fixed prefix and structured format make URL-based sharing straightforward.
+- **Extremely compact.** 10 characters fit easily in any sharing medium, including verbal dictation.
+- **Epoch visible at a glance.** The leading digit immediately tells players which era the level is in.
+- **No server dependency.** Level sharing works entirely peer-to-peer via text.
+- **Massive seed space.** 40 bits provide ~1.1 trillion unique levels per epoch, effectively inexhaustible.
+- **No ambiguous characters.** The base32 alphabet excludes I, O, Y, and Z to prevent confusion.
 
 ### Negative
 
-- **39 characters is not trivially short.** It is longer than a typical short URL but remains within the practical limit for text sharing. QR code generation will be offered as an alternative for in-person sharing.
-- **Hex seed is not human-friendly.** Players will not memorise seeds. This is acceptable since the primary sharing mechanism is copy-paste or deep link, not memorisation.
-- **No checksum.** A mistyped character will silently produce a different (but valid) level rather than an error. Adding a checksum digit would increase length to 40-41 characters. We accept this trade-off; a wrong level is a minor annoyance, not a data-loss scenario. This decision may be revisited if user feedback indicates frequent transcription errors.
-- **Fixed field widths.** The format supports up to 999 generator versions, 99 difficulty tiers, and 99 biomes. If any of these limits are exceeded, a new ID format version will be required. These limits are generous for the foreseeable product roadmap.
+- **No embedded version field.** If the generation algorithm changes, old codes may produce different levels. This is mitigated by keeping the generator deterministic and stable.
+- **No embedded difficulty.** Difficulty is a player setting, not part of the level identity. Two players with different difficulty settings will have different enemy counts but the same level layout from the same code.
+- **No checksum.** A mistyped character will silently produce a different (but valid) level. This is acceptable since the primary sharing mechanism is copy-paste, not manual transcription.
+
+### Superseded
+
+This ADR replaces the original specification which proposed a 39-character `LVLID_VVV_DD_BB_SSSSSSSSSSSSSSSS` format. The implemented format is dramatically shorter (10 vs 39 characters) and better suited to casual sharing.

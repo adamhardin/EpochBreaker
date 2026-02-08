@@ -7,13 +7,13 @@ namespace EpochBreaker.Gameplay
     /// <summary>
     /// Generates all game sprites at runtime via Texture2D pixel painting.
     /// No imported art assets needed. Each sprite is cached by key.
-    /// Native 128px tile resolution for crisp pixel art on mobile Retina displays.
+    /// Native 256px tile resolution for crisp pixel art on mobile Retina displays.
     /// </summary>
     public static class PlaceholderAssets
     {
         private static readonly Dictionary<string, Sprite> _cache = new Dictionary<string, Sprite>();
-        private const int TILE_PX = 128;
-        private const float PPU = 128f;
+        private const int TILE_PX = 256;
+        private const float PPU = 256f;
         private const int SCALE = TILE_PX / 64;
 
         #region Helpers
@@ -650,7 +650,7 @@ namespace EpochBreaker.Gameplay
             string key = "player";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 384;
+            int size = 768;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -809,7 +809,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 256f);
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 512f);
             sprite.name = key;
             _cache[key] = sprite;
             return sprite;
@@ -879,7 +879,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 256f);
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 512f);
             sprite.name = key;
             _cache[key] = sprite;
             return sprite;
@@ -895,7 +895,7 @@ namespace EpochBreaker.Gameplay
             string key = $"enemy_{era}_{(int)behavior}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 384;
+            int size = 768;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -911,7 +911,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 256f);
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 512f);
             sprite.name = key;
             _cache[key] = sprite;
             return sprite;
@@ -1677,7 +1677,7 @@ namespace EpochBreaker.Gameplay
             string key = $"projectile_{tier}_e{epoch}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 64;
+            int size = 128;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -1923,7 +1923,7 @@ namespace EpochBreaker.Gameplay
             string key = $"weapon_{type}_{tier}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 192;
+            int size = 384;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -1941,7 +1941,7 @@ namespace EpochBreaker.Gameplay
                 case WeaponType.Piercer:   PaintWeaponPiercer(px, size, tier); break;
                 case WeaponType.Spreader:  PaintWeaponSpreader(px, size, tier); break;
                 case WeaponType.Chainer:   PaintWeaponChainer(px, size, tier); break;
-                case WeaponType.Slower:    PaintWeaponSlower(px, size, tier); break;
+                case WeaponType.Slower:    PaintWeaponCannonType(px, size, tier); break; // Deprecated — remap to Cannon sprite
                 case WeaponType.Cannon:    PaintWeaponCannonType(px, size, tier); break;
             }
 
@@ -2250,7 +2250,7 @@ namespace EpochBreaker.Gameplay
             string key = $"reward_{type}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 128;
+            int size = 256;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -2448,7 +2448,7 @@ namespace EpochBreaker.Gameplay
             string key = "extra_life";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 128;
+            int size = 256;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -2514,6 +2514,161 @@ namespace EpochBreaker.Gameplay
 
         #endregion
 
+        #region Ability Pickups
+
+        /// <summary>
+        /// Get a distinctive sprite for an ability pickup (replaces placeholder particle orbs).
+        /// 256×256 at PPU=256 (1 unit). Each ability has a unique shape and color.
+        /// </summary>
+        public static Sprite GetAbilitySprite(AbilityType type)
+        {
+            string key = $"ability_{type}";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int size = 256;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+
+            switch (type)
+            {
+                case AbilityType.DoubleJump: PaintAbilityDoubleJump(px, size); break;
+                case AbilityType.AirDash:    PaintAbilityAirDash(px, size); break;
+                case AbilityType.GroundSlam:  PaintAbilityGroundSlam(px, size); break;
+                case AbilityType.PhaseShift:  PaintAbilityPhaseShift(px, size); break;
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        private static void PaintAbilityDoubleJump(Color[] px, int s)
+        {
+            Color c = new Color(0.30f, 0.95f, 0.50f);
+            Color hi = Lighten(c, 0.40f);
+            Color dk = Darken(c, 0.60f);
+            Color glow = Lighten(c, 0.65f);
+            // Upward chevron (wings) — two stacked arrows pointing up
+            // Lower chevron
+            SRect(px,s, 10, 14, 8, 4, c);
+            SRect(px,s, 16, 18, 8, 4, c);
+            SRect(px,s, 22, 22, 8, 4, hi);
+            SRect(px,s, 34, 22, 8, 4, hi);
+            SRect(px,s, 40, 18, 8, 4, c);
+            SRect(px,s, 46, 14, 8, 4, c);
+            // Upper chevron (brighter)
+            SRect(px,s, 12, 30, 8, 4, c);
+            SRect(px,s, 18, 34, 8, 4, hi);
+            SRect(px,s, 24, 38, 8, 4, glow);
+            SRect(px,s, 32, 38, 8, 4, glow);
+            SRect(px,s, 38, 34, 8, 4, hi);
+            SRect(px,s, 44, 30, 8, 4, c);
+            // Center column (lift indicator)
+            SRect(px,s, 30, 42, 4, 14, hi);
+            SRect(px,s, 30, 54, 4, 4, glow);
+            // Speed lines
+            SRect(px,s, 20, 4, 2, 8, dk);
+            SRect(px,s, 42, 4, 2, 8, dk);
+            SRect(px,s, 30, 2, 4, 6, dk);
+        }
+
+        private static void PaintAbilityAirDash(Color[] px, int s)
+        {
+            Color c = new Color(0.35f, 0.65f, 1.00f);
+            Color hi = Lighten(c, 0.40f);
+            Color dk = Darken(c, 0.55f);
+            Color glow = Lighten(c, 0.65f);
+            // Horizontal arrow pointing right with motion trails
+            // Arrow head
+            SRect(px,s, 42, 30, 8, 4, glow);
+            SRect(px,s, 38, 26, 4, 12, hi);
+            SRect(px,s, 46, 28, 6, 8, hi);
+            SRect(px,s, 50, 30, 4, 4, glow);
+            // Arrow shaft
+            SRect(px,s, 14, 30, 28, 4, c);
+            SRect(px,s, 14, 28, 28, 2, hi);
+            SRect(px,s, 14, 34, 28, 2, dk);
+            // Motion trails (horizontal streaks behind arrow)
+            SRect(px,s, 4, 22, 16, 2, dk);
+            SRect(px,s, 8, 26, 12, 2, dk);
+            SRect(px,s, 4, 38, 16, 2, dk);
+            SRect(px,s, 8, 42, 12, 2, dk);
+            // Dash sparkle
+            SPx(px,s, 54, 32, glow);
+            SPx(px,s, 52, 26, hi);
+            SPx(px,s, 52, 38, hi);
+        }
+
+        private static void PaintAbilityGroundSlam(Color[] px, int s)
+        {
+            Color c = new Color(1.00f, 0.55f, 0.15f);
+            Color hi = Lighten(c, 0.35f);
+            Color dk = Darken(c, 0.55f);
+            Color glow = Lighten(c, 0.55f);
+            // Downward arrow with impact burst
+            // Arrow pointing down
+            SRect(px,s, 28, 36, 8, 18, c);
+            SRect(px,s, 28, 52, 8, 4, hi);
+            SRect(px,s, 22, 48, 6, 4, c);
+            SRect(px,s, 36, 48, 6, 4, c);
+            SRect(px,s, 16, 44, 6, 4, dk);
+            SRect(px,s, 42, 44, 6, 4, dk);
+            // Fist/weight on top
+            SRect(px,s, 20, 26, 24, 12, c);
+            SRect(px,s, 22, 24, 20, 2, hi);
+            SRect(px,s, 22, 38, 20, 2, dk);
+            SRect(px,s, 26, 28, 12, 8, hi);
+            // Impact burst at bottom
+            SRect(px,s, 6, 8, 52, 2, dk);
+            SRect(px,s, 10, 10, 44, 2, c);
+            SRect(px,s, 14, 12, 36, 2, hi);
+            // Impact lines
+            SRect(px,s, 8, 14, 2, 6, dk);
+            SRect(px,s, 54, 14, 2, 6, dk);
+            SRect(px,s, 18, 6, 2, 4, dk);
+            SRect(px,s, 44, 6, 2, 4, dk);
+        }
+
+        private static void PaintAbilityPhaseShift(Color[] px, int s)
+        {
+            Color c = new Color(0.25f, 0.85f, 0.95f);
+            Color hi = Lighten(c, 0.45f);
+            Color dk = Darken(c, 0.50f);
+            Color glow = Lighten(c, 0.70f);
+            // Diamond shape with ghostly afterimage
+            // Main diamond
+            SRect(px,s, 28, 8, 8, 4, c);
+            SRect(px,s, 24, 12, 16, 4, c);
+            SRect(px,s, 20, 16, 24, 4, hi);
+            SRect(px,s, 16, 20, 32, 4, hi);
+            SRect(px,s, 14, 24, 36, 8, glow);
+            SRect(px,s, 14, 32, 36, 4, hi);
+            SRect(px,s, 16, 36, 32, 4, hi);
+            SRect(px,s, 20, 40, 24, 4, c);
+            SRect(px,s, 24, 44, 16, 4, c);
+            SRect(px,s, 28, 48, 8, 4, c);
+            // Inner highlight
+            SRect(px,s, 26, 26, 12, 4, glow);
+            // Ghost afterimage (offset left, faded)
+            Color ghost = new Color(c.r, c.g, c.b, 0.35f);
+            Color ghostHi = new Color(hi.r, hi.g, hi.b, 0.25f);
+            SRect(px,s, 6, 22, 6, 4, ghost);
+            SRect(px,s, 4, 26, 10, 4, ghostHi);
+            SRect(px,s, 4, 30, 10, 4, ghost);
+            SRect(px,s, 6, 34, 6, 4, ghost);
+            // Shimmer particles
+            SPx(px,s, 48, 18, hi);
+            SPx(px,s, 50, 36, hi);
+            SPx(px,s, 10, 16, dk);
+            SPx(px,s, 12, 40, dk);
+        }
+
+        #endregion
+
         #region Checkpoints
 
         public static Sprite GetCheckpointSprite(CheckpointType type)
@@ -2521,7 +2676,7 @@ namespace EpochBreaker.Gameplay
             string key = $"checkpoint_{(int)type}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int w = 128, h = 384;
+            int w = 256, h = 768;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
@@ -2669,7 +2824,7 @@ namespace EpochBreaker.Gameplay
             string key = "debris";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 64;
+            int size = 128;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -2696,7 +2851,7 @@ namespace EpochBreaker.Gameplay
             string key = "hazard_cloud";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 128;
+            int size = 256;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -2733,7 +2888,7 @@ namespace EpochBreaker.Gameplay
             string key = "spike";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 128;
+            int size = 256;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -2769,7 +2924,7 @@ namespace EpochBreaker.Gameplay
             string key = "arena_pillar";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int w = 128, h = 384;
+            int w = 256, h = 768;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
@@ -2814,7 +2969,7 @@ namespace EpochBreaker.Gameplay
             string key = "goal";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int w = 384, h = 512;
+            int w = 768, h = 1024;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
@@ -2917,8 +3072,8 @@ namespace EpochBreaker.Gameplay
             string key = $"boss_{era}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
-            int size = 768;
-            float bossPPU = 256f;
+            int size = 1536;
+            float bossPPU = 512f;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -3061,16 +3216,16 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             // Logo dimensions: wide for single line, larger blocks
-            int blockSize = 10;  // Large blocks for title
+            int blockSize = 20;  // Large blocks for title
             int letterW = 5 * blockSize;
             int letterH = 7 * blockSize;
-            int spacing = 8;
+            int spacing = 16;
             int spaceWidth = blockSize * 3;  // Extra wide space between words
 
             // "EPOCH BREAKER" = 12 letters + 1 space
             // Total width: 12 letters + spacing + word gap
-            int totalW = 12 * letterW + 11 * spacing + spaceWidth + 32;  // padding
-            int totalH = letterH + 32;  // padding for shadow
+            int totalW = 12 * letterW + 11 * spacing + spaceWidth + 64;  // padding
+            int totalH = letterH + 64;  // padding for shadow
 
             int w = totalW, h = totalH;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -3098,8 +3253,8 @@ namespace EpochBreaker.Gameplay
             // "EPOCH BREAKER" as single line
             int[][,] title = { fontE, fontP, fontO, fontC, fontH, null, fontB, fontR, fontE, fontA, fontK, fontE, fontR };
 
-            int x = 16;  // Left padding
-            int y = 12;  // Bottom padding
+            int x = 32;  // Left padding
+            int y = 24;  // Bottom padding
 
             for (int i = 0; i < title.Length; i++)
             {
@@ -3139,28 +3294,28 @@ namespace EpochBreaker.Gameplay
                     int by = startY + (fontH - 1 - fy) * blockSize;  // Flip Y for bottom-up
 
                     // Draw shadow (offset down-right)
-                    SetRect(px, texW, bx + 3, by - 3, blockSize, blockSize, shadow);
+                    SetRect(px, texW, bx + 6, by - 6, blockSize, blockSize, shadow);
 
                     // Draw outline
-                    SetRect(px, texW, bx - 1, by - 1, blockSize + 2, blockSize + 2, outline);
+                    SetRect(px, texW, bx - 2, by - 2, blockSize + 4, blockSize + 4, outline);
 
                     // Draw main block with gradient
                     SetRect(px, texW, bx, by, blockSize, blockSize, main);
 
                     // Top highlight
-                    SetRect(px, texW, bx, by + blockSize - 2, blockSize, 2, hi);
+                    SetRect(px, texW, bx, by + blockSize - 4, blockSize, 4, hi);
 
                     // Left highlight
-                    SetRect(px, texW, bx, by, 2, blockSize, Lighten(main, 0.15f));
+                    SetRect(px, texW, bx, by, 4, blockSize, Lighten(main, 0.15f));
 
                     // Bottom shadow
-                    SetRect(px, texW, bx, by, blockSize, 2, dk);
+                    SetRect(px, texW, bx, by, blockSize, 4, dk);
 
                     // Right shadow
-                    SetRect(px, texW, bx + blockSize - 2, by, 2, blockSize, dk);
+                    SetRect(px, texW, bx + blockSize - 4, by, 4, blockSize, dk);
 
                     // Inner shine pixel
-                    Px(px, texW, bx + 2, by + blockSize - 3, Lighten(hi, 0.3f));
+                    Px(px, texW, bx + 4, by + blockSize - 6, Lighten(hi, 0.3f));
                 }
             }
         }
@@ -3301,8 +3456,8 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             // Frame dimensions to match 1920x1080 reference at scale
-            int w = 960, h = 540;
-            int borderW = 32;  // Width of the ornate border
+            int w = 1920, h = 1080;
+            int borderW = 64;  // Width of the ornate border
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
@@ -3323,24 +3478,24 @@ namespace EpochBreaker.Gameplay
             SetRect(px, w, w - borderW, 0, borderW, h, frameOuter); // right
 
             // Draw mid frame layer
-            int m = 4;
+            int m = 8;
             SetRect(px, w, m, m, w - m * 2, borderW - m * 2, frameMid);
             SetRect(px, w, m, h - borderW + m, w - m * 2, borderW - m * 2, frameMid);
             SetRect(px, w, m, m, borderW - m * 2, h - m * 2, frameMid);
             SetRect(px, w, w - borderW + m, m, borderW - m * 2, h - m * 2, frameMid);
 
             // Inner highlight line
-            int i = 8;
-            SetRect(px, w, i, i, w - i * 2, 2, frameHi);
-            SetRect(px, w, i, h - i - 2, w - i * 2, 2, frameHi);
-            SetRect(px, w, i, i, 2, h - i * 2, frameHi);
-            SetRect(px, w, w - i - 2, i, 2, h - i * 2, frameHi);
+            int i = 16;
+            SetRect(px, w, i, i, w - i * 2, 4, frameHi);
+            SetRect(px, w, i, h - i - 4, w - i * 2, 4, frameHi);
+            SetRect(px, w, i, i, 4, h - i * 2, frameHi);
+            SetRect(px, w, w - i - 4, i, 4, h - i * 2, frameHi);
 
             // Inner shadow line
-            SetRect(px, w, borderW - 4, borderW - 4, w - (borderW - 4) * 2, 2, frameDk);
-            SetRect(px, w, borderW - 4, h - borderW + 2, w - (borderW - 4) * 2, 2, frameDk);
-            SetRect(px, w, borderW - 4, borderW - 4, 2, h - (borderW - 4) * 2, frameDk);
-            SetRect(px, w, w - borderW + 2, borderW - 4, 2, h - (borderW - 4) * 2, frameDk);
+            SetRect(px, w, borderW - 8, borderW - 8, w - (borderW - 8) * 2, 4, frameDk);
+            SetRect(px, w, borderW - 8, h - borderW + 4, w - (borderW - 8) * 2, 4, frameDk);
+            SetRect(px, w, borderW - 8, borderW - 8, 4, h - (borderW - 8) * 2, frameDk);
+            SetRect(px, w, w - borderW + 4, borderW - 8, 4, h - (borderW - 8) * 2, frameDk);
 
             // Corner ornaments (decorative squares with gems)
             DrawCornerOrnament(px, w, h, 0, 0, borderW, frameInner, frameHi, frameDk, gem, gemHi);                    // bottom-left
@@ -3349,7 +3504,7 @@ namespace EpochBreaker.Gameplay
             DrawCornerOrnament(px, w, h, w - borderW, h - borderW, borderW, frameInner, frameHi, frameDk, gem, gemHi);// top-right
 
             // Edge decorations (repeating pattern along borders)
-            int gemSpacing = 80;
+            int gemSpacing = 160;
             // Top edge gems
             for (int gx = borderW + gemSpacing / 2; gx < w - borderW; gx += gemSpacing)
                 DrawEdgeGem(px, w, gx, h - borderW / 2, gem, gemHi, frameDk);
@@ -3364,15 +3519,15 @@ namespace EpochBreaker.Gameplay
                 DrawEdgeGem(px, w, w - borderW / 2, gy, gem, gemHi, frameDk);
 
             // Filigree pattern on frame edges
-            for (int fx = borderW + 20; fx < w - borderW - 10; fx += 40)
+            for (int fx = borderW + 40; fx < w - borderW - 20; fx += 80)
             {
-                DrawFiligree(px, w, fx, 12, frameHi, frameDk);
-                DrawFiligree(px, w, fx, h - 20, frameHi, frameDk);
+                DrawFiligree(px, w, fx, 24, frameHi, frameDk);
+                DrawFiligree(px, w, fx, h - 40, frameHi, frameDk);
             }
-            for (int fy = borderW + 20; fy < h - borderW - 10; fy += 40)
+            for (int fy = borderW + 40; fy < h - borderW - 20; fy += 80)
             {
-                DrawFiligreeVert(px, w, 12, fy, frameHi, frameDk);
-                DrawFiligreeVert(px, w, w - 20, fy, frameHi, frameDk);
+                DrawFiligreeVert(px, w, 24, fy, frameHi, frameDk);
+                DrawFiligreeVert(px, w, w - 40, fy, frameHi, frameDk);
             }
 
             tex.SetPixels(px);
@@ -3388,10 +3543,10 @@ namespace EpochBreaker.Gameplay
         {
             // Ornate corner with layered squares and central gem
             int s = size;
-            SetRect(px, texW, cx + 2, cy + 2, s - 4, s - 4, main);
+            SetRect(px, texW, cx + 4, cy + 4, s - 8, s - 8, main);
 
             // Diagonal line pattern
-            for (int d = 4; d < s - 4; d += 4)
+            for (int d = 8; d < s - 8; d += 8)
             {
                 Px(px, texW, cx + d, cy + d, hi);
                 Px(px, texW, cx + s - d - 1, cy + d, hi);
@@ -3399,50 +3554,50 @@ namespace EpochBreaker.Gameplay
 
             // Central gem
             int gc = s / 2;
-            SetRect(px, texW, cx + gc - 4, cy + gc - 4, 8, 8, gem);
-            SetRect(px, texW, cx + gc - 3, cy + gc - 3, 6, 6, gemHi);
-            SetRect(px, texW, cx + gc - 2, cy + gc + 1, 4, 2, gem);
-            Px(px, texW, cx + gc - 1, cy + gc + 2, Lighten(gemHi, 0.5f));
+            SetRect(px, texW, cx + gc - 8, cy + gc - 8, 16, 16, gem);
+            SetRect(px, texW, cx + gc - 6, cy + gc - 6, 12, 12, gemHi);
+            SetRect(px, texW, cx + gc - 4, cy + gc + 2, 8, 4, gem);
+            Px(px, texW, cx + gc - 2, cy + gc + 4, Lighten(gemHi, 0.5f));
 
             // Corner highlight
-            SetRect(px, texW, cx + 2, cy + s - 4, s - 4, 2, hi);
-            SetRect(px, texW, cx + 2, cy + 2, 2, s - 4, hi);
+            SetRect(px, texW, cx + 4, cy + s - 8, s - 8, 4, hi);
+            SetRect(px, texW, cx + 4, cy + 4, 4, s - 8, hi);
         }
 
         private static void DrawEdgeGem(Color[] px, int texW, int x, int y, Color gem, Color hi, Color dk)
         {
             // Small diamond gem
-            Px(px, texW, x, y + 2, gem);
-            Px(px, texW, x, y - 2, gem);
-            Px(px, texW, x - 2, y, gem);
-            Px(px, texW, x + 2, y, gem);
-            SetRect(px, texW, x - 1, y - 1, 3, 3, gem);
+            Px(px, texW, x, y + 4, gem);
+            Px(px, texW, x, y - 4, gem);
+            Px(px, texW, x - 4, y, gem);
+            Px(px, texW, x + 4, y, gem);
+            SetRect(px, texW, x - 2, y - 2, 5, 5, gem);
             Px(px, texW, x, y, hi);
-            Px(px, texW, x - 1, y + 1, hi);
+            Px(px, texW, x - 2, y + 2, hi);
         }
 
         private static void DrawFiligree(Color[] px, int texW, int x, int y, Color hi, Color dk)
         {
             // Simple horizontal scroll pattern
             Px(px, texW, x, y, hi);
-            Px(px, texW, x + 1, y + 1, hi);
-            Px(px, texW, x + 2, y, hi);
-            Px(px, texW, x + 3, y - 1, hi);
+            Px(px, texW, x + 2, y + 2, hi);
             Px(px, texW, x + 4, y, hi);
-            Px(px, texW, x + 5, y + 1, hi);
-            Px(px, texW, x + 6, y, hi);
+            Px(px, texW, x + 6, y - 2, hi);
+            Px(px, texW, x + 8, y, hi);
+            Px(px, texW, x + 10, y + 2, hi);
+            Px(px, texW, x + 12, y, hi);
         }
 
         private static void DrawFiligreeVert(Color[] px, int texW, int x, int y, Color hi, Color dk)
         {
             // Simple vertical scroll pattern
             Px(px, texW, x, y, hi);
-            Px(px, texW, x + 1, y + 1, hi);
-            Px(px, texW, x, y + 2, hi);
-            Px(px, texW, x - 1, y + 3, hi);
+            Px(px, texW, x + 2, y + 2, hi);
             Px(px, texW, x, y + 4, hi);
-            Px(px, texW, x + 1, y + 5, hi);
-            Px(px, texW, x, y + 6, hi);
+            Px(px, texW, x - 2, y + 6, hi);
+            Px(px, texW, x, y + 8, hi);
+            Px(px, texW, x + 2, y + 10, hi);
+            Px(px, texW, x, y + 12, hi);
         }
 
         #endregion
@@ -3475,7 +3630,7 @@ namespace EpochBreaker.Gameplay
         {
             if (_particleSprite != null) return _particleSprite;
 
-            const int size = 16;
+            const int size = 32;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
@@ -3492,7 +3647,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            _particleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 32f);
+            _particleSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 64f);
             return _particleSprite;
         }
 
@@ -3566,13 +3721,13 @@ namespace EpochBreaker.Gameplay
             var baseSprite = GetPlayerSprite();
             var frames = new Sprite[4];
 
-            int size = 384;
+            int size = 768;
             // Frame offsets for leg positions (left leg Y offset, right leg Y offset)
             int[][] legOffsets = new int[][] {
-                new int[] { 8, -8 },   // frame 0: left forward, right back
-                new int[] { 0, 0 },    // frame 1: neutral
-                new int[] { -8, 8 },   // frame 2: right forward, left back
-                new int[] { 0, 0 },    // frame 3: neutral (return)
+                new int[] { 16, -16 },  // frame 0: left forward, right back
+                new int[] { 0, 0 },     // frame 1: neutral
+                new int[] { -16, 16 },  // frame 2: right forward, left back
+                new int[] { 0, 0 },     // frame 3: neutral (return)
             };
 
             for (int f = 0; f < 4; f++)
@@ -3583,14 +3738,14 @@ namespace EpochBreaker.Gameplay
                 var baseTex = baseSprite.texture;
                 var px = baseTex.GetPixels();
 
-                // Shift left boot/leg region (x=96-176, y=0-156) by legOffsets[f][0]
-                ShiftRegion(px, size, 96, 0, 80, 156, 0, legOffsets[f][0]);
-                // Shift right boot/leg region (x=208-288, y=0-156) by legOffsets[f][1]
-                ShiftRegion(px, size, 208, 0, 80, 156, 0, legOffsets[f][1]);
+                // Shift left boot/leg region by legOffsets[f][0]
+                ShiftRegion(px, size, 192, 0, 160, 312, 0, legOffsets[f][0]);
+                // Shift right boot/leg region by legOffsets[f][1]
+                ShiftRegion(px, size, 416, 0, 160, 312, 0, legOffsets[f][1]);
 
                 tex.SetPixels(px);
                 tex.Apply();
-                var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 256f);
+                var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0f), 512f);
                 sprite.name = $"{key}_{f}";
                 _cache[$"{key}_{f}"] = sprite;
                 frames[f] = sprite;
@@ -3608,16 +3763,16 @@ namespace EpochBreaker.Gameplay
                 return new Sprite[] { cached };
 
             var baseSprite = GetPlayerSprite();
-            var tex = new Texture2D(384, 384, TextureFormat.RGBA32, false);
+            var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = baseSprite.texture.GetPixels();
 
-            // Stretch body slightly (scale Y by moving top up 8px)
-            ShiftRegion(px, 384, 100, 188, 184, 196, 0, 8);
+            // Stretch body slightly (scale Y by moving top up 16px)
+            ShiftRegion(px, 768, 200, 376, 368, 392, 0, 16);
 
             tex.SetPixels(px);
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, 384, 384), new Vector2(0.5f, 0f), 256f);
+            var sprite = Sprite.Create(tex, new Rect(0, 0, 768, 768), new Vector2(0.5f, 0f), 512f);
             sprite.name = key;
             _cache[key] = sprite;
             return new Sprite[] { sprite };
@@ -3633,16 +3788,16 @@ namespace EpochBreaker.Gameplay
                 return new Sprite[] { cached };
 
             var baseSprite = GetPlayerSprite();
-            var tex = new Texture2D(384, 384, TextureFormat.RGBA32, false);
+            var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = baseSprite.texture.GetPixels();
 
-            // Squash body slightly (shift legs up 8px to tuck)
-            ShiftRegion(px, 384, 96, 0, 192, 156, 0, 8);
+            // Squash body slightly (shift legs up 16px to tuck)
+            ShiftRegion(px, 768, 192, 0, 384, 312, 0, 16);
 
             tex.SetPixels(px);
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, 384, 384), new Vector2(0.5f, 0f), 256f);
+            var sprite = Sprite.Create(tex, new Rect(0, 0, 768, 768), new Vector2(0.5f, 0f), 512f);
             sprite.name = key;
             _cache[key] = sprite;
             return new Sprite[] { sprite };
@@ -3664,17 +3819,17 @@ namespace EpochBreaker.Gameplay
                 }
 
                 var baseSprite = GetPlayerSprite();
-                var tex = new Texture2D(384, 384, TextureFormat.RGBA32, false);
+                var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
                 tex.filterMode = FilterMode.Point;
                 var px = baseSprite.texture.GetPixels();
 
-                // Bob offset: frame 0 = 0, frame 1 = 4px down
-                int bobY = f * -4;
-                ShiftRegion(px, 384, 0, 0, 384, 384, 0, bobY);
+                // Bob offset: frame 0 = 0, frame 1 = 8px down
+                int bobY = f * -8;
+                ShiftRegion(px, 768, 0, 0, 768, 768, 0, bobY);
 
                 tex.SetPixels(px);
                 tex.Apply();
-                var sprite = Sprite.Create(tex, new Rect(0, 0, 384, 384), new Vector2(0.5f, 0f), 256f);
+                var sprite = Sprite.Create(tex, new Rect(0, 0, 768, 768), new Vector2(0.5f, 0f), 512f);
                 sprite.name = key;
                 _cache[key] = sprite;
                 frames[f] = sprite;
@@ -3699,17 +3854,17 @@ namespace EpochBreaker.Gameplay
                 }
 
                 var baseSprite = GetEnemySprite(type, behavior);
-                var tex = new Texture2D(384, 384, TextureFormat.RGBA32, false);
+                var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
                 tex.filterMode = FilterMode.Point;
                 var px = baseSprite.texture.GetPixels();
 
                 // Alternate leg positions: shift lower body region
-                int legShift = (f == 0) ? 6 : -6;
-                ShiftRegion(px, 384, 100, 0, 184, 160, 0, legShift);
+                int legShift = (f == 0) ? 12 : -12;
+                ShiftRegion(px, 768, 200, 0, 368, 320, 0, legShift);
 
                 tex.SetPixels(px);
                 tex.Apply();
-                var sprite = Sprite.Create(tex, new Rect(0, 0, 384, 384), new Vector2(0.5f, 0f), 256f);
+                var sprite = Sprite.Create(tex, new Rect(0, 0, 768, 768), new Vector2(0.5f, 0f), 512f);
                 sprite.name = key;
                 _cache[key] = sprite;
                 frames[f] = sprite;

@@ -38,6 +38,7 @@ namespace EpochBreaker.UI
         private GameObject _devPanel;
         private bool _godModeEnabled;
         private GameObject _godModeCheckmark;
+        private Image _playerPreviewImg;
 
         // ── Layout Constants ──
         // Ornate frame border is 32px at 960×540 (PPU 0.5) → ~64px at 1920×1080 ref.
@@ -223,10 +224,20 @@ namespace EpochBreaker.UI
 
             // Controls hint
             var hintGO = CreateText(canvasGO.transform,
-                "Move: Arrow Pad | Jump: Spacebar | Ground Pound: Down Arrow while Airborn | Esc/`: Pause", 16,
+                "Move: Arrows/WASD | Jump: Space/W | Ground Pound: S (airborne) | Cycle Weapon: X | Pause: Esc/`", 16,
                 new Color(0.65f, 0.65f, 0.75f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
+            hintRect.sizeDelta = new Vector2(900, 30);
+
+            // Build version label (bottom-right corner)
+            var buildLabelGO = CreateText(canvasGO.transform, BuildInfo.FullBuildID, 14,
+                new Color(0.45f, 0.45f, 0.5f));
+            var buildLabelRect = buildLabelGO.GetComponent<RectTransform>();
+            buildLabelRect.anchorMin = new Vector2(1f, 0f);
+            buildLabelRect.anchorMax = new Vector2(1f, 0f);
+            buildLabelRect.pivot = new Vector2(1f, 0f);
+            buildLabelRect.anchoredPosition = new Vector2(-10, 10);
 
             // Enter code overlay (initially hidden)
             CreateEnterCodeOverlay(canvasGO.transform);
@@ -368,23 +379,22 @@ namespace EpochBreaker.UI
 
             if (hasSavedSession)
             {
-                // CONTINUE button (primary — left side)
-                CreateMenuButton(parent, "CONTINUE", new Vector2(-72, 130),
-                    new Vector2(200, 55), new Color(0.2f, 0.55f, 0.3f), () => {
+                // CONTINUE button (primary)
+                CreateMenuButton(parent, "CONTINUE", new Vector2(0, 110),
+                    new Vector2(260, 55), new Color(0.2f, 0.55f, 0.3f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         GameManager.Instance?.ContinueSession();
                     });
 
-                // NEW GAME button (secondary — right of CONTINUE)
-                // Shows confirmation dialog before clearing saved session
-                CreateMenuButton(parent, "NEW GAME", new Vector2(142, 130),
-                    new Vector2(140, 42), new Color(0.55f, 0.45f, 0.15f), () => {
+                // NEW GAME button (same size as Continue, below it)
+                CreateMenuButton(parent, "NEW GAME", new Vector2(0, 45),
+                    new Vector2(260, 55), new Color(0.55f, 0.45f, 0.15f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         ShowNewGameConfirmation();
                     });
 
                 // Enter Code button
-                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 70),
+                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, -20),
                     new Vector2(260, 42), new Color(0.4f, 0.5f, 0.55f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_enterCodePanel != null)
@@ -396,16 +406,9 @@ namespace EpochBreaker.UI
                         }
                     });
 
-                // Cosmetics button
-                CreateMenuButton(parent, "COSMETICS", new Vector2(0, 10),
-                    new Vector2(220, 42), new Color(0.5f, 0.4f, 0.6f), () => {
-                        AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                        OpenCosmetics();
-                    });
-
                 // Settings button
-                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -45),
-                    new Vector2(220, 42), new Color(0.4f, 0.4f, 0.48f), () => {
+                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -75),
+                    new Vector2(260, 42), new Color(0.4f, 0.4f, 0.48f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_settingsPanel != null)
                             _settingsPanel.SetActive(true);
@@ -414,14 +417,14 @@ namespace EpochBreaker.UI
             else
             {
                 // Play Game button (primary)
-                CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 130),
+                CreateMenuButton(parent, "PLAY GAME", new Vector2(0, 110),
                     new Vector2(260, 55), new Color(0.2f, 0.55f, 0.3f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         GameManager.Instance?.StartGame();
                     });
 
                 // Enter Code button
-                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 70),
+                CreateMenuButton(parent, "ENTER CODE", new Vector2(0, 45),
                     new Vector2(260, 42), new Color(0.4f, 0.5f, 0.55f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_enterCodePanel != null)
@@ -433,21 +436,45 @@ namespace EpochBreaker.UI
                         }
                     });
 
-                // Cosmetics button
-                CreateMenuButton(parent, "COSMETICS", new Vector2(0, 10),
-                    new Vector2(220, 42), new Color(0.5f, 0.4f, 0.6f), () => {
-                        AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                        OpenCosmetics();
-                    });
-
                 // Settings button
-                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -45),
-                    new Vector2(220, 42), new Color(0.4f, 0.4f, 0.48f), () => {
+                CreateMenuButton(parent, "SETTINGS", new Vector2(0, -15),
+                    new Vector2(260, 42), new Color(0.4f, 0.4f, 0.48f), () => {
                         AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                         if (_settingsPanel != null)
                             _settingsPanel.SetActive(true);
                     });
             }
+
+            // Player character preview (lower-right of title screen)
+            CreatePlayerPreview(parent);
+        }
+
+        private void CreatePlayerPreview(Transform parent)
+        {
+            var previewGO = new GameObject("PlayerPreview");
+            previewGO.transform.SetParent(parent, false);
+            _playerPreviewImg = previewGO.AddComponent<Image>();
+
+            RefreshPlayerPreviewSprite();
+
+            _playerPreviewImg.preserveAspect = true;
+            _playerPreviewImg.raycastTarget = false;
+
+            var rect = previewGO.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.sizeDelta = new Vector2(200, 300);
+            rect.anchoredPosition = new Vector2(620, -280);
+        }
+
+        private void RefreshPlayerPreviewSprite()
+        {
+            if (_playerPreviewImg == null) return;
+            var cm = CosmeticManager.Instance;
+            PlayerSkin skin = cm != null ? cm.SelectedSkin : PlayerSkin.Default;
+            _playerPreviewImg.sprite = skin != PlayerSkin.Default
+                ? PlaceholderAssets.GetTintedPlayerSprite(skin)
+                : PlaceholderAssets.GetPlayerSprite();
         }
 
         /// <summary>
@@ -723,7 +750,7 @@ namespace EpochBreaker.UI
 
         private void CreateLegend(Transform parent)
         {
-            // Legend panel
+            // Legend panel — centered, wide enough for 6 items per row + label
             var panelGO = new GameObject("Legend");
             panelGO.transform.SetParent(parent, false);
             var panelImg = panelGO.AddComponent<Image>();
@@ -731,63 +758,67 @@ namespace EpochBreaker.UI
             var panelRect = panelGO.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 0.5f);
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
-            panelRect.sizeDelta = new Vector2(800, 260);
-            panelRect.anchoredPosition = new Vector2(0, -270);
+            panelRect.sizeDelta = new Vector2(820, 260);
+            panelRect.anchoredPosition = new Vector2(0, -260);
 
-            // Row 1: Rewards
+            // Centered layout: label left-aligned, items evenly distributed
+            float labelX = -340f;
+            float itemStart = -200f;
+            float itemSpacing = 105f;
+
+            // Row 1: Rewards (6 items)
             float row1Y = 95f;
-            CreateLegendLabel(panelGO.transform, "Rewards:", new Vector2(-350, row1Y));
+            CreateLegendLabel(panelGO.transform, "Rewards:", new Vector2(labelX, row1Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.HealthSmall),
-                "Health", new Vector2(-240, row1Y));
+                "Health", new Vector2(itemStart, row1Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.AttackBoost),
-                "Attack", new Vector2(-130, row1Y));
+                "Attack", new Vector2(itemStart + itemSpacing, row1Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.SpeedBoost),
-                "Speed", new Vector2(-20, row1Y));
+                "Speed", new Vector2(itemStart + itemSpacing * 2, row1Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.Shield),
-                "Shield", new Vector2(90, row1Y));
+                "Shield", new Vector2(itemStart + itemSpacing * 3, row1Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetRewardSprite(RewardType.Coin),
-                "Coin", new Vector2(200, row1Y));
+                "Coin", new Vector2(itemStart + itemSpacing * 4, row1Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetExtraLifeSprite(),
-                "1UP", new Vector2(310, row1Y));
+                "1UP", new Vector2(itemStart + itemSpacing * 5, row1Y));
 
-            // Row 2: Weapons (all 6 types)
+            // Row 2: Weapons (5 items — Slower removed)
             float row2Y = 0f;
-            CreateLegendLabel(panelGO.transform, "Weapons:", new Vector2(-350, row2Y));
+            CreateLegendLabel(panelGO.transform, "Weapons:", new Vector2(labelX, row2Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Bolt, WeaponTier.Starting),
-                "Bolt", new Vector2(-240, row2Y));
+                "Bolt", new Vector2(itemStart, row2Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Piercer, WeaponTier.Starting),
-                "Piercer", new Vector2(-150, row2Y));
+                "Piercer", new Vector2(itemStart + itemSpacing, row2Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Spreader, WeaponTier.Starting),
-                "Spreader", new Vector2(-60, row2Y));
+                "Spreader", new Vector2(itemStart + itemSpacing * 2, row2Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Chainer, WeaponTier.Starting),
-                "Chainer", new Vector2(30, row2Y));
-            CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Slower, WeaponTier.Starting),
-                "Slower", new Vector2(120, row2Y));
+                "Chainer", new Vector2(itemStart + itemSpacing * 3, row2Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetWeaponPickupSprite(WeaponType.Cannon, WeaponTier.Starting),
-                "Cannon", new Vector2(210, row2Y));
+                "Cannon", new Vector2(itemStart + itemSpacing * 4, row2Y));
 
-            // Row 3: Checkpoints & Goal
+            // Row 3: Checkpoints & Goal (4 items, same spacing for alignment)
             float row3Y = -95f;
-            CreateLegendLabel(panelGO.transform, "Progress:", new Vector2(-350, row3Y));
+            CreateLegendLabel(panelGO.transform, "Progress:", new Vector2(labelX, row3Y));
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetCheckpointSprite(CheckpointType.LevelStart),
-                "Start", new Vector2(-240, row3Y), 48f);
+                "Start", new Vector2(itemStart, row3Y), 48f);
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetCheckpointSprite(CheckpointType.MidLevel),
-                "Mid", new Vector2(-130, row3Y), 48f);
+                "Mid", new Vector2(itemStart + itemSpacing, row3Y), 48f);
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetCheckpointSprite(CheckpointType.PreBoss),
-                "Boss", new Vector2(-20, row3Y), 48f);
+                "Boss", new Vector2(itemStart + itemSpacing * 2, row3Y), 48f);
             CreateLegendItem(panelGO.transform, PlaceholderAssets.GetGoalSprite(),
-                "Goal", new Vector2(110, row3Y), 48f);
+                "Goal", new Vector2(itemStart + itemSpacing * 3, row3Y), 48f);
 
-            // ACHIEVEMENTS and LEGENDS — stacked left of sprite legend, ornate framed
-            CreateOrnateButton(parent, "ACHIEVEMENTS", new Vector2(-540, -240),
-                new Vector2(220, 50), () => {
+            // ACHIEVEMENTS and LEGENDS — stacked vertically LEFT of the legend panel
+            float btnX = -660f;
+            CreateOrnateButton(parent, "ACHIEVEMENTS", new Vector2(btnX, -230f),
+                new Vector2(180, 50), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     OpenAchievements();
                 });
 
             bool legendsUnlocked = GameManager.Instance != null && GameManager.Instance.LegendsUnlocked;
-            CreateOrnateButton(parent, "LEGENDS", new Vector2(-540, -300),
-                new Vector2(220, 50), () => {
+            CreateOrnateButton(parent, "LEGENDS", new Vector2(btnX, -290f),
+                new Vector2(180, 50), () => {
                     if (!legendsUnlocked) return;
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     OpenLegends();
@@ -815,7 +846,10 @@ namespace EpochBreaker.UI
             if (_cosmeticsObj != null) return;
             _cosmeticsObj = new GameObject("CosmeticsOverlay");
             var cosmetics = _cosmeticsObj.AddComponent<CosmeticSelectUI>();
-            cosmetics.Initialize(() => { _cosmeticsObj = null; });
+            cosmetics.Initialize(() => {
+                _cosmeticsObj = null;
+                RefreshPlayerPreviewSprite();
+            });
         }
 
         private void CreateLegendLabel(Transform parent, string text, Vector2 position)
@@ -1068,7 +1102,7 @@ namespace EpochBreaker.UI
                 });
 
             // Settings items — y-accumulator with consistent spacing
-            float sy = 160f; // First item below title (240 - 80 = 160)
+            float sy = 180f; // First item below title
 
             CreateMenuButton(_settingsMenuContent.transform, "ABOUT", new Vector2(0, sy),
                 new Vector2(300, BTN_HEIGHT), new Color(0.35f, 0.40f, 0.45f), () => {
@@ -1083,6 +1117,13 @@ namespace EpochBreaker.UI
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _difficultySubPanel.SetActive(true);
+                });
+
+            sy -= ITEM_SPACING;
+            CreateMenuButton(_settingsMenuContent.transform, "COSMETICS", new Vector2(0, sy),
+                new Vector2(300, BTN_HEIGHT), new Color(0.5f, 0.4f, 0.6f), () => {
+                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                    OpenCosmetics();
                 });
 
             sy -= ITEM_SPACING;
@@ -1113,12 +1154,29 @@ namespace EpochBreaker.UI
                     _accessibilitySubPanel.SetActive(true);
                 });
 
-            // Randomize toggle (has description text below — needs extra gap after)
-            sy -= ITEM_SPACING + 5f;
-            CreateRandomizeToggle(_settingsMenuContent.transform, new Vector2(0, sy));
+            // Replay Campaign button (only shown after Campaign completion)
+            sy -= ITEM_SPACING;
+            bool campaignCompleted = AchievementManager.Instance != null
+                && AchievementManager.Instance.IsUnlocked(AchievementType.EpochExplorer);
+            if (campaignCompleted)
+            {
+                bool replayActive = GameManager.Instance != null && GameManager.Instance.ReplayCampaignEnabled;
+                CreateMenuButton(_settingsMenuContent.transform,
+                    replayActive ? "REPLAY CAMPAIGN (ON)" : "REPLAY CAMPAIGN",
+                    new Vector2(0, sy),
+                    new Vector2(300, BTN_HEIGHT),
+                    replayActive ? new Color(0.7f, 0.55f, 0.2f) : new Color(0.55f, 0.45f, 0.15f), () => {
+                        AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                        if (GameManager.Instance != null)
+                        {
+                            GameManager.Instance.ReplayCampaignEnabled = !GameManager.Instance.ReplayCampaignEnabled;
+                            RebuildUI();
+                        }
+                    });
+            }
 
-            // Tutorial buttons (extra gap to clear Randomize description text)
-            sy -= SECTION_GAP + 5f;
+            // Tutorial buttons
+            sy -= ITEM_SPACING;
             bool tutDone = Gameplay.TutorialManager.IsTutorialCompleted();
 
             CreateMenuButton(_settingsMenuContent.transform, "REPLAY TUTORIAL", new Vector2(140, sy),
@@ -1254,11 +1312,10 @@ namespace EpochBreaker.UI
 
             // Campaign info
             var campaignGO = CreateText(_aboutSubPanel.transform,
-                "CAMPAIGN MODE (Randomize OFF)\n" +
+                "CAMPAIGN MODE\n" +
                 "Play 10 levels through Epochs 0-9 in order.\n" +
-                "Start with 2 lives. Collect extra lives in levels.\n" +
-                "Die twice in one level = level failed, move on.\n" +
-                "Lose all lives = Game Over.", 16,
+                "Infinite lives. Die too many times = level failed, move on.\n" +
+                "Deaths per level depend on difficulty setting.", 16,
                 new Color(0.75f, 0.75f, 0.85f));
             var campaignRect = campaignGO.GetComponent<RectTransform>();
             campaignRect.anchoredPosition = new Vector2(0, 95);
@@ -1267,10 +1324,10 @@ namespace EpochBreaker.UI
 
             // Streak info
             var streakGO = CreateText(_aboutSubPanel.transform,
-                "STREAK MODE (unlocked after Campaign)\n" +
-                "Random levels, any epoch. 10 lives, no pickups.\n" +
-                "Each completed level adds to your streak.\n" +
-                "How far can you go?", 16,
+                "THE BREACH (default after Campaign)\n" +
+                "Random levels, any epoch. Endless exploration.\n" +
+                "Play forever — replay Campaign from Settings.\n" +
+                "STREAK: 10 lives, how far can you go?", 16,
                 new Color(0.85f, 0.75f, 0.55f));
             var streakRect = streakGO.GetComponent<RectTransform>();
             streakRect.anchoredPosition = new Vector2(0, -10);
@@ -1393,7 +1450,7 @@ namespace EpochBreaker.UI
 
             // Difficulty description
             var diffDescGO = CreateText(_difficultySubPanel.transform,
-                "Changes apply to new games.\nSeparate leaderboards per difficulty.", 16,
+                "Changes apply at next level start.", 16,
                 new Color(0.7f, 0.7f, 0.8f));
             var diffDescRect = diffDescGO.GetComponent<RectTransform>();
             diffDescRect.anchoredPosition = new Vector2(0, 140);
@@ -1406,6 +1463,23 @@ namespace EpochBreaker.UI
             diffActiveRect.anchoredPosition = new Vector2(0, -160);
             var diffActiveText = diffActiveGO.GetComponent<Text>();
 
+            // Difficulty buttons — store Image refs for highlight
+            Color easyBase = new Color(0.25f, 0.50f, 0.30f);
+            Color normalBase = new Color(0.35f, 0.40f, 0.55f);
+            Color hardBase = new Color(0.55f, 0.25f, 0.25f);
+            Color highlightTint = new Color(0.3f, 0.3f, 0.3f, 0f); // Additive brightness for active
+
+            var easyBtnGO = CreateMenuButton(_difficultySubPanel.transform, "EASY", new Vector2(-140, 60),
+                new Vector2(130, 55), easyBase, null);
+            var normalBtnGO = CreateMenuButton(_difficultySubPanel.transform, "NORMAL", new Vector2(0, 60),
+                new Vector2(130, 55), normalBase, null);
+            var hardBtnGO = CreateMenuButton(_difficultySubPanel.transform, "HARD", new Vector2(140, 60),
+                new Vector2(130, 55), hardBase, null);
+
+            var easyImg = easyBtnGO.GetComponent<Image>();
+            var normalImg = normalBtnGO.GetComponent<Image>();
+            var hardImg = hardBtnGO.GetComponent<Image>();
+
             System.Action updateDifficultyLabel = () => {
                 if (Gameplay.DifficultyManager.Instance == null) return;
                 var d = Gameplay.DifficultyManager.Instance.CurrentDifficulty;
@@ -1415,35 +1489,33 @@ namespace EpochBreaker.UI
                     _ => "NORMAL: 2 lives/level, standard enemies and health"
                 };
                 diffActiveText.text = desc;
+
+                // Highlight active difficulty button
+                easyImg.color = d == Gameplay.DifficultyLevel.Easy ? easyBase + highlightTint : easyBase;
+                normalImg.color = d == Gameplay.DifficultyLevel.Normal ? normalBase + highlightTint : normalBase;
+                hardImg.color = d == Gameplay.DifficultyLevel.Hard ? hardBase + highlightTint : hardBase;
             };
             updateDifficultyLabel();
 
-            // Easy button
-            CreateMenuButton(_difficultySubPanel.transform, "EASY", new Vector2(-140, 60),
-                new Vector2(130, 55), new Color(0.25f, 0.50f, 0.30f), () => {
-                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    if (Gameplay.DifficultyManager.Instance != null)
-                        Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Easy;
-                    updateDifficultyLabel();
-                });
-
-            // Normal button
-            CreateMenuButton(_difficultySubPanel.transform, "NORMAL", new Vector2(0, 60),
-                new Vector2(130, 55), new Color(0.35f, 0.40f, 0.55f), () => {
-                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    if (Gameplay.DifficultyManager.Instance != null)
-                        Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Normal;
-                    updateDifficultyLabel();
-                });
-
-            // Hard button
-            CreateMenuButton(_difficultySubPanel.transform, "HARD", new Vector2(140, 60),
-                new Vector2(130, 55), new Color(0.55f, 0.25f, 0.25f), () => {
-                    AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
-                    if (Gameplay.DifficultyManager.Instance != null)
-                        Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Hard;
-                    updateDifficultyLabel();
-                });
+            // Wire button clicks
+            easyBtnGO.GetComponent<Button>().onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                if (Gameplay.DifficultyManager.Instance != null)
+                    Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Easy;
+                updateDifficultyLabel();
+            });
+            normalBtnGO.GetComponent<Button>().onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                if (Gameplay.DifficultyManager.Instance != null)
+                    Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Normal;
+                updateDifficultyLabel();
+            });
+            hardBtnGO.GetComponent<Button>().onClick.AddListener(() => {
+                AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
+                if (Gameplay.DifficultyManager.Instance != null)
+                    Gameplay.DifficultyManager.Instance.CurrentDifficulty = Gameplay.DifficultyLevel.Hard;
+                updateDifficultyLabel();
+            });
 
             // Descriptions for each mode
             CreateText(_difficultySubPanel.transform, "3 deaths/level\n50% enemies\n1.5x health", 14,
@@ -2225,7 +2297,7 @@ namespace EpochBreaker.UI
             return go;
         }
 
-        private void CreateMenuButton(Transform parent, string text, Vector2 position, Vector2 size,
+        private GameObject CreateMenuButton(Transform parent, string text, Vector2 position, Vector2 size,
             Color bgColor, UnityEngine.Events.UnityAction onClick)
         {
             var go = new GameObject("MenuBtn");
@@ -2236,7 +2308,8 @@ namespace EpochBreaker.UI
 
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
-            btn.onClick.AddListener(onClick);
+            if (onClick != null)
+                btn.onClick.AddListener(onClick);
 
             // Hover/press color transitions for visual feedback
             var colors = btn.colors;
@@ -2270,6 +2343,7 @@ namespace EpochBreaker.UI
             labelRect.anchorMax = new Vector2(0.5f, 0.5f);
             labelRect.sizeDelta = new Vector2(size.x - 16, size.y - 12);
             labelRect.anchoredPosition = Vector2.zero;
+            return go;
         }
 
         private void CreateLevelButton(Transform parent, string text, Vector2 position, Vector2 size,

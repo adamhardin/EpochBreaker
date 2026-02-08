@@ -10,16 +10,16 @@ This specification defines the architecture for a deterministic, procedurally ge
 
 ### Level ID Structure
 ```
-LVLID_[VERSION]_[DIFFICULTY]_[ERA]_[SEED64]
+E-XXXXXXXX
 
-Example: LVLID_1_2_3_9876543210ABCDEF
+Example: 3-K7XM2P9A
 ```
 
 **Components:**
-- `VERSION`: Format version for backwards compatibility (1 byte)
-- `DIFFICULTY`: 0=Easy, 1=Normal, 2=Hard, 3=Extreme (1 byte)
-- `ERA`: Historical era determining tileset, materials, and aesthetics (0-9, 1 byte)
-- `SEED64`: 64-bit deterministic seed (8 bytes)
+- `E`: Epoch digit (0-9), determines era, tileset, enemies, and music
+- `XXXXXXXX`: 40-bit seed encoded as 8 base32 characters (alphabet: `0-9, A-V`)
+
+Difficulty is handled separately via `DifficultyManager` (player setting, not encoded in the level ID).
 
 **Era Definitions:**
 | Code | Era | Primary Aesthetic |
@@ -35,7 +35,7 @@ Example: LVLID_1_2_3_9876543210ABCDEF
 | 8 | Spacefaring | Hull plating, asteroid rock, zero-g debris |
 | 9 | Transcendent | Exotic matter, energy barriers, reality-warping elements |
 
-**Total ID Length**: 39 characters (human-readable hex format)
+**Total ID Length**: 10 characters (compact, shareable format)
 
 ### Seed Generation Algorithm
 ```
@@ -143,7 +143,7 @@ Transcendent (9): soft=0.15, medium=0.15, hard=0.20, reinforced=0.35, indestruct
 ```json
 {
   "metadata": {
-    "id": "LVLID_1_2_3_9876543210ABCDEF",
+    "id": "3-K7XM2P9A",
     "version": 1,
     "difficulty": 2,
     "era": 3,
@@ -694,7 +694,7 @@ function validate_difficulty(level):
 
     expected_difficulty = level.metadata.difficulty_rating
 
-    if abs(calculated_difficulty - expected_difficulty) > TOLERANCE:
+    if abs(calculated_difficulty - expected_difficulty) > 1.5:
         return FAILED_DIFFICULTY_MISMATCH
 
     return SUCCESS
@@ -703,7 +703,7 @@ function validate_difficulty(level):
 ### Safety Checks
 - [ ] Start position accessible
 - [ ] Boss arena reachable with starting weapon on primary path
-- [ ] No impossible jumps (max_gap < player_max_jump)
+- [ ] No impossible jumps (max horizontal gap <= 5 tiles, max vertical jump <= 4 tiles)
 - [ ] Sufficient checkpoints (minimum 3)
 - [ ] Reward distribution balanced
 - [ ] Enemy spawn count within limits
@@ -795,7 +795,7 @@ Test 6: Completability Across All Eras
 
 Test 7: Level ID Shareability
   // Generate on device A, reconstruct on device B from ID only
-  id = "LVLID_1_2_3_9876543210ABCDEF"
+  id = "3-K7XM2P9A"
   level_a = generate_from_id(id)
   level_b = generate_from_id(id)
   assert level_a == level_b

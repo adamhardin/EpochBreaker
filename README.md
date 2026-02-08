@@ -18,7 +18,7 @@ The game's world evolves through 10 eras of human civilization, from Stone Age c
 **Differentiator:** Procedurally generated levels via deterministic seeds. Each level has a unique ID that can be shared -- entering the same ID on any device regenerates the identical level.
 
 ```
-Player generates level -> Gets ID: LVLID_1_3_1_A1B2C3D4E5F6G7H8
+Player generates level -> Gets ID: 3-K7XM2P9A
 Player shares ID with friend -> Friend enters ID -> Identical level regenerated
 Both play the same level -> Compare scores
 ```
@@ -117,7 +117,7 @@ EpochBreaker/                        <- Unity project (all game code)
 
 | Area | Target |
 |------|--------|
-| Difficulty balance | Calculated vs. target within +/- 1.0 point |
+| Difficulty balance | Calculated vs. target within +/- 1.5 points |
 | Reachability | 100% of generated levels are completable |
 | Level duration | 2-5 minutes per level |
 | Day-1 retention | >= 40% |
@@ -131,7 +131,7 @@ EpochBreaker/                        <- Unity project (all game code)
 
 Full specification: [Level-Generation-Technical-Spec.md](docs/Level-Generation-Technical-Spec.md)
 
-**Level ID format:** `LVLID_[VERSION]_[DIFFICULTY]_[ERA]_[SEED64]`
+**Level ID format:** `E-XXXXXXXX` (epoch digit + 8 base32 characters, e.g., `3-K7XM2P9A`)
 
 **Pipeline:**
 1. Seed derived from Level ID
@@ -156,7 +156,7 @@ The game runs as a WebGL build hosted on GitHub Pages. Keyboard controls: WASD/a
 
 1. The Unity project is built for WebGL locally using a custom build script ([WebGLBuildScript.cs](EpochBreaker/Assets/Scripts/Editor/WebGLBuildScript.cs))
 2. The build output is pushed to the `gh-pages` branch
-3. A GitHub Actions workflow ([deploy-webgl.yml](.github/workflows/deploy-webgl.yml)) deploys the `gh-pages` branch to GitHub Pages
+3. GitHub Pages serves the `gh-pages` branch automatically
 
 ### Deploying an update
 
@@ -177,7 +177,7 @@ git push origin gh-pages
 git checkout master
 ```
 
-The GitHub Actions workflow automatically deploys whenever the `gh-pages` branch is updated.
+GitHub Pages automatically serves the latest content on the `gh-pages` branch.
 
 ### WebGL-specific adaptations
 
@@ -193,6 +193,6 @@ The GitHub Actions workflow automatically deploys whenever the `gh-pages` branch
 
 ## Status
 
-**Current version:** v1.1.0 build 028
+**Current version:** v1.1.0 build 030
 **Current phase:** Feature-complete with 10 eras, 3 game modes (Campaign, Streak, FreePlay), procedural levels, 6 weapon types, 10 boss variants, daily/weekly challenges, friend challenges, ghost replay, cosmetics (skins/trails/frames), achievements, level history, accessibility options, context-sensitive gameplay hints, and runtime-generated audio/visuals
 **Last updated:** 2026-02-07

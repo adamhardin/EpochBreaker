@@ -43,7 +43,7 @@ namespace EpochBreaker.UI
             overlayRect.sizeDelta = Vector2.zero;
 
             var gm = Gameplay.GameManager.Instance;
-            var mode = gm?.CurrentGameMode ?? Gameplay.GameMode.FreePlay;
+            var mode = gm?.CurrentGameMode ?? Gameplay.GameMode.TheBreach;
 
             // GAME OVER title
             CreateText(canvasGO.transform, "GAME OVER", 72,

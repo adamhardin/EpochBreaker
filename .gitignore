@@ -73,6 +73,10 @@ agents/
 training/
 docs/archive/
 
+# Environment / secrets
+.env
+*.env.local
+
 # Build logs
 build-log.txt
 unity-build.log

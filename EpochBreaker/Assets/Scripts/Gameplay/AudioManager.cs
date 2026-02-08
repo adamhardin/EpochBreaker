@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace EpochBreaker.Gameplay
@@ -31,7 +32,7 @@ namespace EpochBreaker.Gameplay
         private float _weaponVolume = 1f;
 
         private const float BASE_MUSIC_VOLUME = 0.15f;
-        private const float BASE_SFX_VOLUME = 0.25f;
+        private const float BASE_SFX_VOLUME = 0.18f;
         private const float BASE_AMBIENT_VOLUME = 0.08f;
 
         // Current music variant (Sprint 9: 3 variants per era group)
@@ -78,7 +79,7 @@ namespace EpochBreaker.Gameplay
         private const float MIN_REPEAT_INTERVAL = 0.05f;
 
         // Limit concurrent SFX to prevent audio overload / high-pitched artifacts
-        private const int MAX_CONCURRENT_SFX = 4;
+        private const int MAX_CONCURRENT_SFX = 3;
 
         private void Awake()
         {
@@ -121,6 +122,18 @@ namespace EpochBreaker.Gameplay
                 _weaponSources[i].playOnAwake = false;
             }
 
+            // Runtime low-pass filter — attenuates harsh high-frequency content from
+            // procedural synthesis (unfiltered noise broadband, harmonic beating, Square SFX).
+            // WebGL guard: AudioLowPassFilter can throw on some browsers (build 025 fix).
+            try
+            {
+                var lpf = gameObject.AddComponent<AudioLowPassFilter>();
+                lpf.cutoffFrequency = 3000f;
+            }
+            catch (System.Exception)
+            {
+                // Silently skip on platforms that don't support audio filters
+            }
         }
 
         public static void PlaySFX(AudioClip clip, float volume = 1f)
@@ -163,8 +176,8 @@ namespace EpochBreaker.Gameplay
             // Use dedicated weapon pool — never starved by boss/environment SFX
             var src = Instance._weaponSources[Instance._weaponIndex];
             Instance._weaponIndex = (Instance._weaponIndex + 1) % WEAPON_POOL_SIZE;
-            // ±10% pitch randomization for weapon fire variety
-            src.pitch = Random.Range(0.9f, 1.1f);
+            // Fixed pitch — pitch randomization removed to prevent beating/interference between overlapping shots
+            src.pitch = 1f;
             src.PlayOneShot(clip, Mathf.Min(volume * Instance._weaponVolume, 0.8f));
         }
 
@@ -215,15 +228,59 @@ namespace EpochBreaker.Gameplay
         /// Play a randomly selected music variant for the given epoch.
         /// Sprint 9: 3 variants per era group, randomly selected each level.
         /// Also starts the era-appropriate ambient audio loop.
+        /// Fades in music over 200ms and staggers ambient by 200ms to avoid
+        /// the harsh transient of both starting simultaneously at full volume.
         /// </summary>
         public static void PlayGameplayMusicWithVariant(int epoch)
         {
             if (Instance == null) return;
             Instance._currentMusicVariant = Random.Range(0, 3);
             var clip = PlaceholderAudio.GetGameplayMusicVariant(epoch, Instance._currentMusicVariant);
-            PlayMusic(clip);
-            // Start ambient audio
-            PlayAmbient(PlaceholderAudio.GetAmbientLoop(epoch));
+            var ambientClip = PlaceholderAudio.GetAmbientLoop(epoch);
+
+            // Start music at zero volume, fade in
+            Instance._musicSource.clip = clip;
+            Instance._musicSource.volume = 0f;
+            Instance._musicSource.Play();
+
+            Instance.StopAllCoroutines();
+            Instance.StartCoroutine(Instance.FadeInGameplayAudio(ambientClip));
+        }
+
+        private IEnumerator FadeInGameplayAudio(AudioClip ambientClip)
+        {
+            float targetMusicVol = BASE_MUSIC_VOLUME * _musicVolume;
+            float targetAmbientVol = BASE_AMBIENT_VOLUME * _musicVolume;
+            float fadeDuration = 0.2f; // 200ms fade-in
+
+            // Fade music in over 200ms
+            float elapsed = 0f;
+            while (elapsed < fadeDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / fadeDuration);
+                _musicSource.volume = targetMusicVol * t;
+                yield return null;
+            }
+            _musicSource.volume = targetMusicVol;
+
+            // Start ambient after music fade completes (~200ms stagger)
+            if (ambientClip != null)
+            {
+                _ambientSource.clip = ambientClip;
+                _ambientSource.volume = 0f;
+                _ambientSource.Play();
+
+                elapsed = 0f;
+                while (elapsed < fadeDuration)
+                {
+                    elapsed += Time.unscaledDeltaTime;
+                    float t = Mathf.Clamp01(elapsed / fadeDuration);
+                    _ambientSource.volume = targetAmbientVol * t;
+                    yield return null;
+                }
+                _ambientSource.volume = targetAmbientVol;
+            }
         }
 
         /// <summary>

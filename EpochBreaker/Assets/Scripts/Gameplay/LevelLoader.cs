@@ -149,11 +149,13 @@ namespace EpochBreaker.Gameplay
             _playerObj.tag = "Player";
             _playerObj.layer = LayerMask.NameToLayer("Default");
 
-            // Sprite (with cosmetic skin if selected)
+            // Sprite (with cosmetic skin tint applied via renderer color,
+            // so all animation frames inherit the tint automatically)
             var sr = _playerObj.AddComponent<SpriteRenderer>();
             var cm = CosmeticManager.Instance;
             PlayerSkin selectedSkin = cm != null ? cm.SelectedSkin : PlayerSkin.Default;
-            sr.sprite = PlaceholderAssets.GetTintedPlayerSprite(selectedSkin);
+            sr.sprite = PlaceholderAssets.GetPlayerSprite();
+            sr.color = CosmeticManager.GetSkinTint(selectedSkin);
             sr.sortingOrder = 10;
 
             // Physics
@@ -230,7 +232,7 @@ namespace EpochBreaker.Gameplay
             cam.backgroundColor = new Color(0.10f, 0.08f, 0.15f); // dark blue-purple sky
             cam.clearFlags = CameraClearFlags.SolidColor;
 
-            _mainCamera.AddComponent<AudioListener>();
+            // AudioListener lives on GameManager (persistent) — not added here to avoid duplicates
 
             var camController = _mainCamera.AddComponent<CameraController>();
             camController.Initialize(Player.transform, _tilemapRenderer);
@@ -337,6 +339,7 @@ namespace EpochBreaker.Gameplay
             {
                 var drop = data.WeaponDrops[i];
                 if (drop.Hidden) continue; // Skip hidden for now
+                if (drop.Type == WeaponType.Slower) continue; // Slower is deprecated
 
                 int clampedY = ClampAboveGround(data, drop.TileX, drop.TileY);
                 Vector3 pos = _tilemapRenderer.LevelToWorld(drop.TileX, clampedY);
@@ -402,17 +405,8 @@ namespace EpochBreaker.Gameplay
             go.transform.position = pos;
 
             var sr = go.AddComponent<SpriteRenderer>();
-            sr.sprite = PlaceholderAssets.GetParticleSprite(); // Placeholder — glowing orb
-            sr.color = type switch
-            {
-                AbilityType.DoubleJump => new Color(0.4f, 1f, 0.6f),   // Green
-                AbilityType.AirDash    => new Color(0.4f, 0.7f, 1f),   // Blue
-                AbilityType.GroundSlam => new Color(1f, 0.6f, 0.2f),   // Orange
-                AbilityType.PhaseShift => new Color(0.3f, 0.9f, 1f),   // Cyan
-                _ => Color.white
-            };
+            sr.sprite = PlaceholderAssets.GetAbilitySprite(type);
             sr.sortingOrder = 9;
-            go.transform.localScale = Vector3.one * 1.2f;
 
             var col = go.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
@@ -623,7 +617,7 @@ namespace EpochBreaker.Gameplay
         {
             if (_checkpointPlatformSprite != null) return _checkpointPlatformSprite;
 
-            int w = 192, h = 64;
+            int w = 384, h = 128;
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
@@ -638,13 +632,13 @@ namespace EpochBreaker.Gameplay
                 for (int x = 0; x < w; x++)
                 {
                     int idx = y * w + x;
-                    if (y >= h - 8)
+                    if (y >= h - 16)
                         px[idx] = stoneDark; // Bottom edge shadow
-                    else if (y <= 7)
+                    else if (y <= 15)
                         px[idx] = stoneLight; // Top highlight
-                    else if (x <= 7)
+                    else if (x <= 15)
                         px[idx] = stoneLight; // Left highlight
-                    else if (x >= w - 8)
+                    else if (x >= w - 16)
                         px[idx] = stoneDark; // Right shadow
                     else
                         px[idx] = stone;
@@ -653,7 +647,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            _checkpointPlatformSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 128f);
+            _checkpointPlatformSprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 256f);
             _checkpointPlatformSprite.name = "checkpoint_platform";
             return _checkpointPlatformSprite;
         }

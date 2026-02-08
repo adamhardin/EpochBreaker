@@ -21,7 +21,7 @@ namespace EpochBreaker.Gameplay
 
     public enum GameMode
     {
-        FreePlay,   // Single level from code entry or randomize on
+        TheBreach,  // Randomized levels (formerly FreePlay). Default after Campaign completion
         Campaign,   // 10 epochs in order, limited lives, extra life pickups
         Streak      // Unlimited random levels, 10 lives, no extra life pickups
     }
@@ -65,7 +65,7 @@ namespace EpochBreaker.Gameplay
     public class SavedSession
     {
         public string LevelCode;
-        public int Mode; // 0=FreePlay, 1=Campaign, 2=Streak
+        public int Mode; // 0=TheBreach, 1=Campaign, 2=Streak
         public int CampaignEpoch;
         public int StreakCount;
         public int GlobalLives;
@@ -159,7 +159,7 @@ namespace EpochBreaker.Gameplay
         public LevelID CurrentLevelID { get; set; }
 
         // Game mode tracking
-        public GameMode CurrentGameMode { get; private set; } = GameMode.FreePlay;
+        public GameMode CurrentGameMode { get; private set; } = GameMode.TheBreach;
         public int CampaignEpoch { get; private set; } = 0;  // 0-9, which epoch in campaign
         public int StreakCount { get; private set; } = 0;     // Levels completed in streak mode
         public int DeathsThisLevel { get; private set; } = 0; // Deaths in current level
@@ -173,13 +173,39 @@ namespace EpochBreaker.Gameplay
         // Settings
         private const string PREF_RANDOMIZE = "EpochBreaker_Randomize";
         private const string PREF_LEGENDS_UNLOCKED = "EpochBreaker_LegendsUnlocked";
+        private const string PREF_REPLAY_CAMPAIGN = "EpochBreaker_ReplayCampaign";
         private const string LEGENDS_PREFS_KEY = "EpochBreaker_Legends";
         private const int MAX_LEGENDS_ENTRIES = 20;
 
+        /// <summary>
+        /// Get the difficulty-suffixed Legends key (separate leaderboards per difficulty).
+        /// Normal returns base key for backwards compatibility.
+        /// </summary>
+        private static string LegendsKey =>
+            LEGENDS_PREFS_KEY + (DifficultyManager.Instance != null ? DifficultyManager.Instance.LeaderboardSuffix : "");
+
+        /// <summary>True if Campaign has been completed (EpochExplorer achievement unlocked).</summary>
+        public bool CampaignCompleted =>
+            AchievementManager.Instance != null && AchievementManager.Instance.IsUnlocked(AchievementType.EpochExplorer);
+
+        /// <summary>
+        /// Legacy property — now derived from CampaignCompleted and ReplayCampaignEnabled.
+        /// Returns true if the game should start in The Breach mode (randomized).
+        /// </summary>
         public bool RandomizeEnabled
         {
-            get => PlayerPrefs.GetInt(PREF_RANDOMIZE, 0) == 1;
-            set { PlayerPrefs.SetInt(PREF_RANDOMIZE, value ? 1 : 0); PlayerPrefs.Save(); }
+            get => CampaignCompleted && !ReplayCampaignEnabled;
+            set { } // No-op — mode is now automatic
+        }
+
+        /// <summary>
+        /// When true, forces Campaign mode even after Campaign completion.
+        /// Reset after completing the replay.
+        /// </summary>
+        public bool ReplayCampaignEnabled
+        {
+            get => PlayerPrefs.GetInt(PREF_REPLAY_CAMPAIGN, 0) == 1;
+            set { PlayerPrefs.SetInt(PREF_REPLAY_CAMPAIGN, value ? 1 : 0); PlayerPrefs.Save(); }
         }
 
         public bool LegendsUnlocked
@@ -346,6 +372,7 @@ namespace EpochBreaker.Gameplay
             DontDestroyOnLoad(gameObject);
 
             _levelLoader = gameObject.AddComponent<LevelLoader>();
+            gameObject.AddComponent<AudioListener>(); // Persistent listener — prevents "no audio listeners" warning on title screen
             gameObject.AddComponent<AudioManager>();
             gameObject.AddComponent<AchievementManager>();
             gameObject.AddComponent<CosmeticManager>();
@@ -666,13 +693,13 @@ namespace EpochBreaker.Gameplay
             FriendChallengeScore = 0;
             IsGhostReplay = false;
 
-            LevelSource = "Campaign";
-
-            if (RandomizeEnabled)
+            // Determine game mode: Campaign by default, The Breach after Campaign completion
+            if (CampaignCompleted && !ReplayCampaignEnabled)
             {
-                // FreePlay: random epoch, random seed, single levels
-                CurrentGameMode = GameMode.FreePlay;
-                GlobalLives = DEATHS_PER_LEVEL; // Not used in FreePlay, but set for safety
+                // The Breach: random epoch, random seed, endless exploration
+                CurrentGameMode = GameMode.TheBreach;
+                GlobalLives = DEATHS_PER_LEVEL;
+                LevelSource = "TheBreach";
             }
             else
             {
@@ -682,6 +709,7 @@ namespace EpochBreaker.Gameplay
                 CurrentEpoch = 0;
                 GlobalLives = 2;
                 CurrentLevelID = LevelID.GenerateRandom(0);
+                LevelSource = "Campaign";
             }
 
             TransitionTo(GameState.Loading);
@@ -754,7 +782,7 @@ namespace EpochBreaker.Gameplay
             }
             else
             {
-                // FreePlay: deterministic next from current
+                // The Breach: deterministic next from current
                 CurrentLevelID = CurrentLevelID.Next();
                 CurrentEpoch = CurrentLevelID.Epoch;
             }
@@ -769,7 +797,7 @@ namespace EpochBreaker.Gameplay
         {
             CurrentEpoch = Mathf.Clamp(epoch, 0, LevelID.MAX_EPOCH);
             CurrentLevelID = LevelID.GenerateRandom(CurrentEpoch);
-            CurrentGameMode = GameMode.FreePlay;
+            CurrentGameMode = GameMode.TheBreach;
             Score = 0;
             TotalScore = 0;
             LevelNumber = 0;
@@ -795,7 +823,7 @@ namespace EpochBreaker.Gameplay
             }
             CurrentLevelID = levelID;
             CurrentEpoch = levelID.Epoch;
-            CurrentGameMode = GameMode.FreePlay;
+            CurrentGameMode = GameMode.TheBreach;
             Score = 0;
             TotalScore = 0;
             LevelNumber = 0;
@@ -1198,6 +1226,13 @@ namespace EpochBreaker.Gameplay
         private const int MAX_HISTORY_ENTRIES = 50;
 
         /// <summary>
+        /// Get the difficulty-suffixed History key (separate history per difficulty).
+        /// Normal returns base key for backwards compatibility.
+        /// </summary>
+        private static string HistoryKey =>
+            HISTORY_PREFS_KEY + (DifficultyManager.Instance != null ? DifficultyManager.Instance.LeaderboardSuffix : "");
+
+        /// <summary>
         /// Save the current level to history when completed.
         /// </summary>
         private void SaveLevelToHistory()
@@ -1257,7 +1292,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public static LevelHistoryData LoadLevelHistory()
         {
-            string json = PlayerPrefs.GetString(HISTORY_PREFS_KEY, "");
+            string json = PlayerPrefs.GetString(HistoryKey, "");
             if (string.IsNullOrEmpty(json))
             {
                 return new LevelHistoryData();
@@ -1279,7 +1314,7 @@ namespace EpochBreaker.Gameplay
         private static void SaveLevelHistory(LevelHistoryData history)
         {
             string json = JsonUtility.ToJson(history);
-            PlayerPrefs.SetString(HISTORY_PREFS_KEY, json);
+            PlayerPrefs.SetString(HistoryKey, json);
             PlayerPrefs.Save();
         }
 
@@ -1288,7 +1323,7 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         public static void ClearLevelHistory()
         {
-            PlayerPrefs.DeleteKey(HISTORY_PREFS_KEY);
+            PlayerPrefs.DeleteKey(HistoryKey);
             PlayerPrefs.Save();
         }
 
@@ -1474,16 +1509,17 @@ namespace EpochBreaker.Gameplay
                 legends.Entries.RemoveAt(legends.Entries.Count - 1);
 
             string json = JsonUtility.ToJson(legends);
-            PlayerPrefs.SetString(LEGENDS_PREFS_KEY, json);
+            PlayerPrefs.SetString(LegendsKey, json);
             PlayerPrefs.Save();
         }
 
         /// <summary>
         /// Load Legends leaderboard data from PlayerPrefs.
+        /// Uses difficulty-suffixed key for separate leaderboards per difficulty.
         /// </summary>
         public static LegendsData LoadLegendsData()
         {
-            string json = PlayerPrefs.GetString(LEGENDS_PREFS_KEY, "");
+            string json = PlayerPrefs.GetString(LegendsKey, "");
             if (string.IsNullOrEmpty(json))
                 return new LegendsData();
             try
@@ -1510,7 +1546,7 @@ namespace EpochBreaker.Gameplay
                 ? DifficultyManager.Instance.MaxDeathsPerLevel
                 : DEATHS_PER_LEVEL;
 
-            if (CurrentGameMode == GameMode.FreePlay)
+            if (CurrentGameMode == GameMode.TheBreach)
             {
                 LivesRemaining--;
                 if (LivesRemaining <= 0)
@@ -1550,19 +1586,15 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
-        /// Advance past a failed level (player died DEATHS_PER_LEVEL times but still has global lives).
+        /// Retry the failed level (player died DEATHS_PER_LEVEL times).
+        /// Campaign: regenerate same epoch with a new seed (must beat it to progress).
+        /// Streak: move on to a random level (failed level doesn't count).
         /// </summary>
         public void AdvanceAfterFail()
         {
             if (CurrentGameMode == GameMode.Campaign)
             {
-                CampaignEpoch++;
-                if (CampaignEpoch > LevelID.MAX_EPOCH)
-                {
-                    // Failed the last epoch — campaign over (only NextLevel triggers Celebration)
-                    TransitionTo(GameState.GameOver);
-                    return;
-                }
+                // Retry same epoch with a fresh seed — player must beat it to progress
                 CurrentLevelID = LevelID.GenerateRandom(CampaignEpoch);
                 CurrentEpoch = CampaignEpoch;
             }
@@ -1638,7 +1670,7 @@ namespace EpochBreaker.Gameplay
         public void StartDailyChallenge()
         {
             ClearSession();
-            CurrentGameMode = GameMode.FreePlay;
+            CurrentGameMode = GameMode.TheBreach;
             CurrentLevelID = DailyChallengeManager.GetTodayLevelID();
             CurrentEpoch = CurrentLevelID.Epoch;
             Score = 0;
@@ -1661,7 +1693,7 @@ namespace EpochBreaker.Gameplay
         public void StartWeeklyChallenge()
         {
             ClearSession();
-            CurrentGameMode = GameMode.FreePlay;
+            CurrentGameMode = GameMode.TheBreach;
             CurrentLevelID = DailyChallengeManager.GetWeeklyLevelID();
             CurrentEpoch = CurrentLevelID.Epoch;
             Score = 0;
@@ -1688,7 +1720,7 @@ namespace EpochBreaker.Gameplay
                 return;
             }
             ClearSession();
-            CurrentGameMode = GameMode.FreePlay;
+            CurrentGameMode = GameMode.TheBreach;
             CurrentLevelID = levelID;
             CurrentEpoch = levelID.Epoch;
             Score = 0;
@@ -1715,7 +1747,7 @@ namespace EpochBreaker.Gameplay
                 return;
             }
             ClearSession();
-            CurrentGameMode = GameMode.FreePlay;
+            CurrentGameMode = GameMode.TheBreach;
             CurrentLevelID = levelID;
             CurrentEpoch = levelID.Epoch;
             Score = 0;

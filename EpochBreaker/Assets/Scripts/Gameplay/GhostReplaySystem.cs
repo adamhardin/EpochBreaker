@@ -13,6 +13,8 @@ namespace EpochBreaker.Gameplay
     {
         private const float SAMPLE_INTERVAL = 0.2f;
         private const string GHOST_PREFS_PREFIX = "Ghost_";
+        private const string GHOST_INDEX_KEY = "EpochBreaker_GhostIndex";
+        private const int MAX_GHOST_ENTRIES = 50;
         private const float GHOST_ALPHA = 0.5f;
 
         // Recording state
@@ -81,7 +83,45 @@ namespace EpochBreaker.Gameplay
             string data = SerializeSamples(_samples);
             PlayerPrefs.SetString(key, data);
             PlayerPrefs.SetInt(key + "_score", score);
+
+            // Track stored ghost codes and prune oldest when over cap
+            UpdateGhostIndex(levelCode);
+
             PlayerPrefs.Save();
+        }
+
+        /// <summary>
+        /// Maintain an index of stored ghost level codes.
+        /// When the index exceeds MAX_GHOST_ENTRIES, delete the oldest entries.
+        /// </summary>
+        private static void UpdateGhostIndex(string levelCode)
+        {
+            string indexStr = PlayerPrefs.GetString(GHOST_INDEX_KEY, "");
+            var codes = new List<string>();
+            if (!string.IsNullOrEmpty(indexStr))
+            {
+                string[] parts = indexStr.Split(';');
+                for (int i = 0; i < parts.Length; i++)
+                {
+                    if (!string.IsNullOrEmpty(parts[i]))
+                        codes.Add(parts[i]);
+                }
+            }
+
+            // Remove existing entry so it moves to the end (most recent)
+            codes.Remove(levelCode);
+            codes.Add(levelCode);
+
+            // Prune oldest entries if over cap
+            while (codes.Count > MAX_GHOST_ENTRIES)
+            {
+                string oldest = codes[0];
+                codes.RemoveAt(0);
+                PlayerPrefs.DeleteKey(GHOST_PREFS_PREFIX + oldest);
+                PlayerPrefs.DeleteKey(GHOST_PREFS_PREFIX + oldest + "_score");
+            }
+
+            PlayerPrefs.SetString(GHOST_INDEX_KEY, string.Join(";", codes));
         }
 
         /// <summary>

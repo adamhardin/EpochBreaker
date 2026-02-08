@@ -6,7 +6,7 @@
 
 ## Overview
 
-Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 2022.3 LTS. All visual and audio assets are procedurally generated at runtime — there are no imported sprites, textures, or audio files.
+Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 6000.3.6f1. All visual and audio assets are procedurally generated at runtime — there are no imported sprites, textures, or audio files.
 
 ---
 
@@ -15,9 +15,6 @@ Epoch Breaker is a retro side-scrolling mobile shooter built with Unity 2022.3 L
 | Location | Purpose |
 |----------|---------|
 | `EpochBreaker/` | Full Unity project (opened in Unity Editor) |
-| `unity_project/` | Source files only (Assets + Packages), no Unity metadata |
-
-Both locations must stay in sync. When editing scripts, update both.
 
 ---
 
@@ -31,10 +28,6 @@ Both locations must stay in sync. When editing scripts, update both.
 ├── BUILD-LOG.md                          ← WebGL deployment log
 ├── PROJECT-LAUNCH-CHECKLIST.md
 ├── .gitignore
-│
-├── .github/
-│   └── workflows/
-│       └── deploy-webgl.yml              (GitHub Actions: WebGL → GitHub Pages)
 │
 ├── docs/                                 ← All documentation
 │   ├── Expert-Review-Report.md           (Latest expert review findings)
@@ -145,11 +138,6 @@ Both locations must stay in sync. When editing scripts, update both.
 │   │   └── manifest.json                (URP, 2D, Input System, TMP, Test Framework)
 │   │
 │   └── ProjectSettings/                 (Unity project settings)
-│
-└── unity_project/                        ← SOURCE FILES MIRROR
-    ├── Assets/                           (Same Scripts/ structure as above)
-    └── Packages/
-        └── manifest.json
 ```
 
 ---
@@ -163,37 +151,6 @@ Both locations must stay in sync. When editing scripts, update both.
 | Assembly-CSharp | Scripts/UI/ | Gameplay (auto) | No asmdef, default assembly |
 | `EpochBreaker.Tests.Editor` | Scripts/Tests/Editor/ | Generative, NUnit | Editor-only |
 | `EpochBreaker.Tests.PlayMode` | Scripts/Tests/PlayMode/ | Gameplay, Generative, TestRunner | Cross-platform |
-
----
-
-## Dual-Project Sync Workflow
-
-The project exists in two locations. **Both must stay in sync.**
-
-| Location | Contains | Used For |
-|----------|----------|----------|
-| `EpochBreaker/` | Full Unity project (Scripts + ProjectSettings + Library) | Opening in Unity Editor, building |
-| `unity_project/` | Source files only (Assets/Scripts + Packages) | Git-friendly mirror, no Unity metadata |
-
-### Sync Procedure
-
-After editing any `.cs` file in `EpochBreaker/Assets/Scripts/`:
-
-```bash
-# From the project root (16 Bit Mobile Game/)
-cp -R EpochBreaker/Assets/Scripts/ unity_project/Assets/Scripts/
-```
-
-### Checklist Before Committing
-
-- [ ] All modified `.cs` files exist in both `EpochBreaker/Assets/Scripts/` and `unity_project/Assets/Scripts/`
-- [ ] No Unity metadata (`.meta`, `Library/`, `Temp/`) in `unity_project/`
-- [ ] `Packages/manifest.json` matches in both locations
-
-### When Sync Is NOT Needed
-
-- Changes to `ProjectSettings/`, `Scenes/`, `Resources/`, `Plugins/`, `WebGLTemplates/` — these only exist in `EpochBreaker/`
-- Documentation files at the project root or in `docs/`
 
 ---
 
@@ -228,15 +185,16 @@ When writing code that bridges generation and rendering:
 
 ## Key Design Notes
 
-- **Engine**: Unity 6000.3.6f1 (upgraded from 2022.3 LTS)
+- **Engine**: Unity 6000.3.6f1
 - **No imported assets**: All sprites and audio are generated at runtime via `PlaceholderAssets.cs` and `PlaceholderAudio.cs`
 - **Single scene**: Everything runs from `Bootstrap.unity`. UI and game objects are created programmatically
-- **UI viewport bounds**: Reference resolution 1920x1080, CanvasScaler matchWidthOrHeight=0.5. Safe area is **±480 vertical / ±900 horizontal** from center (60px margin from viewport edge for badges/overflow). When repositioning any UI container, verify `anchoredPosition.Y + height/2 ≤ 480`. This is a recurring source of bugs.
+- **UI viewport bounds**: Reference resolution 1920x1080, CanvasScaler matchWidthOrHeight=0.5. Viewport limits are **±540 vertical / ±960 horizontal** from center. Safe area (with 60px margin for badges/overflow) is **±480 vertical / ±900 horizontal**. When repositioning any UI container, verify `anchoredPosition.Y + height/2 ≤ 480`. This is a recurring source of bugs.
+- **Audio**: All audio is synthesized at runtime via `AudioClip.Create()` using procedural waveforms (PolyBLEP anti-aliased). No FMOD or imported audio files.
 - **GameManager reflection**: Uses reflection for UI `AddComponent` calls to avoid circular dependency between Gameplay and UI assemblies
-- **WebGL deployment**: GitHub Actions builds and deploys to GitHub Pages automatically
+- **WebGL deployment**: Manual build via `WebGLBuildScript.Build`, output pushed to `gh-pages` branch for GitHub Pages
 
 ---
 
-**Version**: 2.1
-**Last Updated**: 2026-02-06
+**Version**: 2.2
+**Last Updated**: 2026-02-07
 **Status**: Active
