@@ -861,6 +861,11 @@ namespace EpochBreaker.Gameplay
             PlaceholderAssets.ClearCache();
             PlaceholderAudio.ClearCache();
 
+            // Force GC before allocating new level textures — prevents OOM on WebGL
+            // where deferred Destroy() hasn't freed old textures yet
+            Resources.UnloadUnusedAssets();
+            System.GC.Collect();
+
             // Don't count tutorial levels toward the level counter
             if (TutorialManager.Instance == null || !TutorialManager.Instance.IsTutorialActive)
                 LevelNumber++;
