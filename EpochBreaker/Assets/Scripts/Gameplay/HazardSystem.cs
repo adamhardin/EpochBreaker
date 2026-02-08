@@ -41,10 +41,9 @@ namespace EpochBreaker.Gameplay
             // Lazy re-find player (handles respawn)
             if (_cachedPlayerTransform == null)
             {
-                var player = GameObject.FindWithTag("Player");
-                if (player == null) return;
-                _cachedPlayerTransform = player.transform;
-                _cachedPlayerHealth = player.GetComponent<HealthSystem>();
+                _cachedPlayerTransform = GameManager.PlayerTransform;
+                if (_cachedPlayerTransform == null) return;
+                _cachedPlayerHealth = _cachedPlayerTransform.GetComponent<HealthSystem>();
             }
 
             for (int i = _activeHazards.Count - 1; i >= 0; i--)
@@ -55,7 +54,7 @@ namespace EpochBreaker.Gameplay
 
                 if (h.TimeRemaining <= 0f)
                 {
-                    if (h.Visual != null) Destroy(h.Visual);
+                    if (h.Visual != null) ObjectPool.Return(h.Visual);
                     _activeHazards.RemoveAt(i);
                     continue;
                 }
@@ -63,12 +62,12 @@ namespace EpochBreaker.Gameplay
                 // Check player proximity and deal damage
                 if (_cachedPlayerHealth != null && h.DamageTimer <= 0f)
                 {
-                    float dist = Vector2.Distance(_cachedPlayerTransform.position, h.Position);
+                    float distSq = ((Vector2)_cachedPlayerTransform.position - (Vector2)h.Position).sqrMagnitude;
                     float radius = GetHazardRadius(h.Type);
                     float cooldown = GetHazardDamageCooldown(h.Type);
                     int damage = GetHazardDamage(h.Type);
 
-                    if (dist < radius)
+                    if (distSq < radius * radius)
                     {
                         _cachedPlayerHealth.TakeDamage(damage, h.Position, isEnvironmental: true);
                         h.DamageTimer = cooldown;
@@ -183,37 +182,31 @@ namespace EpochBreaker.Gameplay
 
         private void SpawnDebrisObject(Vector3 pos)
         {
-            var go = new GameObject("Debris");
+            var go = ObjectPool.GetDebris();
             go.transform.position = pos;
 
-            var sr = go.AddComponent<SpriteRenderer>();
+            var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetDebrisSprite();
             sr.sortingOrder = 15;
             sr.color = new Color(0.6f, 0.5f, 0.4f);
 
-            var rb = go.AddComponent<Rigidbody2D>();
+            var rb = go.GetComponent<Rigidbody2D>();
             rb.gravityScale = 2f;
             rb.mass = 0.5f;
-            // Add slight random horizontal velocity
             rb.linearVelocity = new Vector2(Random.Range(-1f, 1f), 0.5f);
 
-            var col = go.AddComponent<CircleCollider2D>();
-            col.radius = 0.3f;
-            col.isTrigger = true;
-
-            // Debris damages player on contact
-            var dmg = go.AddComponent<HazardDamager>();
+            var dmg = go.GetComponent<HazardDamager>();
             dmg.Damage = 2;
 
-            Destroy(go, 3f);
+            go.GetComponent<PoolTimer>().StartTimer(3f);
         }
 
         private void SpawnHazardCloud(Vector3 pos, HazardType type, float duration, Color color)
         {
-            var go = new GameObject($"Hazard_{type}");
+            var go = ObjectPool.GetHazardVisual();
             go.transform.position = pos;
 
-            var sr = go.AddComponent<SpriteRenderer>();
+            var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetHazardCloudSprite();
             sr.sortingOrder = 14;
             sr.color = color;
@@ -231,10 +224,10 @@ namespace EpochBreaker.Gameplay
 
         private void SpawnSpikes(Vector3 pos)
         {
-            var go = new GameObject("SpikeTrap");
+            var go = ObjectPool.GetHazardVisual();
             go.transform.position = pos;
 
-            var sr = go.AddComponent<SpriteRenderer>();
+            var sr = go.GetComponent<SpriteRenderer>();
             sr.sprite = PlaceholderAssets.GetSpikeSprite();
             sr.sortingOrder = 14;
             sr.color = new Color(0.7f, 0.7f, 0.7f);
@@ -298,7 +291,7 @@ namespace EpochBreaker.Gameplay
                 health.TakeDamage(Damage, transform.position, isEnvironmental: true);
                 AchievementManager.Instance?.RecordHazardDamage();
             }
-            Destroy(gameObject);
+            ObjectPool.Return(gameObject);
         }
     }
 }

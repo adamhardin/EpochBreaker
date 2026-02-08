@@ -16,7 +16,34 @@ namespace EpochBreaker.Gameplay
         private const float PPU = 256f;
         private const int SCALE = TILE_PX / 64;
 
+        /// <summary>
+        /// Clear level-specific sprites (epoch-dependent tiles, enemies, bosses, projectiles).
+        /// Session-stable sprites (player, UI text, weapons, pickups, environment) are preserved.
+        /// </summary>
         public static void ClearCache()
+        {
+            var keysToRemove = new List<string>();
+            foreach (var kvp in _cache)
+            {
+                if (!IsSessionKey(kvp.Key))
+                {
+                    if (kvp.Value != null)
+                    {
+                        var tex = kvp.Value.texture;
+                        Object.Destroy(kvp.Value);
+                        if (tex != null) Object.Destroy(tex);
+                    }
+                    keysToRemove.Add(kvp.Key);
+                }
+            }
+            foreach (var key in keysToRemove)
+                _cache.Remove(key);
+        }
+
+        /// <summary>
+        /// Clear ALL cached sprites including session-stable ones. Use on session end / menu return.
+        /// </summary>
+        public static void ClearAllCaches()
         {
             foreach (var sprite in _cache.Values)
             {
@@ -28,6 +55,16 @@ namespace EpochBreaker.Gameplay
                 }
             }
             _cache.Clear();
+        }
+
+        private static bool IsSessionKey(string key)
+        {
+            return key.StartsWith("player") || key.StartsWith("pixeltext_") ||
+                   key.StartsWith("weapon_") || key.StartsWith("reward_") ||
+                   key.StartsWith("ability_") || key.StartsWith("checkpoint_") ||
+                   key == "extra_life" || key == "debris" || key == "hazard_cloud" ||
+                   key == "spike" || key == "arena_pillar" || key == "exitportal" ||
+                   key == "title_logo" || key == "ornate_frame";
         }
 
         #region Helpers

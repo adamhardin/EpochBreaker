@@ -9,6 +9,8 @@ namespace EpochBreaker.Gameplay
     /// </summary>
     public class LevelLoader : MonoBehaviour
     {
+        private static PhysicsMaterial2D s_playerMaterial;
+
         private LevelRenderer _tilemapRenderer;
         private GameObject _levelRoot;
         private GameObject _playerObj;
@@ -171,11 +173,14 @@ namespace EpochBreaker.Gameplay
             col.offset = new Vector2(0f, 0.6f);
             col.direction = CapsuleDirection2D.Vertical;
 
-            // Frictionless material for smooth wall sliding
-            var mat = new PhysicsMaterial2D("PlayerFrictionless");
-            mat.friction = 0f;
-            mat.bounciness = 0f;
-            col.sharedMaterial = mat;
+            // Frictionless material for smooth wall sliding (cached, reused across spawns)
+            if (s_playerMaterial == null)
+            {
+                s_playerMaterial = new PhysicsMaterial2D("PlayerFrictionless");
+                s_playerMaterial.friction = 0f;
+                s_playerMaterial.bounciness = 0f;
+            }
+            col.sharedMaterial = s_playerMaterial;
 
             // Components
             Player = _playerObj.AddComponent<PlayerController>();
@@ -209,6 +214,7 @@ namespace EpochBreaker.Gameplay
             checkpointGO.AddComponent<CheckpointManager>();
 
             _playerObj.transform.position = startPos;
+            GameManager.PlayerTransform = _playerObj.transform;
 
             // Grant spawn protection so enemies near start don't instantly kill the player
             var health = _playerObj.GetComponent<HealthSystem>();

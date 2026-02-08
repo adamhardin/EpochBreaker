@@ -278,7 +278,8 @@ namespace EpochBreaker.Gameplay
             _bossInRange = false;
             _enemiesInCorridor = false;
             float range = TARGET_DETECTION_RANGE;
-            float closestDist = range;
+            float rangeSq = range * range;
+            float closestDistSq = rangeSq;
 
             float minEnemyY = float.MaxValue;
             float maxEnemyY = float.MinValue;
@@ -290,8 +291,8 @@ namespace EpochBreaker.Gameplay
             {
                 var enemy = enemies[ei];
                 if (enemy == null) continue;
-                float dist = Vector2.Distance(transform.position, enemy.transform.position);
-                if (dist < range)
+                float distSq = ((Vector2)transform.position - (Vector2)enemy.transform.position).sqrMagnitude;
+                if (distSq < rangeSq)
                 {
                     _nearbyEnemyCount++;
                     if (enemy.GetComponent<Boss>() != null)
@@ -308,9 +309,9 @@ namespace EpochBreaker.Gameplay
                         if (ey > maxEnemyY) maxEnemyY = ey;
                     }
                 }
-                if (dist < closestDist)
+                if (distSq < closestDistSq)
                 {
-                    closestDist = dist;
+                    closestDistSq = distSq;
                     _currentTarget = enemy.transform;
                 }
             }

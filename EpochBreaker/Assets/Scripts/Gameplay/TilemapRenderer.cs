@@ -21,8 +21,10 @@ namespace EpochBreaker.Gameplay
         private HazardSystem _hazardSystem;
         private bool _geometryDirty;
 
-        // Pre-built Unity Tile assets (one per tile type)
+        // Pre-built Unity Tile assets (one per tile type), cached per epoch
         private Tile[] _tileAssets;
+        private static int s_cachedTileEpoch = -1;
+        private static Tile[] s_cachedTiles;
 
         public int LevelWidth => _levelData?.Layout.WidthTiles ?? 0;
         public int LevelHeight => _levelData?.Layout.HeightTiles ?? 0;
@@ -310,8 +312,15 @@ namespace EpochBreaker.Gameplay
 
         private void BuildTileAssets()
         {
-            // Create one Unity Tile asset per TileType, using epoch-specific visuals
+            // Reuse cached tiles if same epoch (tiles are deterministic per epoch)
             int epoch = _levelData.ID.Epoch;
+            if (s_cachedTileEpoch == epoch && s_cachedTiles != null)
+            {
+                _tileAssets = s_cachedTiles;
+                return;
+            }
+
+            // Create one Unity Tile asset per TileType, using epoch-specific visuals
             _tileAssets = new Tile[13]; // TileType enum has values 0-12
             for (int i = 0; i <= 12; i++)
             {
@@ -322,6 +331,17 @@ namespace EpochBreaker.Gameplay
                 tile.colliderType = Tile.ColliderType.Grid; // Full cell collider, merged into composite
                 _tileAssets[i] = tile;
             }
+            s_cachedTiles = _tileAssets;
+            s_cachedTileEpoch = epoch;
+        }
+
+        /// <summary>
+        /// Clear cached tile assets. Called on epoch change or session cleanup.
+        /// </summary>
+        public static void ClearTileCache()
+        {
+            s_cachedTiles = null;
+            s_cachedTileEpoch = -1;
         }
 
         private void CreateGrid()

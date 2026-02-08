@@ -14,7 +14,20 @@ namespace EpochBreaker.Gameplay
         private const int SAMPLE_RATE = 44100;
         private static readonly Dictionary<string, AudioClip> _cache = new Dictionary<string, AudioClip>();
 
+        /// <summary>
+        /// No-op during gameplay — all audio clips are session-stable (no epoch-specific sounds).
+        /// Use ClearAllCaches() for full cleanup on session end.
+        /// </summary>
         public static void ClearCache()
+        {
+            // Audio clips are reused across all levels — don't destroy them per-level.
+            // This eliminates re-synthesis cost on every level transition.
+        }
+
+        /// <summary>
+        /// Destroy all cached audio clips. Use on session end / menu return.
+        /// </summary>
+        public static void ClearAllCaches()
         {
             foreach (var clip in _cache.Values)
                 if (clip != null) Object.Destroy(clip);

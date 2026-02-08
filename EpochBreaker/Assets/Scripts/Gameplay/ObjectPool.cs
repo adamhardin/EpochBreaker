@@ -15,11 +15,15 @@ namespace EpochBreaker.Gameplay
         private readonly Stack<GameObject> _projectiles = new();
         private readonly Stack<GameObject> _particles = new();
         private readonly Stack<GameObject> _flashes = new();
+        private readonly Stack<GameObject> _debris = new();
+        private readonly Stack<GameObject> _hazardVisuals = new();
         private readonly HashSet<GameObject> _active = new();
 
         private const int PROJECTILE_PREALLOC = 30;
         private const int PARTICLE_PREALLOC = 50;
         private const int FLASH_PREALLOC = 8;
+        private const int DEBRIS_PREALLOC = 10;
+        private const int HAZARD_VISUAL_PREALLOC = 6;
 
         public static void EnsureInitialized()
         {
@@ -38,6 +42,10 @@ namespace EpochBreaker.Gameplay
                 _particles.Push(CreateRaw(PoolCategory.Particle));
             for (int i = 0; i < FLASH_PREALLOC; i++)
                 _flashes.Push(CreateRaw(PoolCategory.Flash));
+            for (int i = 0; i < DEBRIS_PREALLOC; i++)
+                _debris.Push(CreateRaw(PoolCategory.Debris));
+            for (int i = 0; i < HAZARD_VISUAL_PREALLOC; i++)
+                _hazardVisuals.Push(CreateRaw(PoolCategory.HazardVisual));
         }
 
         public static GameObject GetProjectile()
@@ -67,6 +75,24 @@ namespace EpochBreaker.Gameplay
             return go;
         }
 
+        public static GameObject GetDebris()
+        {
+            EnsureInitialized();
+            var pool = s_instance._debris;
+            var go = pool.Count > 0 ? pool.Pop() : s_instance.CreateRaw(PoolCategory.Debris);
+            Activate(go);
+            return go;
+        }
+
+        public static GameObject GetHazardVisual()
+        {
+            EnsureInitialized();
+            var pool = s_instance._hazardVisuals;
+            var go = pool.Count > 0 ? pool.Pop() : s_instance.CreateRaw(PoolCategory.HazardVisual);
+            Activate(go);
+            return go;
+        }
+
         public static void Return(GameObject go)
         {
             if (go == null || s_instance == null) return;
@@ -81,9 +107,11 @@ namespace EpochBreaker.Gameplay
 
             switch (tag.Category)
             {
-                case PoolCategory.Projectile: s_instance._projectiles.Push(go); break;
-                case PoolCategory.Particle:   s_instance._particles.Push(go); break;
-                case PoolCategory.Flash:      s_instance._flashes.Push(go); break;
+                case PoolCategory.Projectile:   s_instance._projectiles.Push(go); break;
+                case PoolCategory.Particle:     s_instance._particles.Push(go); break;
+                case PoolCategory.Flash:        s_instance._flashes.Push(go); break;
+                case PoolCategory.Debris:       s_instance._debris.Push(go); break;
+                case PoolCategory.HazardVisual: s_instance._hazardVisuals.Push(go); break;
             }
         }
 
@@ -103,9 +131,11 @@ namespace EpochBreaker.Gameplay
                 if (tag == null) continue;
                 switch (tag.Category)
                 {
-                    case PoolCategory.Projectile: s_instance._projectiles.Push(go); break;
-                    case PoolCategory.Particle:   s_instance._particles.Push(go); break;
-                    case PoolCategory.Flash:      s_instance._flashes.Push(go); break;
+                    case PoolCategory.Projectile:   s_instance._projectiles.Push(go); break;
+                    case PoolCategory.Particle:     s_instance._particles.Push(go); break;
+                    case PoolCategory.Flash:        s_instance._flashes.Push(go); break;
+                    case PoolCategory.Debris:       s_instance._debris.Push(go); break;
+                    case PoolCategory.HazardVisual: s_instance._hazardVisuals.Push(go); break;
                 }
             }
             s_instance._active.Clear();
@@ -148,6 +178,22 @@ namespace EpochBreaker.Gameplay
                     go.AddComponent<SpriteRenderer>();
                     go.AddComponent<PoolTimer>();
                     break;
+
+                case PoolCategory.Debris:
+                    go.AddComponent<SpriteRenderer>();
+                    var debrisRb = go.AddComponent<Rigidbody2D>();
+                    debrisRb.gravityScale = 2f;
+                    debrisRb.mass = 0.5f;
+                    var debrisCol = go.AddComponent<CircleCollider2D>();
+                    debrisCol.radius = 0.3f;
+                    debrisCol.isTrigger = true;
+                    go.AddComponent<HazardDamager>();
+                    go.AddComponent<PoolTimer>();
+                    break;
+
+                case PoolCategory.HazardVisual:
+                    go.AddComponent<SpriteRenderer>();
+                    break;
             }
 
             go.SetActive(false);
@@ -155,7 +201,7 @@ namespace EpochBreaker.Gameplay
         }
     }
 
-    public enum PoolCategory { Projectile, Particle, Flash }
+    public enum PoolCategory { Projectile, Particle, Flash, Debris, HazardVisual }
 
     public class PoolTag : MonoBehaviour
     {

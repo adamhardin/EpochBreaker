@@ -97,7 +97,7 @@ namespace EpochBreaker.Gameplay
             _sr = GetComponent<SpriteRenderer>();
             if (_sr != null)
                 _originalColor = _sr.color;
-            _playerTransform = GameObject.FindWithTag("Player")?.transform;
+            _playerTransform = GameManager.PlayerTransform;
 
             // Set up walk animation for moving enemies
             if (Behavior == EnemyBehavior.Patrol || Behavior == EnemyBehavior.Chase)
@@ -119,9 +119,9 @@ namespace EpochBreaker.Gameplay
 
         private void FixedUpdate()
         {
-            // Lazy re-find player if reference was lost (e.g., level reload)
+            // Lazy re-find player if reference was lost (e.g., respawn)
             if (_playerTransform == null)
-                _playerTransform = GameObject.FindWithTag("Player")?.transform;
+                _playerTransform = GameManager.PlayerTransform;
 
             if (IsDead || GameManager.Instance == null || GameManager.Instance.CurrentState != GameState.Playing)
             {

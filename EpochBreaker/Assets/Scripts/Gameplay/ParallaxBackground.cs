@@ -12,6 +12,10 @@ namespace EpochBreaker.Gameplay
         private const int LAYER_COUNT = 5;
         private const float BASE_WIDTH = 40f; // Width of each background tile
 
+        // Epoch-level sprite cache: sprites are deterministic per epoch, so reuse across levels
+        private static int s_cachedEpoch = -1;
+        private static Sprite[,] s_spriteCache; // [layer, variation]
+
         private Transform _cameraTransform;
         private ParallaxLayer[] _layers;
         private float _lastCameraX;
@@ -27,6 +31,17 @@ namespace EpochBreaker.Gameplay
         {
             _cameraTransform = cameraTransform;
             _lastCameraX = cameraTransform.position.x;
+
+            // Build or reuse epoch-level sprite cache
+            if (s_cachedEpoch != epoch || s_spriteCache == null)
+            {
+                ClearSpriteCache();
+                s_spriteCache = new Sprite[LAYER_COUNT, 3];
+                for (int l = 0; l < LAYER_COUNT; l++)
+                    for (int v = 0; v < 3; v++)
+                        s_spriteCache[l, v] = GenerateLayerSprite(l, epoch, v);
+                s_cachedEpoch = epoch;
+            }
 
             _layers = new ParallaxLayer[LAYER_COUNT];
 
@@ -61,7 +76,7 @@ namespace EpochBreaker.Gameplay
                     tileGO.transform.localPosition = new Vector3((t - 1) * BASE_WIDTH, 0, 0);
 
                     var sr = tileGO.AddComponent<SpriteRenderer>();
-                    sr.sprite = GenerateLayerSprite(i, epoch, t);
+                    sr.sprite = s_spriteCache[i, t];
                     sr.sortingOrder = sortOrders[i];
                     sr.color = eraColors[i];
                     tileGO.transform.localScale = new Vector3(1f, scales[i], 1f);
@@ -72,6 +87,29 @@ namespace EpochBreaker.Gameplay
                     _layers[i].Tiles[t] = sr;
                 }
             }
+        }
+
+        /// <summary>
+        /// Destroy cached parallax sprites. Called on epoch change or session cleanup.
+        /// </summary>
+        public static void ClearSpriteCache()
+        {
+            if (s_spriteCache != null)
+            {
+                for (int l = 0; l < s_spriteCache.GetLength(0); l++)
+                    for (int v = 0; v < s_spriteCache.GetLength(1); v++)
+                    {
+                        var sprite = s_spriteCache[l, v];
+                        if (sprite != null)
+                        {
+                            var tex = sprite.texture;
+                            Object.Destroy(sprite);
+                            if (tex != null) Object.Destroy(tex);
+                        }
+                    }
+                s_spriteCache = null;
+            }
+            s_cachedEpoch = -1;
         }
 
         private void LateUpdate()

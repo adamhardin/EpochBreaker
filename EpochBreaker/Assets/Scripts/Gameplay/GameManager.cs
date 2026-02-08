@@ -101,6 +101,9 @@ namespace EpochBreaker.Gameplay
     {
         public static GameManager Instance { get; private set; }
 
+        /// <summary>Centralized player transform reference — set by LevelLoader, avoids FindWithTag.</summary>
+        public static Transform PlayerTransform { get; set; }
+
         // Hit-stop: brief time freeze on impactful events
         private Coroutine _hitStopCoroutine;
         private float _savedTimeScale = 1f;
@@ -761,6 +764,13 @@ namespace EpochBreaker.Gameplay
 
         public void ReturnToTitle()
         {
+            // Full cache cleanup on session end — clear all tiers
+            PlaceholderAssets.ClearAllCaches();
+            PlaceholderAudio.ClearAllCaches();
+            ParallaxBackground.ClearSpriteCache();
+            LevelRenderer.ClearTileCache();
+            _previousEpoch = -1;
+            GameManager.PlayerTransform = null;
             TransitionTo(GameState.TitleScreen);
         }
 
@@ -852,19 +862,16 @@ namespace EpochBreaker.Gameplay
             TransitionTo(GameState.Loading);
         }
 
+        private int _previousEpoch = -1;
+
         private void StartLevel()
         {
             // Clear static caches and return all pooled objects from previous level
             ObjectPool.ReturnAll();
             Projectile.ClearCachedRefs();
             EnemyBase.ClearRegistry();
-            PlaceholderAssets.ClearCache();
-            PlaceholderAudio.ClearCache();
-
-            // Force GC before allocating new level textures — prevents OOM on WebGL
-            // where deferred Destroy() hasn't freed old textures yet
-            Resources.UnloadUnusedAssets();
-            System.GC.Collect();
+            PlaceholderAssets.ClearCache();  // Only clears epoch-specific sprites; session sprites preserved
+            PlaceholderAudio.ClearCache();   // No-op: all audio is session-stable
 
             // Don't count tutorial levels toward the level counter
             if (TutorialManager.Instance == null || !TutorialManager.Instance.IsTutorialActive)
@@ -886,6 +893,15 @@ namespace EpochBreaker.Gameplay
             }
 
             CurrentEpoch = CurrentLevelID.Epoch;
+
+            // GC only on epoch transitions or first load — within an epoch, caching
+            // keeps memory stable so heavy GC isn't needed every level
+            if (CurrentEpoch != _previousEpoch)
+            {
+                Resources.UnloadUnusedAssets();
+                System.GC.Collect();
+                _previousEpoch = CurrentEpoch;
+            }
 
             LevelElapsedTime = 0f;
             EnemiesKilled = 0;
@@ -1435,7 +1451,12 @@ namespace EpochBreaker.Gameplay
         /// </summary>
         private void HandleMemoryWarning()
         {
-            // Clear any non-essential caches
+            // Emergency: clear all caches and force GC
+            PlaceholderAssets.ClearAllCaches();
+            PlaceholderAudio.ClearAllCaches();
+            ParallaxBackground.ClearSpriteCache();
+            LevelRenderer.ClearTileCache();
+            _previousEpoch = -1;
             Resources.UnloadUnusedAssets();
             System.GC.Collect();
         }
