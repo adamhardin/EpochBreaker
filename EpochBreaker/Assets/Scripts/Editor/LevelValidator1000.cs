@@ -114,7 +114,7 @@ namespace EpochBreaker.Editor
                     {
                         // Categorize failures
                         if (!result.StartAccessible) failStartAccess++;
-                        if (!result.GoalAccessible) failGoalAccess++;
+                        if (!result.ExitPortalAccessible) failGoalAccess++;
                         if (!result.Reachable) failReachable++;
                         if (!result.WeaponProgressionValid) failWeaponProg++;
                         if (!result.DestructionPathsValid) failDestructPaths++;
@@ -229,7 +229,7 @@ namespace EpochBreaker.Editor
         {
             var reasons = new List<string>();
             if (!r.StartAccessible) reasons.Add("start");
-            if (!r.GoalAccessible) reasons.Add("goal");
+            if (!r.ExitPortalAccessible) reasons.Add("goal");
             if (!r.Reachable) reasons.Add("reach");
             if (!r.WeaponProgressionValid) reasons.Add("weapon");
             if (!r.DestructionPathsValid) reasons.Add("destruct");
