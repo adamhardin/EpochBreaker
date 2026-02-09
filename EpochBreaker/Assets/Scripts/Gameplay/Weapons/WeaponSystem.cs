@@ -188,9 +188,13 @@ namespace EpochBreaker.Gameplay
             }
         }
 
+        /// <summary>Fired when auto-equip switches the active weapon on pickup.</summary>
+        public static event System.Action<WeaponType, WeaponTier> OnAutoEquipped;
+
         /// <summary>
         /// Acquire a new weapon type at a given tier.
         /// If already acquired at a lower tier, upgrades in place.
+        /// Auto-switches to the strongest acquired weapon.
         /// </summary>
         public void AcquireWeapon(WeaponType type, WeaponTier tier)
         {
@@ -204,6 +208,50 @@ namespace EpochBreaker.Gameplay
                 _slots[slot].Tier = tier;
                 if (isUpgrade)
                     OnWeaponUpgraded?.Invoke(type, tier);
+            }
+
+            // Auto-switch to strongest acquired weapon
+            AutoEquipStrongest();
+        }
+
+        private static float GetEffectiveDPS(WeaponType type, WeaponTier tier)
+        {
+            if (type == WeaponType.Slower) return 0f;
+            var stats = WeaponDatabase.GetStats(type, tier);
+            float dps = stats.DamageMultiplier * stats.ProjectileCount / stats.FireRate;
+            if (stats.BreaksAllMaterials) dps *= 1.2f;
+            return dps;
+        }
+
+        private void AutoEquipStrongest()
+        {
+            int bestSlot = -1;
+            float bestDPS = -1f;
+
+            for (int i = 0; i < SLOT_COUNT; i++)
+            {
+                if (!_slots[i].Acquired) continue;
+                if (i == (int)WeaponType.Slower) continue;
+                float dps = GetEffectiveDPS(_slots[i].Type, _slots[i].Tier);
+                if (dps > bestDPS)
+                {
+                    bestDPS = dps;
+                    bestSlot = i;
+                }
+            }
+
+            if (bestSlot >= 0 && bestSlot != _activeSlot)
+            {
+                _activeSlot = bestSlot;
+                _isUnarmed = false;
+                _manualOverride = false;
+
+                string weaponName = _slots[bestSlot].Type.ToString();
+                string tierName = _slots[bestSlot].Tier == WeaponTier.Starting ? "" : $" [{_slots[bestSlot].Tier}]";
+                LastAutoSelectReason = $"EQUIPPED: {weaponName}{tierName}";
+                AutoSelectReasonTimer = 2.5f;
+
+                OnAutoEquipped?.Invoke(_slots[bestSlot].Type, _slots[bestSlot].Tier);
             }
         }
 

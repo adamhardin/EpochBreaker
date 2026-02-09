@@ -11,7 +11,9 @@ namespace EpochBreaker.UI
     {
         private Canvas _canvas;
         private GameObject _hintPanel;
-        private Text _hintText;
+        private Image _hintImg;
+        private Sprite _hintSprite;
+        private string _lastHintText;
         private Image _panelBg;
         private CanvasGroup _canvasGroup;
         private float _fadeTarget;
@@ -33,7 +35,15 @@ namespace EpochBreaker.UI
 
             if (tm.HintVisible && !string.IsNullOrEmpty(tm.CurrentHintText))
             {
-                _hintText.text = tm.CurrentHintText;
+                if (tm.CurrentHintText != _lastHintText)
+                {
+                    _lastHintText = tm.CurrentHintText;
+                    if (_hintSprite != null) { Destroy(_hintSprite.texture); Destroy(_hintSprite); }
+                    _hintSprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite(
+                        tm.CurrentHintText, new Color(1f, 0.95f, 0.7f), 3);
+                    _hintImg.sprite = _hintSprite;
+                    _hintImg.SetNativeSize();
+                }
                 SetVisible(true);
             }
             else
@@ -61,6 +71,7 @@ namespace EpochBreaker.UI
             _canvas = canvasGO.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 95; // Above HUD, below menus
+            _canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -86,37 +97,30 @@ namespace EpochBreaker.UI
             panelRect.sizeDelta = new Vector2(700, 60);
             panelRect.anchoredPosition = new Vector2(0, -120);
 
-            // Hint text
+            // Hint text (pixel sprite — updated dynamically in Update)
             var textGO = new GameObject("HintText");
             textGO.transform.SetParent(_hintPanel.transform, false);
-            _hintText = textGO.AddComponent<Text>();
-            _hintText.text = "";
-            _hintText.fontSize = 26;
-            _hintText.color = new Color(1f, 0.95f, 0.7f);
-            _hintText.alignment = TextAnchor.MiddleCenter;
-            _hintText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _hintText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _hintImg = textGO.AddComponent<Image>();
+            _hintImg.preserveAspect = true;
+            _hintImg.raycastTarget = false;
 
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = new Vector2(0.05f, 0f);
-            textRect.anchorMax = new Vector2(0.95f, 1f);
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
             textRect.anchoredPosition = Vector2.zero;
 
-            // Arrow indicator (small triangle below panel)
+            // Arrow indicator (pixel sprite "V" below panel)
             var arrowGO = new GameObject("Arrow");
             arrowGO.transform.SetParent(_hintPanel.transform, false);
-            var arrowText = arrowGO.AddComponent<Text>();
-            arrowText.text = "\u25bc"; // Down triangle
-            arrowText.fontSize = 20;
-            arrowText.color = new Color(1f, 0.95f, 0.7f, 0.6f);
-            arrowText.alignment = TextAnchor.MiddleCenter;
-            arrowText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var arrowImg = arrowGO.AddComponent<Image>();
+            arrowImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("V", new Color(1f, 0.95f, 0.7f, 0.6f), 2);
+            arrowImg.preserveAspect = true;
+            arrowImg.raycastTarget = false;
+            arrowImg.SetNativeSize();
             var arrowRect = arrowGO.GetComponent<RectTransform>();
             arrowRect.anchorMin = new Vector2(0.5f, 0f);
             arrowRect.anchorMax = new Vector2(0.5f, 0f);
             arrowRect.pivot = new Vector2(0.5f, 1f);
-            arrowRect.sizeDelta = new Vector2(30, 20);
             arrowRect.anchoredPosition = new Vector2(0, 0);
 
             _hintPanel.SetActive(false);

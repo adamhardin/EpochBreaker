@@ -83,6 +83,7 @@ namespace EpochBreaker.Gameplay
         public int TotalLevelsCompleted;
         public int EpochsCompleted;  // Bitmask of completed epochs (bits 0-9)
         public int CampaignEpochsCompleted;  // Bitmask of epochs completed in Campaign mode only
+        public int TotalSentinelCachesTriggered;
     }
 
     /// <summary>
@@ -439,6 +440,15 @@ namespace EpochBreaker.Gameplay
         public void RecordNonCannonBossDamage()
         {
             _usedNonCannonOnBoss = true;
+        }
+
+        /// <summary>
+        /// Called when a sentinel cache block is triggered.
+        /// </summary>
+        public void RecordSentinelCacheTriggered()
+        {
+            _saveData.TotalSentinelCachesTriggered++;
+            _saveDirty = true;
         }
 
         /// <summary>

@@ -16,8 +16,10 @@ namespace EpochBreaker.UI
         private Canvas _canvas;
         private GameObject _panel;
         private InputField _codeInput;
-        private Text _errorText;
-        private Text _previewText;
+        private Image _errorImg;
+        private Sprite _errorSprite;
+        private Image _previewImg;
+        private Sprite _previewSprite;
         private System.Action _onClose;
 
         public void Initialize(System.Action onClose)
@@ -49,6 +51,7 @@ namespace EpochBreaker.UI
             _canvas = canvasGO.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 120;
+            _canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -78,19 +81,19 @@ namespace EpochBreaker.UI
             panelRect.sizeDelta = new Vector2(580, 420);
             panelRect.anchoredPosition = Vector2.zero;
 
-            // Title
-            CreateText(_panel.transform, "CHALLENGE A FRIEND", 32,
-                new Color(1f, 0.85f, 0.1f), new Vector2(0, 170));
+            // Title (fontSize 32 → scale 5)
+            CreatePixelLabel(_panel.transform, "CHALLENGE A FRIEND",
+                new Color(1f, 0.85f, 0.1f), 5, new Vector2(0, 170));
 
-            // Instructions
-            CreateText(_panel.transform, "Enter a challenge code from a friend", 18,
-                new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 130));
+            // Instructions (fontSize 18 → scale 3)
+            CreatePixelLabel(_panel.transform, "Enter a challenge code from a friend",
+                new Color(0.7f, 0.7f, 0.8f), 3, new Vector2(0, 130));
 
-            // Format hint
-            CreateText(_panel.transform, "Format: E-XXXXXXXX:SCORE  (e.g. 3-K7XM2P9A:12450)", 14,
-                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, 100));
-            CreateText(_panel.transform, "Or just a level code: E-XXXXXXXX", 14,
-                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, 78));
+            // Format hint (fontSize 14 → scale 2)
+            CreatePixelLabel(_panel.transform, "Format: E-XXXXXXXX:SCORE  (e.g. 3-K7XM2P9A:12450)",
+                new Color(0.5f, 0.5f, 0.6f), 2, new Vector2(0, 100));
+            CreatePixelLabel(_panel.transform, "Or just a level code: E-XXXXXXXX",
+                new Color(0.5f, 0.5f, 0.6f), 2, new Vector2(0, 78));
 
             // Close button
             CreateButton(_panel.transform, "X", new Vector2(240, 170),
@@ -107,7 +110,7 @@ namespace EpochBreaker.UI
             inputBgRect.sizeDelta = new Vector2(420, 55);
             inputBgRect.anchoredPosition = new Vector2(0, 25);
 
-            // Input field text
+            // Input field text (KEEP legacy Text - required by InputField)
             var inputTextGO = new GameObject("Text");
             inputTextGO.transform.SetParent(inputBgGO.transform, false);
             var inputText = inputTextGO.AddComponent<Text>();
@@ -121,7 +124,7 @@ namespace EpochBreaker.UI
             inputTextRect.anchorMax = new Vector2(0.95f, 1f);
             inputTextRect.sizeDelta = Vector2.zero;
 
-            // Placeholder
+            // Placeholder (KEEP legacy Text - required by InputField)
             var phGO = new GameObject("Placeholder");
             phGO.transform.SetParent(inputBgGO.transform, false);
             var phText = phGO.AddComponent<Text>();
@@ -152,16 +155,34 @@ namespace EpochBreaker.UI
             };
             _codeInput.onValueChanged.AddListener(OnInputChanged);
 
-            // Error text (hidden by default)
-            var errorGO = CreateText(_panel.transform, "Invalid challenge code", 18,
-                new Color(1f, 0.3f, 0.3f), new Vector2(0, -20));
-            _errorText = errorGO.GetComponent<Text>();
+            // Error image (hidden by default, fontSize 18 → scale 3)
+            var errorGO = new GameObject("ErrorImg");
+            errorGO.transform.SetParent(_panel.transform, false);
+            _errorImg = errorGO.AddComponent<Image>();
+            _errorSprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite("Invalid challenge code", new Color(1f, 0.3f, 0.3f), 3);
+            _errorImg.sprite = _errorSprite;
+            _errorImg.preserveAspect = true;
+            _errorImg.raycastTarget = false;
+            _errorImg.SetNativeSize();
+            var errorRect = errorGO.GetComponent<RectTransform>();
+            errorRect.anchorMin = new Vector2(0.5f, 0.5f);
+            errorRect.anchorMax = new Vector2(0.5f, 0.5f);
+            errorRect.pivot = new Vector2(0.5f, 0.5f);
+            errorRect.anchoredPosition = new Vector2(0, -20);
             errorGO.SetActive(false);
 
-            // Preview text (shows parsed level info, hidden by default)
-            var previewGO = CreateText(_panel.transform, "", 18,
-                new Color(0.5f, 0.8f, 1f), new Vector2(0, -20));
-            _previewText = previewGO.GetComponent<Text>();
+            // Preview image (shows parsed level info, hidden by default, fontSize 18 → scale 3)
+            var previewGO = new GameObject("PreviewImg");
+            previewGO.transform.SetParent(_panel.transform, false);
+            _previewImg = previewGO.AddComponent<Image>();
+            _previewImg.sprite = null;
+            _previewImg.preserveAspect = true;
+            _previewImg.raycastTarget = false;
+            var previewRect = previewGO.GetComponent<RectTransform>();
+            previewRect.anchorMin = new Vector2(0.5f, 0.5f);
+            previewRect.anchorMax = new Vector2(0.5f, 0.5f);
+            previewRect.pivot = new Vector2(0.5f, 0.5f);
+            previewRect.anchoredPosition = new Vector2(0, -20);
             previewGO.SetActive(false);
 
             // Play Challenge button
@@ -182,9 +203,9 @@ namespace EpochBreaker.UI
                 });
 #endif
 
-            // Escape hint
-            CreateText(_panel.transform, "Press Esc/` to close", 14,
-                new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -155));
+            // Escape hint (fontSize 14 → scale 2, replace backtick with ESC)
+            CreatePixelLabel(_panel.transform, "Press ESC to close",
+                new Color(0.5f, 0.5f, 0.6f), 2, new Vector2(0, -155));
 
             // Focus input field
             _codeInput.ActivateInputField();
@@ -192,11 +213,11 @@ namespace EpochBreaker.UI
 
         private void OnInputChanged(string text)
         {
-            _errorText.gameObject.SetActive(false);
+            _errorImg.gameObject.SetActive(false);
 
             if (string.IsNullOrEmpty(text))
             {
-                _previewText.gameObject.SetActive(false);
+                _previewImg.gameObject.SetActive(false);
                 return;
             }
 
@@ -209,13 +230,16 @@ namespace EpochBreaker.UI
                     string preview = $"Level: {levelCode} ({epochName})";
                     if (friendScore > 0)
                         preview += $" | Target: {friendScore:N0}";
-                    _previewText.text = preview;
-                    _previewText.gameObject.SetActive(true);
+                    if (_previewSprite != null) { Destroy(_previewSprite.texture); Destroy(_previewSprite); }
+                    _previewSprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite(preview, new Color(0.5f, 0.8f, 1f), 3);
+                    _previewImg.sprite = _previewSprite;
+                    _previewImg.SetNativeSize();
+                    _previewImg.gameObject.SetActive(true);
                 }
             }
             else
             {
-                _previewText.gameObject.SetActive(false);
+                _previewImg.gameObject.SetActive(false);
             }
         }
 
@@ -224,17 +248,23 @@ namespace EpochBreaker.UI
             string code = _codeInput.text.Trim().ToUpper();
             if (string.IsNullOrEmpty(code))
             {
-                _errorText.text = "Please enter a challenge code";
-                _errorText.gameObject.SetActive(true);
-                _previewText.gameObject.SetActive(false);
+                if (_errorSprite != null) { Destroy(_errorSprite.texture); Destroy(_errorSprite); }
+                _errorSprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite("Please enter a challenge code", new Color(1f, 0.3f, 0.3f), 3);
+                _errorImg.sprite = _errorSprite;
+                _errorImg.SetNativeSize();
+                _errorImg.gameObject.SetActive(true);
+                _previewImg.gameObject.SetActive(false);
                 return;
             }
 
             if (!LevelShareManager.TryParseChallengeCode(code, out string levelCode, out int friendScore))
             {
-                _errorText.text = $"Invalid code: {code}";
-                _errorText.gameObject.SetActive(true);
-                _previewText.gameObject.SetActive(false);
+                if (_errorSprite != null) { Destroy(_errorSprite.texture); Destroy(_errorSprite); }
+                _errorSprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite($"Invalid code: {code}", new Color(1f, 0.3f, 0.3f), 3);
+                _errorImg.sprite = _errorSprite;
+                _errorImg.SetNativeSize();
+                _errorImg.gameObject.SetActive(true);
+                _previewImg.gameObject.SetActive(false);
                 return;
             }
 
@@ -253,24 +283,28 @@ namespace EpochBreaker.UI
             Destroy(gameObject);
         }
 
-        private GameObject CreateText(Transform parent, string text, int fontSize,
-            Color color, Vector2 position)
+        private void OnDestroy()
         {
-            var go = new GameObject("Text");
+            if (_errorSprite != null) { Destroy(_errorSprite.texture); Destroy(_errorSprite); }
+            if (_previewSprite != null) { Destroy(_previewSprite.texture); Destroy(_previewSprite); }
+        }
+
+        private GameObject CreatePixelLabel(Transform parent, string text,
+            Color color, int scale, Vector2 position)
+        {
+            var go = new GameObject("PixelLabel");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComp.horizontalOverflow = HorizontalWrapMode.Wrap;
+            var img = go.AddComponent<Image>();
+            img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(460, fontSize + 20);
+            rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = position;
 
             return go;
@@ -295,18 +329,19 @@ namespace EpochBreaker.UI
             rect.sizeDelta = size;
             rect.anchoredPosition = position;
 
-            var textGO = new GameObject("Label");
-            textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = 22;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            // Button label (fontSize 22 → scale 3)
+            var labelGO = new GameObject("Label");
+            labelGO.transform.SetParent(go.transform, false);
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
+            var labelRect = labelGO.GetComponent<RectTransform>();
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.pivot = new Vector2(0.5f, 0.5f);
+            labelRect.anchoredPosition = Vector2.zero;
 
             return btn;
         }

@@ -26,14 +26,16 @@ namespace EpochBreaker.UI
         private GameObject _difficultySubPanel;
         private GameObject _historyContentParent;
         private int _historyPage = 0;
-        private Text _historyPageLabel;
+        private Image _historyPageLabel;
+        private Sprite _historyPageLabelSprite;
         private const int HISTORY_PAGE_SIZE = 10;
         private GameObject _legendsObj;
         private GameObject _achievementsObj;
         private GameObject _challengeEntryObj;
         private GameObject _cosmeticsObj;
         private InputField _codeInputField;
-        private Text _codeErrorText;
+        private Image _codeErrorText;
+        private Sprite _codeErrorSprite;
         private GameObject _confirmNewGamePanel;
         private GameObject _difficultyPromptPanel;
         private GameObject _devPanel;
@@ -158,6 +160,7 @@ namespace EpochBreaker.UI
             _canvas = canvasGO.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 100;
+            _canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -234,7 +237,7 @@ namespace EpochBreaker.UI
 
             // Controls hint
             var hintGO = CreateText(canvasGO.transform,
-                "Move: Arrows/WASD | Jump: Space/W | Ground Pound: S (airborne) | Cycle Weapon: X | Pause: Esc/`", 16,
+                "Move: Arrows/WASD | Jump: Space/W | Ground Pound: S (airborne) | Cycle Weapon: X | Pause: ESC", 16,
                 new Color(0.65f, 0.65f, 0.75f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -450);
@@ -290,6 +293,7 @@ namespace EpochBreaker.UI
             var panelCanvas = _confirmNewGamePanel.AddComponent<Canvas>();
             panelCanvas.overrideSorting = true;
             panelCanvas.sortingOrder = 150;
+            panelCanvas.pixelPerfect = true;
             _confirmNewGamePanel.AddComponent<GraphicRaycaster>();
 
             // Full-screen dim overlay (blocks clicks behind)
@@ -394,6 +398,7 @@ namespace EpochBreaker.UI
             var panelCanvas = _difficultyPromptPanel.AddComponent<Canvas>();
             panelCanvas.overrideSorting = true;
             panelCanvas.sortingOrder = 150;
+            panelCanvas.pixelPerfect = true;
             _difficultyPromptPanel.AddComponent<GraphicRaycaster>();
 
             // Dim overlay
@@ -1140,7 +1145,7 @@ namespace EpochBreaker.UI
             var errorGO = CreateText(panelGO.transform, "Invalid level code", 18, new Color(1f, 0.3f, 0.3f));
             var errorRect = errorGO.GetComponent<RectTransform>();
             errorRect.anchoredPosition = new Vector2(0, -15);
-            _codeErrorText = errorGO.GetComponent<Text>();
+            _codeErrorText = errorGO.GetComponent<Image>();
             errorGO.SetActive(false);
 
             // Play button
@@ -1165,7 +1170,7 @@ namespace EpochBreaker.UI
 #endif
 
             // Escape hint
-            var escGO = CreateText(panelGO.transform, "Press Esc/` to close", 14,
+            var escGO = CreateText(panelGO.transform, "Press ESC to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
             escRect.anchoredPosition = new Vector2(0, -130);
@@ -1173,19 +1178,29 @@ namespace EpochBreaker.UI
             _enterCodePanel.SetActive(false);
         }
 
+        private void UpdateDynamicSprite(Image img, ref Sprite sprite, string text, Color color, int scale)
+        {
+            if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
+            sprite = PlaceholderAssets.CreatePixelTextSprite(text, color, scale);
+            img.sprite = sprite;
+            img.SetNativeSize();
+        }
+
         private void SubmitLevelCode()
         {
             string code = _codeInputField.text.Trim().ToUpper();
             if (string.IsNullOrEmpty(code))
             {
-                _codeErrorText.text = "Please enter a level code";
+                UpdateDynamicSprite(_codeErrorText, ref _codeErrorSprite,
+                    "Please enter a level code", new Color(1f, 0.3f, 0.3f), 3);
                 _codeErrorText.gameObject.SetActive(true);
                 return;
             }
 
             if (!LevelID.TryParse(code, out _))
             {
-                _codeErrorText.text = $"Invalid code: {code}";
+                UpdateDynamicSprite(_codeErrorText, ref _codeErrorSprite,
+                    $"Invalid code: {code}", new Color(1f, 0.3f, 0.3f), 3);
                 _codeErrorText.gameObject.SetActive(true);
                 return;
             }
@@ -1344,7 +1359,7 @@ namespace EpochBreaker.UI
             }
 
             sy -= ITEM_SPACING;
-            var escGO = CreateText(_settingsMenuContent.transform, "Press Esc/` to close", 14,
+            var escGO = CreateText(_settingsMenuContent.transform, "Press ESC to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var escRect = escGO.GetComponent<RectTransform>();
             escRect.anchoredPosition = new Vector2(0, sy);
@@ -1408,7 +1423,7 @@ namespace EpochBreaker.UI
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.WeaponVolume = val; });
 
             // Escape hint
-            var audioEscGO = CreateText(_audioSubPanel.transform, "Press Esc/` to go back", 14,
+            var audioEscGO = CreateText(_audioSubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var audioEscRect = audioEscGO.GetComponent<RectTransform>();
             audioEscRect.anchoredPosition = new Vector2(0, -175);
@@ -1466,7 +1481,6 @@ namespace EpochBreaker.UI
             var campaignRect = campaignGO.GetComponent<RectTransform>();
             campaignRect.anchoredPosition = new Vector2(0, 95);
             campaignRect.sizeDelta = new Vector2(460, 120);
-            campaignGO.GetComponent<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
 
             // Streak info
             var streakGO = CreateText(_aboutSubPanel.transform,
@@ -1478,7 +1492,6 @@ namespace EpochBreaker.UI
             var streakRect = streakGO.GetComponent<RectTransform>();
             streakRect.anchoredPosition = new Vector2(0, -10);
             streakRect.sizeDelta = new Vector2(460, 100);
-            streakGO.GetComponent<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
 
             // Legends info
             var legendsInfoGO = CreateText(_aboutSubPanel.transform,
@@ -1489,7 +1502,6 @@ namespace EpochBreaker.UI
             var legendsInfoRect = legendsInfoGO.GetComponent<RectTransform>();
             legendsInfoRect.anchoredPosition = new Vector2(0, -100);
             legendsInfoRect.sizeDelta = new Vector2(460, 80);
-            legendsInfoGO.GetComponent<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
 
             // Build ID
             var buildGO = CreateText(_aboutSubPanel.transform, BuildInfo.FullBuildID, 16,
@@ -1498,7 +1510,7 @@ namespace EpochBreaker.UI
             buildRect.anchoredPosition = new Vector2(0, -170);
 
             // Escape hint
-            var aboutEscGO = CreateText(_aboutSubPanel.transform, "Press Esc/` to go back", 14,
+            var aboutEscGO = CreateText(_aboutSubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var aboutEscRect = aboutEscGO.GetComponent<RectTransform>();
             aboutEscRect.anchoredPosition = new Vector2(0, -200);
@@ -1560,7 +1572,7 @@ namespace EpochBreaker.UI
             CreateToggleRow(_accessibilitySubPanel.transform, "HIGH CONTRAST", new Vector2(0, -85), hcInitial,
                 (val) => { if (Gameplay.AccessibilityManager.Instance != null) Gameplay.AccessibilityManager.Instance.HighContrastMode = val; });
 
-            var accEscGO = CreateText(_accessibilitySubPanel.transform, "Press Esc/` to go back", 14,
+            var accEscGO = CreateText(_accessibilitySubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var accEscRect = accEscGO.GetComponent<RectTransform>();
             accEscRect.anchoredPosition = new Vector2(0, -200);
@@ -1601,13 +1613,13 @@ namespace EpochBreaker.UI
             var diffDescRect = diffDescGO.GetComponent<RectTransform>();
             diffDescRect.anchoredPosition = new Vector2(0, 140);
             diffDescRect.sizeDelta = new Vector2(460, 50);
-            diffDescGO.GetComponent<Text>().horizontalOverflow = HorizontalWrapMode.Wrap;
 
-            // Active indicator (text that shows current selection)
-            var diffActiveGO = CreateText(_difficultySubPanel.transform, "", 18, new Color(0.9f, 0.85f, 0.5f));
+            // Active indicator (image that shows current selection)
+            var diffActiveGO = CreateText(_difficultySubPanel.transform, " ", 18, new Color(0.9f, 0.85f, 0.5f));
             var diffActiveRect = diffActiveGO.GetComponent<RectTransform>();
             diffActiveRect.anchoredPosition = new Vector2(0, -160);
-            var diffActiveText = diffActiveGO.GetComponent<Text>();
+            var diffActiveImg = diffActiveGO.GetComponent<Image>();
+            Sprite diffActiveSprite = null;
 
             // Difficulty buttons — store Image refs for highlight
             Color easyBase = new Color(0.25f, 0.50f, 0.30f);
@@ -1634,7 +1646,10 @@ namespace EpochBreaker.UI
                     Gameplay.DifficultyLevel.Hard => "HARD: 1 life/level, more enemies, no health",
                     _ => "NORMAL: 2 lives/level, standard enemies and health"
                 };
-                diffActiveText.text = desc;
+                if (diffActiveSprite != null) { Destroy(diffActiveSprite.texture); Destroy(diffActiveSprite); }
+                diffActiveSprite = PlaceholderAssets.CreatePixelTextSprite(desc, new Color(0.9f, 0.85f, 0.5f), 3);
+                diffActiveImg.sprite = diffActiveSprite;
+                diffActiveImg.SetNativeSize();
 
                 // Highlight active difficulty button
                 easyImg.color = d == Gameplay.DifficultyLevel.Easy ? easyBase + highlightTint : easyBase;
@@ -1671,7 +1686,7 @@ namespace EpochBreaker.UI
             CreateText(_difficultySubPanel.transform, "1 death/level\n1.5x enemies\nNo health", 14,
                 new Color(0.8f, 0.5f, 0.5f)).GetComponent<RectTransform>().anchoredPosition = new Vector2(140, -20);
 
-            var diffEscGO = CreateText(_difficultySubPanel.transform, "Press Esc/` to go back", 14,
+            var diffEscGO = CreateText(_difficultySubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var diffEscRect = diffEscGO.GetComponent<RectTransform>();
             diffEscRect.anchoredPosition = new Vector2(0, -200);
@@ -1763,8 +1778,8 @@ namespace EpochBreaker.UI
             pctRect.pivot = new Vector2(1f, 0.5f);
             pctRect.sizeDelta = new Vector2(70, 0);
             pctRect.anchoredPosition = new Vector2(0, 0);
-            var pctText = pctGO.GetComponent<Text>();
-            pctText.alignment = TextAnchor.MiddleRight;
+            var pctImg = pctGO.GetComponent<Image>();
+            Sprite pctSprite = null;
 
             // Slider component
             var slider = trackGO.AddComponent<Slider>();
@@ -1777,7 +1792,11 @@ namespace EpochBreaker.UI
             slider.targetGraphic = handleImg;
             slider.onValueChanged.AddListener((val) => {
                 onValueChanged.Invoke(val);
-                pctText.text = Mathf.RoundToInt(val * 100) + "%";
+                if (pctSprite != null) { Destroy(pctSprite.texture); Destroy(pctSprite); }
+                pctSprite = PlaceholderAssets.CreatePixelTextSprite(
+                    Mathf.RoundToInt(val * 100) + "%", new Color(0.9f, 0.9f, 1f), 3);
+                pctImg.sprite = pctSprite;
+                pctImg.SetNativeSize();
             });
         }
 
@@ -1855,7 +1874,7 @@ namespace EpochBreaker.UI
                 });
 
             // Hint text
-            var hintGO = CreateText(panelGO.transform, "Press Esc/` to close", 14,
+            var hintGO = CreateText(panelGO.transform, "Press ESC to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var hintRect = hintGO.GetComponent<RectTransform>();
             hintRect.anchoredPosition = new Vector2(0, -310);
@@ -1925,7 +1944,7 @@ namespace EpochBreaker.UI
                 new Color(0.6f, 0.6f, 0.7f));
             var pageLabelRect = pageLabelGO.GetComponent<RectTransform>();
             pageLabelRect.anchoredPosition = new Vector2(0, -280);
-            _historyPageLabel = pageLabelGO.GetComponent<Text>();
+            _historyPageLabel = pageLabelGO.GetComponent<Image>();
 
             CreateMenuButton(panelGO.transform, "NEXT >", new Vector2(160, -280),
                 new Vector2(100, 36), new Color(0.35f, 0.35f, 0.50f), () => {
@@ -1945,7 +1964,7 @@ namespace EpochBreaker.UI
                 });
 
             // Hint text
-            var hintGO2 = CreateText(panelGO.transform, "Press Esc/` to close", 14,
+            var hintGO2 = CreateText(panelGO.transform, "Press ESC to close", 14,
                 new Color(0.5f, 0.5f, 0.6f));
             var hintRect2 = hintGO2.GetComponent<RectTransform>();
             hintRect2.anchoredPosition = new Vector2(0, -345);
@@ -1968,7 +1987,9 @@ namespace EpochBreaker.UI
             if (history.Entries.Count == 0)
             {
                 _historyPage = 0;
-                if (_historyPageLabel != null) _historyPageLabel.text = "Page 1 of 1";
+                if (_historyPageLabel != null)
+                    UpdateDynamicSprite(_historyPageLabel, ref _historyPageLabelSprite,
+                        "Page 1 of 1", new Color(0.6f, 0.6f, 0.7f), 3);
                 var noHistoryGO = CreateText(_historyContentParent.transform, "No levels played yet", 20,
                     new Color(0.5f, 0.5f, 0.6f));
                 var noHistoryRect = noHistoryGO.GetComponent<RectTransform>();
@@ -1980,7 +2001,8 @@ namespace EpochBreaker.UI
             int totalPages = Mathf.Max(1, (history.Entries.Count + HISTORY_PAGE_SIZE - 1) / HISTORY_PAGE_SIZE);
             _historyPage = Mathf.Clamp(_historyPage, 0, totalPages - 1);
             if (_historyPageLabel != null)
-                _historyPageLabel.text = $"Page {_historyPage + 1} of {totalPages}";
+                UpdateDynamicSprite(_historyPageLabel, ref _historyPageLabelSprite,
+                    $"Page {_historyPage + 1} of {totalPages}", new Color(0.6f, 0.6f, 0.7f), 3);
 
             int startIdx = _historyPage * HISTORY_PAGE_SIZE;
             int endIdx = Mathf.Min(startIdx + HISTORY_PAGE_SIZE, history.Entries.Count);
@@ -2109,19 +2131,18 @@ namespace EpochBreaker.UI
             rect.sizeDelta = size;
             rect.anchoredPosition = position;
 
-            // Text label
+            // Pixel text label
             var labelGO = new GameObject("Label");
             labelGO.transform.SetParent(go.transform, false);
-            var labelText = labelGO.AddComponent<Text>();
-            labelText.text = text;
-            labelText.fontSize = 12;
-            labelText.color = Color.white;
-            labelText.alignment = TextAnchor.MiddleCenter;
-            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg2 = labelGO.AddComponent<Image>();
+            labelImg2.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, 2);
+            labelImg2.preserveAspect = true;
+            labelImg2.raycastTarget = false;
+            labelImg2.SetNativeSize();
             var labelRect = labelGO.GetComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.sizeDelta = Vector2.zero;
+            labelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            labelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRect.anchoredPosition = Vector2.zero;
         }
 
         private Color GetEpochColor(int epoch)
@@ -2288,11 +2309,10 @@ namespace EpochBreaker.UI
             var godLabel = CreateText(godRow.transform, "GOD MODE", 17, Color.white);
             var godLabelRect = godLabel.GetComponent<RectTransform>();
             godLabelRect.anchorMin = new Vector2(0, 0.5f);
-            godLabelRect.anchorMax = new Vector2(1, 0.5f);
+            godLabelRect.anchorMax = new Vector2(0, 0.5f);
             godLabelRect.pivot = new Vector2(0, 0.5f);
             godLabelRect.anchoredPosition = new Vector2(54, 0);
             godLabelRect.sizeDelta = new Vector2(200, 28);
-            godLabel.GetComponent<Text>().alignment = TextAnchor.MiddleLeft;
 
             dy -= ITEM_SPACING;
 
@@ -2422,18 +2442,27 @@ namespace EpochBreaker.UI
             return go;
         }
 
+        private static int FontSizeToScale(int fontSize)
+        {
+            if (fontSize >= 72) return 10;
+            if (fontSize >= 38) return 6;
+            if (fontSize >= 30) return 5;
+            if (fontSize >= 24) return 4;
+            if (fontSize >= 16) return 3;
+            return 2;
+        }
+
         private GameObject CreateText(Transform parent, string text, int fontSize, Color color)
         {
+            int scale = FontSizeToScale(fontSize);
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComp.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var img = go.AddComponent<Image>();
+            img.sprite = PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -2580,24 +2609,22 @@ namespace EpochBreaker.UI
             // Checkmark
             var checkmarkGO = new GameObject("Checkmark");
             checkmarkGO.transform.SetParent(checkBgGO.transform, false);
-            var checkmarkText = checkmarkGO.AddComponent<Text>();
-            checkmarkText.text = "X";
-            checkmarkText.fontSize = 22;
-            checkmarkText.color = new Color(0.4f, 0.8f, 0.4f);
-            checkmarkText.alignment = TextAnchor.MiddleCenter;
-            checkmarkText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            checkmarkText.fontStyle = FontStyle.Bold;
+            var checkmarkImg = checkmarkGO.AddComponent<Image>();
+            checkmarkImg.sprite = PlaceholderAssets.GetPixelTextSprite("X", new Color(0.4f, 0.8f, 0.4f), 3);
+            checkmarkImg.preserveAspect = true;
+            checkmarkImg.raycastTarget = false;
+            checkmarkImg.SetNativeSize();
             var checkmarkRect = checkmarkGO.GetComponent<RectTransform>();
-            checkmarkRect.anchorMin = Vector2.zero;
-            checkmarkRect.anchorMax = Vector2.one;
-            checkmarkRect.sizeDelta = Vector2.zero;
+            checkmarkRect.anchorMin = new Vector2(0.5f, 0.5f);
+            checkmarkRect.anchorMax = new Vector2(0.5f, 0.5f);
+            checkmarkRect.anchoredPosition = Vector2.zero;
             checkmarkGO.SetActive(initialValue);
 
             // Toggle component
             var toggle = checkBgGO.AddComponent<Toggle>();
             toggle.isOn = initialValue;
             toggle.targetGraphic = checkBgImg;
-            toggle.graphic = checkmarkText;
+            toggle.graphic = checkmarkImg;
             toggle.onValueChanged.AddListener((val) => {
                 AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                 onValueChanged.Invoke(val);
@@ -2647,24 +2674,22 @@ namespace EpochBreaker.UI
             // Checkmark
             var checkmarkGO = new GameObject("Checkmark");
             checkmarkGO.transform.SetParent(checkBgGO.transform, false);
-            var checkmarkText = checkmarkGO.AddComponent<Text>();
-            checkmarkText.text = "X";
-            checkmarkText.fontSize = 22;
-            checkmarkText.color = new Color(0.4f, 0.8f, 0.4f);
-            checkmarkText.alignment = TextAnchor.MiddleCenter;
-            checkmarkText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            checkmarkText.fontStyle = FontStyle.Bold;
+            var checkmarkImg = checkmarkGO.AddComponent<Image>();
+            checkmarkImg.sprite = PlaceholderAssets.GetPixelTextSprite("X", new Color(0.4f, 0.8f, 0.4f), 3);
+            checkmarkImg.preserveAspect = true;
+            checkmarkImg.raycastTarget = false;
+            checkmarkImg.SetNativeSize();
             var checkmarkRect = checkmarkGO.GetComponent<RectTransform>();
-            checkmarkRect.anchorMin = Vector2.zero;
-            checkmarkRect.anchorMax = Vector2.one;
-            checkmarkRect.sizeDelta = Vector2.zero;
+            checkmarkRect.anchorMin = new Vector2(0.5f, 0.5f);
+            checkmarkRect.anchorMax = new Vector2(0.5f, 0.5f);
+            checkmarkRect.anchoredPosition = Vector2.zero;
             checkmarkGO.SetActive(isOn);
 
             // Toggle component
             var toggle = checkBgGO.AddComponent<Toggle>();
             toggle.isOn = isOn;
             toggle.targetGraphic = checkBgImg;
-            toggle.graphic = checkmarkText;
+            toggle.graphic = checkmarkImg;
             toggle.onValueChanged.AddListener((val) => {
                 AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                 if (GameManager.Instance != null)

@@ -10,61 +10,71 @@ namespace EpochBreaker.UI
     {
         private Canvas _canvas;
         private Image[] _hearts;
-        private Text _timerText;
-        private Text _weaponText;
-        private Text _eraText;
-        private Text _livesText;
-        private Text _modeInfoText;
+        private Image _timerImg;
+        private Sprite _timerSprite;
+        private Image _eraImg;
+        private Image _livesImg;
+        private Sprite _livesSprite;
+        private Image _modeInfoImg;
+        private Sprite _modeInfoSprite;
         private Image _heatBarBg;
         private Image _heatBarFill;
-        private Text _relicText;
-        private Text _killStreakText;
-        private float _killStreakFadeTimer;
-        private int _lastKnownStreak;
+        private Image _relicImg;
+        private Sprite _relicSprite;
         private Gameplay.HealthSystem _healthSystem;
         private Gameplay.WeaponSystem _cachedWeaponSystem;
         private Gameplay.AbilitySystem _cachedAbilitySystem;
 
         // Sprint 4: Visible systems
-        private Text _scoreText;
+        private Image _scoreImg;
+        private Sprite _scoreSprite;
         private int _displayedScore;
         private float _scoreScaleTimer;
         private Image _doubleJumpIcon;
         private Image _airDashIcon;
-        private Text _quickDrawText;
+        private Image _quickDrawImg;
         private float _quickDrawFlashTimer;
-        private Text _autoSelectText;
-        private Text _dpsCapText;
+        private Image _autoSelectImg;
+        private Sprite _autoSelectSprite;
+        private Image _dpsCapImg;
         private float _dpsCapTimer;
 
         // Boss health bar
         private GameObject _bossBarRoot;
         private Image _bossBarBg;
         private Image _bossBarFill;
-        private Text _bossNameText;
+        private Image _bossNameImg;
+        private Sprite _bossNameSprite;
         private float _bossBarFlashTimer;
         private int _lastBossHealth = -1;
 
         // Score popups (pooled)
         private const int POPUP_POOL_SIZE = 6;
-        private Text[] _popupTexts;
+        private Image[] _popupImgs;
+        private Sprite[] _popupSprites;
         private float[] _popupTimers;
         private Vector3[] _popupWorldPositions;
 
-        // Combo counter
-        private Text _comboText;
+        // Damage number popups (separate pool)
+        private const int DMG_POPUP_POOL_SIZE = 8;
+        private Image[] _dmgPopupImgs;
+        private Sprite[] _dmgPopupSprites;
+        private float[] _dmgPopupTimers;
+        private Vector3[] _dmgPopupWorldPositions;
+        private Color[] _dmgPopupColors;
 
         // Achievement toast
-        private Text _achievementText;
+        private Image _achievementImg;
+        private Sprite _achievementSprite;
         private float _achievementTimer;
         private System.Collections.Generic.Queue<string> _achievementQueue
             = new System.Collections.Generic.Queue<string>();
 
         // Era intro card
-        private Text _eraCardText;
+        private Image _eraCardImg;
         private float _eraCardTimer;
         private Color _eraCardColor;
-        private Text _modeSubtitleText;
+        private Image _modeSubtitleImg;
         private float _modeSubtitleTimer;
 
         // Special attack meter
@@ -79,7 +89,8 @@ namespace EpochBreaker.UI
         private int _dmgDirEdge = -1;
 
         // Sprint 8: Friend challenge target score display
-        private Text _friendTargetText;
+        private Image _friendTargetImg;
+        private Sprite _friendTargetSprite;
 
         // Weapon wheel (dynamic — only shows acquired weapons + Unarmed)
         private GameObject _weaponWheelRoot;
@@ -90,7 +101,8 @@ namespace EpochBreaker.UI
         private Image[] _wheelSlotImages;
         private int[] _wheelSlotWeaponIdx; // -1 = unarmed, 0-5 = weapon type
         private int _wheelVisibleCount;
-        private Text _weaponWheelLabel;
+        private Image _weaponWheelLabelImg;
+        private Sprite _weaponWheelLabelSprite;
         private float _weaponWheelTimer;
         private int _lastWheelState = -99; // -1 = unarmed, 0-5 = weapon, -99 = uninitialized
         private int _lastAcquiredCount = -1;
@@ -99,9 +111,15 @@ namespace EpochBreaker.UI
         private const float WHEEL_SLOT_SIZE = 50f;
 
         // Weapon upgrade notification
-        private Text _upgradeNotifyText;
+        private Image _upgradeNotifyImg;
+        private Sprite _upgradeNotifySprite;
         private float _upgradeNotifyTimer;
         private int _lastTierHash = -1;
+
+        // Collected items display (compact row in L-strip)
+        private Image _itemsImg;
+        private Sprite _itemsSprite;
+        private int _lastItemHash = -1;
 
         private const int MAX_HEARTS = 5;
 
@@ -112,6 +130,9 @@ namespace EpochBreaker.UI
 
             // Subscribe to score popup events
             Gameplay.GameManager.OnScorePopup += HandleScorePopup;
+
+            // Subscribe to damage popup events
+            Gameplay.GameManager.OnDamagePopup += HandleDamagePopup;
 
             // Subscribe to damage direction events
             Gameplay.GameManager.OnDamageDirection += HandleDamageDirection;
@@ -134,7 +155,6 @@ namespace EpochBreaker.UI
             UpdateHeatBar();
             UpdateRelicCounter();
             UpdateModeInfo();
-            UpdateKillStreak();
             UpdateBossBar();
             UpdateRunningScore();
             UpdateAbilityIcons();
@@ -142,7 +162,7 @@ namespace EpochBreaker.UI
             UpdateAutoSelectReason();
             UpdateDpsCapFeedback();
             UpdateScorePopups();
-            UpdateComboCounter();
+            UpdateDamagePopups();
             UpdateAchievementToast();
             UpdateEraCard();
             UpdateModeSubtitle();
@@ -150,6 +170,7 @@ namespace EpochBreaker.UI
             UpdateSpecialAttackMeter();
             UpdateFriendTarget();
             UpdateUpgradeNotification();
+            UpdateCollectedItems();
         }
 
         private void FindPlayerHealth()
@@ -174,12 +195,53 @@ namespace EpochBreaker.UI
                 _healthSystem.OnHealthChanged -= UpdateHearts;
 
             Gameplay.GameManager.OnScorePopup -= HandleScorePopup;
+            Gameplay.GameManager.OnDamagePopup -= HandleDamagePopup;
             Gameplay.GameManager.OnDamageDirection -= HandleDamageDirection;
             Gameplay.WeaponSystem.OnWeaponUpgraded -= HandleWeaponUpgrade;
             Gameplay.CosmeticManager.OnCosmeticUnlocked -= HandleCosmeticUnlock;
 
             if (Gameplay.AchievementManager.Instance != null)
                 Gameplay.AchievementManager.Instance.OnAchievementUnlocked -= HandleAchievementUnlock;
+
+            // Clean up non-cached sprites to prevent texture leaks
+            CleanupSprite(ref _timerSprite);
+            CleanupSprite(ref _livesSprite);
+            CleanupSprite(ref _modeInfoSprite);
+            CleanupSprite(ref _relicSprite);
+            CleanupSprite(ref _scoreSprite);
+            CleanupSprite(ref _autoSelectSprite);
+            CleanupSprite(ref _bossNameSprite);
+            CleanupSprite(ref _achievementSprite);
+            CleanupSprite(ref _friendTargetSprite);
+            CleanupSprite(ref _weaponWheelLabelSprite);
+            CleanupSprite(ref _upgradeNotifySprite);
+            CleanupSprite(ref _itemsSprite);
+            if (_popupSprites != null)
+                for (int i = 0; i < _popupSprites.Length; i++)
+                    CleanupSprite(ref _popupSprites[i]);
+            if (_dmgPopupSprites != null)
+                for (int i = 0; i < _dmgPopupSprites.Length; i++)
+                    CleanupSprite(ref _dmgPopupSprites[i]);
+        }
+
+        private void CleanupSprite(ref Sprite sprite)
+        {
+            if (sprite != null)
+            {
+                if (sprite.texture != null) Destroy(sprite.texture);
+                Destroy(sprite);
+                sprite = null;
+            }
+        }
+
+        private void _UpdatePixelText(ref Sprite sprite, Image img, string text, Color color, int scale)
+        {
+            if (sprite != null && sprite.name == text) return;
+            if (sprite != null) { Destroy(sprite.texture); Destroy(sprite); }
+            sprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite(text, color, scale);
+            sprite.name = text;
+            img.sprite = sprite;
+            img.SetNativeSize();
         }
 
         private void CreateUI()
@@ -189,6 +251,7 @@ namespace EpochBreaker.UI
             _canvas = canvasGO.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 90;
+            _canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -197,7 +260,139 @@ namespace EpochBreaker.UI
 
             canvasGO.AddComponent<GraphicRaycaster>();
 
-            // Hearts (top-left)
+            // ─── L-Shaped HUD Strip (bottom-left) with epoch border ───
+
+            var gm = Gameplay.GameManager.Instance;
+            int epoch = gm != null ? gm.CurrentLevelID.Epoch : 0;
+            var (_, _, _, epochAccent) = Gameplay.PlaceholderAssets.GetEpochTerrainColors(epoch);
+
+            // Epoch-specific border colors (double-line retro style)
+            Color borderBright = new Color(
+                Mathf.Min(epochAccent.r * 1.3f, 1f),
+                Mathf.Min(epochAccent.g * 1.3f, 1f),
+                Mathf.Min(epochAccent.b * 1.3f, 1f), 1f);
+            Color borderDim = new Color(
+                borderBright.r * 0.5f,
+                borderBright.g * 0.5f,
+                borderBright.b * 0.5f, 1f);
+
+            // ── Outer border (bright epoch accent, 3px) ──
+
+            // Tall column outer border
+            var tcOuterGO = new GameObject("HUDTallColOuterBorder");
+            tcOuterGO.transform.SetParent(canvasGO.transform, false);
+            var tcOuterImg = tcOuterGO.AddComponent<Image>();
+            tcOuterImg.color = borderBright;
+            tcOuterImg.raycastTarget = false;
+            var tcOuterRect = tcOuterGO.GetComponent<RectTransform>();
+            tcOuterRect.anchorMin = new Vector2(0, 0);
+            tcOuterRect.anchorMax = new Vector2(0, 0);
+            tcOuterRect.pivot = new Vector2(0, 0);
+            tcOuterRect.sizeDelta = new Vector2(175 + 6, 240 + 6);
+            tcOuterRect.anchoredPosition = new Vector2(-3, -3);
+
+            // Bottom strip outer border
+            var stripOuterGO = new GameObject("HUDStripOuterBorder");
+            stripOuterGO.transform.SetParent(canvasGO.transform, false);
+            var stripOuterImg = stripOuterGO.AddComponent<Image>();
+            stripOuterImg.color = borderBright;
+            stripOuterImg.raycastTarget = false;
+            var stripOuterRect = stripOuterGO.GetComponent<RectTransform>();
+            stripOuterRect.anchorMin = new Vector2(0, 0);
+            stripOuterRect.anchorMax = new Vector2(0.5f, 0);
+            stripOuterRect.pivot = new Vector2(0, 0);
+            stripOuterRect.sizeDelta = new Vector2(6, 125 + 6);
+            stripOuterRect.anchoredPosition = new Vector2(-3, -3);
+
+            // ── Inner border (dim epoch accent, 2px) ──
+
+            // Tall column inner border
+            var tcInnerGO = new GameObject("HUDTallColInnerBorder");
+            tcInnerGO.transform.SetParent(canvasGO.transform, false);
+            var tcInnerImg = tcInnerGO.AddComponent<Image>();
+            tcInnerImg.color = borderDim;
+            tcInnerImg.raycastTarget = false;
+            var tcInnerRect = tcInnerGO.GetComponent<RectTransform>();
+            tcInnerRect.anchorMin = new Vector2(0, 0);
+            tcInnerRect.anchorMax = new Vector2(0, 0);
+            tcInnerRect.pivot = new Vector2(0, 0);
+            tcInnerRect.sizeDelta = new Vector2(175 + 2, 240 + 2);
+            tcInnerRect.anchoredPosition = new Vector2(-1, -1);
+
+            // Bottom strip inner border
+            var stripInnerGO = new GameObject("HUDStripInnerBorder");
+            stripInnerGO.transform.SetParent(canvasGO.transform, false);
+            var stripInnerImg = stripInnerGO.AddComponent<Image>();
+            stripInnerImg.color = borderDim;
+            stripInnerImg.raycastTarget = false;
+            var stripInnerRect = stripInnerGO.GetComponent<RectTransform>();
+            stripInnerRect.anchorMin = new Vector2(0, 0);
+            stripInnerRect.anchorMax = new Vector2(0.5f, 0);
+            stripInnerRect.pivot = new Vector2(0, 0);
+            stripInnerRect.sizeDelta = new Vector2(2, 125 + 2);
+            stripInnerRect.anchoredPosition = new Vector2(-1, -1);
+
+            // ── Fill panels ──
+
+            // Tall left column (weapon wheel area — 175px wide, 240px tall)
+            var tallColGO = new GameObject("HUDTallCol");
+            tallColGO.transform.SetParent(canvasGO.transform, false);
+            var tallColImg = tallColGO.AddComponent<Image>();
+            tallColImg.color = new Color(0.05f, 0.04f, 0.12f, 0.90f);
+            tallColImg.raycastTarget = false;
+            var tallColRect = tallColGO.GetComponent<RectTransform>();
+            tallColRect.anchorMin = new Vector2(0, 0);
+            tallColRect.anchorMax = new Vector2(0, 0);
+            tallColRect.pivot = new Vector2(0, 0);
+            tallColRect.sizeDelta = new Vector2(175, 240);
+            tallColRect.anchoredPosition = Vector2.zero;
+
+            // Bottom strip (info area — from left column edge to 50% width, 125px tall)
+            var stripBgGO = new GameObject("HUDStripBg");
+            stripBgGO.transform.SetParent(canvasGO.transform, false);
+            var stripBgImg = stripBgGO.AddComponent<Image>();
+            stripBgImg.color = new Color(0.05f, 0.04f, 0.12f, 0.90f);
+            stripBgImg.raycastTarget = false;
+            var stripBgRect = stripBgGO.GetComponent<RectTransform>();
+            stripBgRect.anchorMin = new Vector2(0, 0);
+            stripBgRect.anchorMax = new Vector2(0.5f, 0);
+            stripBgRect.pivot = new Vector2(0, 0);
+            stripBgRect.sizeDelta = new Vector2(0, 125);
+            stripBgRect.anchoredPosition = Vector2.zero;
+
+            // Weapon wheel (tall left column)
+            CreateWeaponWheel(canvasGO.transform);
+
+            // ─── Top row: vital stats (y ≈ 88–112) ───
+
+            // Difficulty badge (small label above hearts)
+            var dm = Gameplay.DifficultyManager.Instance;
+            if (dm != null)
+            {
+                Color diffColor = dm.CurrentDifficulty switch
+                {
+                    Gameplay.DifficultyLevel.Easy => new Color(0.4f, 0.8f, 0.4f),
+                    Gameplay.DifficultyLevel.Hard => new Color(1f, 0.35f, 0.25f),
+                    _ => new Color(0.7f, 0.7f, 0.8f)
+                };
+                string multStr = dm.ScoreMultiplier != 1f ? $" {dm.ScoreMultiplier:0.0}X" : "";
+                string diffLabel = $"{dm.DifficultyName}{multStr}";
+                var diffGO = new GameObject("DiffBadge");
+                diffGO.transform.SetParent(canvasGO.transform, false);
+                var diffImg = diffGO.AddComponent<Image>();
+                diffImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(diffLabel, Color.white, 2);
+                diffImg.preserveAspect = true;
+                diffImg.raycastTarget = false;
+                diffImg.SetNativeSize();
+                diffImg.color = diffColor;
+                var diffRect = diffGO.GetComponent<RectTransform>();
+                diffRect.anchorMin = new Vector2(0, 0);
+                diffRect.anchorMax = new Vector2(0, 0);
+                diffRect.pivot = new Vector2(0, 0);
+                diffRect.anchoredPosition = new Vector2(185, 108);
+            }
+
+            // Hearts (bottom strip, top row)
             _hearts = new Image[MAX_HEARTS];
             for (int i = 0; i < MAX_HEARTS; i++)
             {
@@ -208,228 +403,222 @@ namespace EpochBreaker.UI
                 img.color = Color.red;
 
                 var rect = heartGO.GetComponent<RectTransform>();
-                rect.anchorMin = new Vector2(0, 1);
-                rect.anchorMax = new Vector2(0, 1);
-                rect.pivot = new Vector2(0, 1);
-                rect.sizeDelta = new Vector2(40, 36);
-                rect.anchoredPosition = new Vector2(20 + i * 48, -20);
+                rect.anchorMin = new Vector2(0, 0);
+                rect.anchorMax = new Vector2(0, 0);
+                rect.pivot = new Vector2(0, 0);
+                rect.sizeDelta = new Vector2(34, 30);
+                rect.anchoredPosition = new Vector2(185 + i * 40, 78);
 
                 _hearts[i] = img;
             }
 
-            // Special attack meter (below hearts)
-            CreateSpecialAttackBar(canvasGO.transform);
+            // Running score (top row, 25px gap after hearts)
+            var scoreGO = CreateHUDImage(canvasGO.transform, new Vector2(0, 0.5f));
+            _scoreImg = scoreGO.GetComponent<Image>();
+            _scoreImg.color = Color.white;
+            _UpdatePixelText(ref _scoreSprite, _scoreImg, "0", Color.white, 4);
+            var scoreRect = scoreGO.GetComponent<RectTransform>();
+            scoreRect.anchorMin = new Vector2(0, 0);
+            scoreRect.anchorMax = new Vector2(0, 0);
+            scoreRect.pivot = new Vector2(0, 0);
+            scoreRect.anchoredPosition = new Vector2(410, 80);
 
-            // Timer (top-left, below hearts)
-            var timerGO = CreateHUDText(canvasGO.transform, "0:00.0", TextAnchor.UpperLeft);
-            _timerText = timerGO.GetComponent<Text>();
-            _timerText.fontSize = 26;
+            // Timer (top row, 30px gap after score)
+            var timerGO = CreateHUDImage(canvasGO.transform, new Vector2(0, 0.5f));
+            _timerImg = timerGO.GetComponent<Image>();
+            _timerImg.color = Color.white;
+            _UpdatePixelText(ref _timerSprite, _timerImg, "0:00.0", Color.white, 3);
             var timerRect = timerGO.GetComponent<RectTransform>();
-            timerRect.anchorMin = new Vector2(0, 1);
-            timerRect.anchorMax = new Vector2(0, 1);
-            timerRect.pivot = new Vector2(0, 1);
-            timerRect.anchoredPosition = new Vector2(20, -70);
+            timerRect.anchorMin = new Vector2(0, 0);
+            timerRect.anchorMax = new Vector2(0, 0);
+            timerRect.pivot = new Vector2(0, 0);
+            timerRect.anchoredPosition = new Vector2(590, 84);
 
-            // Weapon type + tier (top-right)
-            var weaponGO = CreateHUDText(canvasGO.transform, "Bolt", TextAnchor.UpperRight);
-            _weaponText = weaponGO.GetComponent<Text>();
-            var weaponRect = weaponGO.GetComponent<RectTransform>();
-            weaponRect.anchorMin = new Vector2(1, 1);
-            weaponRect.anchorMax = new Vector2(1, 1);
-            weaponRect.pivot = new Vector2(1, 1);
-            weaponRect.anchoredPosition = new Vector2(-20, -20);
-
-            // Weapon wheel (lower-left, appears on weapon cycle)
-            CreateWeaponWheel(canvasGO.transform);
-
-            // Heat bar (top-right, below weapon name — hidden by default)
-            CreateHeatBar(canvasGO.transform);
-
-            // Era name (top-right, below heat bar)
-            var eraGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
-            _eraText = eraGO.GetComponent<Text>();
-            _eraText.fontSize = 18;
+            // Era name + level code (top row, right-aligned at 50% edge)
+            var eraGO = CreateHUDImage(canvasGO.transform, new Vector2(1, 0.5f));
+            _eraImg = eraGO.GetComponent<Image>();
             var eraRect = eraGO.GetComponent<RectTransform>();
-            eraRect.anchorMin = new Vector2(1, 1);
-            eraRect.anchorMax = new Vector2(1, 1);
-            eraRect.pivot = new Vector2(1, 1);
-            eraRect.anchoredPosition = new Vector2(-20, -82);
+            eraRect.anchorMin = new Vector2(0.5f, 0);
+            eraRect.anchorMax = new Vector2(0.5f, 0);
+            eraRect.pivot = new Vector2(1, 0);
+            eraRect.anchoredPosition = new Vector2(-15, 84);
 
-            var gm = Gameplay.GameManager.Instance;
             if (gm != null && gm.CurrentLevelID.Epoch >= 0)
-                _eraText.text = $"{gm.CurrentLevelID.EpochName} [{gm.CurrentLevelID.ToCode()}]";
-
-            // Relic counter (below timer, left side — only shown if level has relics)
-            if (gm != null && gm.TotalRelics > 0)
             {
-                var relicGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperLeft);
-                _relicText = relicGO.GetComponent<Text>();
-                _relicText.fontSize = 20;
-                _relicText.color = new Color(1f, 0.85f, 0.2f);
-                var relicRect = relicGO.GetComponent<RectTransform>();
-                relicRect.anchorMin = new Vector2(0, 1);
-                relicRect.anchorMax = new Vector2(0, 1);
-                relicRect.pivot = new Vector2(0, 1);
-                relicRect.anchoredPosition = new Vector2(20, -96);
+                _eraImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(
+                    $"{gm.CurrentLevelID.EpochName} [{gm.CurrentLevelID.ToCode()}]", Color.white, 2);
+                _eraImg.SetNativeSize();
+                _eraImg.color = Color.white;
             }
 
-            // Pause button (top-right corner)
-            CreatePauseButton(canvasGO.transform);
+            // ─── Bottom row: abilities & progress (y ≈ 20–50) ───
 
-            // Running score (top-center)
-            var scoreGO = CreateHUDText(canvasGO.transform, "0", TextAnchor.UpperCenter);
-            _scoreText = scoreGO.GetComponent<Text>();
-            _scoreText.fontSize = 28;
-            _scoreText.color = Color.white;
-            var scoreRect = scoreGO.GetComponent<RectTransform>();
-            scoreRect.anchorMin = new Vector2(0.5f, 1);
-            scoreRect.anchorMax = new Vector2(0.5f, 1);
-            scoreRect.pivot = new Vector2(0.5f, 1);
-            scoreRect.anchoredPosition = new Vector2(0, -46); // Below mode info text at -20
-            scoreRect.sizeDelta = new Vector2(600, 40); // Cap width to prevent overlap with hearts/weapon
+            // Heat bar (bottom row — hidden by default, shown for Cannon)
+            CreateHeatBar(canvasGO.transform);
 
-            // Ability icons (below hearts)
+            // Ability icons (bottom row)
             CreateAbilityIcons(canvasGO.transform);
 
+            // Special attack meter (below weapon wheel in tall column)
+            CreateSpecialAttackBar(canvasGO.transform);
+
+            // Relic counter (bottom row, right-aligned at 50% edge)
+            if (gm != null && gm.TotalRelics > 0)
+            {
+                var relicGO = CreateHUDImage(canvasGO.transform, new Vector2(1, 0.5f));
+                _relicImg = relicGO.GetComponent<Image>();
+                _relicImg.color = new Color(1f, 0.85f, 0.2f);
+                var relicRect = relicGO.GetComponent<RectTransform>();
+                relicRect.anchorMin = new Vector2(0.5f, 0);
+                relicRect.anchorMax = new Vector2(0.5f, 0);
+                relicRect.pivot = new Vector2(1, 0);
+                relicRect.sizeDelta = new Vector2(200, 24);
+                relicRect.anchoredPosition = new Vector2(-15, 44);
+            }
+
+            // Pause button (top-right corner — stays at top)
+            CreatePauseButton(canvasGO.transform);
+
             // Quick Draw flash text (below score, hidden by default)
-            var qdGO = CreateHUDText(canvasGO.transform, "QUICK DRAW!", TextAnchor.UpperCenter);
-            _quickDrawText = qdGO.GetComponent<Text>();
-            _quickDrawText.fontSize = 20;
-            _quickDrawText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var qdGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 1));
+            _quickDrawImg = qdGO.GetComponent<Image>();
+            _quickDrawImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("QUICK DRAW!", new Color(1f, 0.85f, 0.2f), 3);
+            _quickDrawImg.SetNativeSize();
+            _quickDrawImg.color = new Color(1f, 1f, 1f, 0f);
             var qdRect = qdGO.GetComponent<RectTransform>();
             qdRect.anchorMin = new Vector2(0.5f, 1);
             qdRect.anchorMax = new Vector2(0.5f, 1);
             qdRect.pivot = new Vector2(0.5f, 1);
             qdRect.anchoredPosition = new Vector2(0, -50);
 
-            // Auto-select reason (below weapon name, right side)
-            var asGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperRight);
-            _autoSelectText = asGO.GetComponent<Text>();
-            _autoSelectText.fontSize = 16;
-            _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, 0f);
+            // Auto-select reason (bottom strip, below weapon name)
+            var asGO = CreateHUDImage(canvasGO.transform, new Vector2(0, 0.5f));
+            _autoSelectImg = asGO.GetComponent<Image>();
+            _autoSelectImg.color = new Color(0.7f, 0.8f, 0.5f, 0f);
             var asRect = asGO.GetComponent<RectTransform>();
-            asRect.anchorMin = new Vector2(1, 1);
-            asRect.anchorMax = new Vector2(1, 1);
-            asRect.pivot = new Vector2(1, 1);
-            asRect.anchoredPosition = new Vector2(-20, -96);
+            asRect.anchorMin = new Vector2(0, 0);
+            asRect.anchorMax = new Vector2(0, 0);
+            asRect.pivot = new Vector2(0, 0);
+            asRect.anchoredPosition = new Vector2(185, 8);
 
             // DPS cap "RESISTED" text (center, hidden)
-            var dpsGO = CreateHUDText(canvasGO.transform, "RESISTED", TextAnchor.MiddleCenter);
-            _dpsCapText = dpsGO.GetComponent<Text>();
-            _dpsCapText.fontSize = 18;
-            _dpsCapText.color = new Color(0.5f, 0.5f, 0.5f, 0f);
+            var dpsGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 1));
+            _dpsCapImg = dpsGO.GetComponent<Image>();
+            _dpsCapImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("RESISTED", new Color(0.5f, 0.5f, 0.5f), 3);
+            _dpsCapImg.SetNativeSize();
+            _dpsCapImg.color = new Color(1f, 1f, 1f, 0f);
             var dpsRect = dpsGO.GetComponent<RectTransform>();
             dpsRect.anchorMin = new Vector2(0.5f, 1);
             dpsRect.anchorMax = new Vector2(0.5f, 1);
             dpsRect.pivot = new Vector2(0.5f, 1);
             dpsRect.anchoredPosition = new Vector2(0, -70);
 
-            // Kill streak indicator (center-bottom area, hidden by default)
-            var streakGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-            _killStreakText = streakGO.GetComponent<Text>();
-            _killStreakText.fontSize = 32;
-            _killStreakText.color = new Color(1f, 0.85f, 0.2f, 0f); // Start transparent
-            var streakRect = streakGO.GetComponent<RectTransform>();
-            streakRect.anchorMin = new Vector2(0.5f, 0.5f);
-            streakRect.anchorMax = new Vector2(0.5f, 0.5f);
-            streakRect.pivot = new Vector2(0.5f, 0.5f);
-            streakRect.anchoredPosition = new Vector2(0, -200);
-
-            // Lives counter (below timer/relic, for Campaign/Streak)
+            // Lives counter (bottom strip, bottom row, for Campaign/Streak)
             if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.TheBreach)
             {
-                float livesY = (gm.TotalRelics > 0) ? -122f : -100f;
-                var livesGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperLeft);
-                _livesText = livesGO.GetComponent<Text>();
-                _livesText.fontSize = 22;
-                _livesText.color = new Color(1f, 0.85f, 0.2f);
+                var livesGO = CreateHUDImage(canvasGO.transform, new Vector2(0, 0.5f));
+                _livesImg = livesGO.GetComponent<Image>();
+                _livesImg.color = new Color(1f, 0.85f, 0.2f);
                 var livesRect = livesGO.GetComponent<RectTransform>();
-                livesRect.anchorMin = new Vector2(0, 1);
-                livesRect.anchorMax = new Vector2(0, 1);
-                livesRect.pivot = new Vector2(0, 1);
-                livesRect.anchoredPosition = new Vector2(20, livesY);
+                livesRect.anchorMin = new Vector2(0, 0);
+                livesRect.anchorMax = new Vector2(0, 0);
+                livesRect.pivot = new Vector2(0, 0);
+                livesRect.anchoredPosition = new Vector2(640, 44);
             }
 
+            // Collected items summary (bottom strip, bottom row)
+            var itemsGO = CreateHUDImage(canvasGO.transform, new Vector2(0, 0.5f));
+            _itemsImg = itemsGO.GetComponent<Image>();
+            _itemsImg.color = new Color(0.75f, 0.85f, 0.65f, 0f);
+            var itemsRect = itemsGO.GetComponent<RectTransform>();
+            itemsRect.anchorMin = new Vector2(0, 0);
+            itemsRect.anchorMax = new Vector2(0, 0);
+            itemsRect.pivot = new Vector2(0, 0);
+            itemsRect.sizeDelta = new Vector2(400, 20);
+            itemsRect.anchoredPosition = new Vector2(500, 44);
+
             // Score popup pool
-            _popupTexts = new Text[POPUP_POOL_SIZE];
+            _popupImgs = new Image[POPUP_POOL_SIZE];
+            _popupSprites = new Sprite[POPUP_POOL_SIZE];
             _popupTimers = new float[POPUP_POOL_SIZE];
             _popupWorldPositions = new Vector3[POPUP_POOL_SIZE];
             for (int i = 0; i < POPUP_POOL_SIZE; i++)
             {
-                var popGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-                _popupTexts[i] = popGO.GetComponent<Text>();
-                _popupTexts[i].fontSize = 22;
-                _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, 0f);
-                var popRect = popGO.GetComponent<RectTransform>();
-                popRect.sizeDelta = new Vector2(200, 30);
+                var popGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 0.5f));
+                _popupImgs[i] = popGO.GetComponent<Image>();
+                _popupImgs[i].color = new Color(1f, 0.85f, 0.2f, 0f);
             }
 
-            // Combo counter (center of screen, below crosshair area)
-            var comboGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-            _comboText = comboGO.GetComponent<Text>();
-            _comboText.fontSize = 36;
-            _comboText.color = new Color(1f, 0.85f, 0.2f, 0f);
-            var comboRect = comboGO.GetComponent<RectTransform>();
-            comboRect.anchorMin = new Vector2(0.5f, 0.5f);
-            comboRect.anchorMax = new Vector2(0.5f, 0.5f);
-            comboRect.pivot = new Vector2(0.5f, 0.5f);
-            comboRect.anchoredPosition = new Vector2(0, -150);
+            // Damage number popup pool
+            _dmgPopupImgs = new Image[DMG_POPUP_POOL_SIZE];
+            _dmgPopupSprites = new Sprite[DMG_POPUP_POOL_SIZE];
+            _dmgPopupTimers = new float[DMG_POPUP_POOL_SIZE];
+            _dmgPopupWorldPositions = new Vector3[DMG_POPUP_POOL_SIZE];
+            _dmgPopupColors = new Color[DMG_POPUP_POOL_SIZE];
+            for (int i = 0; i < DMG_POPUP_POOL_SIZE; i++)
+            {
+                var dmgGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 0.5f));
+                _dmgPopupImgs[i] = dmgGO.GetComponent<Image>();
+                _dmgPopupImgs[i].color = new Color(1f, 1f, 1f, 0f);
+            }
 
             // Achievement toast (slide from top)
-            var achGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-            _achievementText = achGO.GetComponent<Text>();
-            _achievementText.fontSize = 20;
-            _achievementText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var achGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 0.5f));
+            _achievementImg = achGO.GetComponent<Image>();
+            _achievementImg.color = new Color(1f, 0.85f, 0.2f, 0f);
             var achRect = achGO.GetComponent<RectTransform>();
             achRect.anchorMin = new Vector2(0.5f, 1);
             achRect.anchorMax = new Vector2(0.5f, 1);
             achRect.pivot = new Vector2(0.5f, 1);
-            achRect.sizeDelta = new Vector2(400, 30);
             achRect.anchoredPosition = new Vector2(0, 40); // Starts off-screen above
 
             // Era intro card (large centered text, fades after 2s)
-            var eraCardGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-            _eraCardText = eraCardGO.GetComponent<Text>();
-            _eraCardText.fontSize = 42;
-            _eraCardText.color = new Color(1f, 1f, 1f, 0f);
+            var eraCardGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 0.5f));
+            _eraCardImg = eraCardGO.GetComponent<Image>();
+            _eraCardImg.color = new Color(1f, 1f, 1f, 0f);
             var eraCardRect = eraCardGO.GetComponent<RectTransform>();
             eraCardRect.anchorMin = new Vector2(0.5f, 0.5f);
             eraCardRect.anchorMax = new Vector2(0.5f, 0.5f);
             eraCardRect.pivot = new Vector2(0.5f, 0.5f);
-            eraCardRect.sizeDelta = new Vector2(600, 60);
             eraCardRect.anchoredPosition = new Vector2(0, 50);
 
             if (gm != null)
             {
-                int epoch = gm.CurrentEpoch;
+                int cardEpoch = gm.CurrentEpoch;
                 string eraName = gm.CurrentLevelID.EpochName.ToUpper();
-                _eraCardText.text = $"ERA {epoch + 1}: {eraName}";
-                _eraCardColor = GetEraAccentColor(epoch);
-                _eraCardText.color = new Color(_eraCardColor.r, _eraCardColor.g, _eraCardColor.b, 0f);
+                _eraCardColor = GetEraAccentColor(cardEpoch);
+                _eraCardImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(
+                    $"ERA {cardEpoch + 1}: {eraName}", _eraCardColor, 6);
+                _eraCardImg.SetNativeSize();
+                _eraCardImg.color = new Color(1f, 1f, 1f, 0f);
                 _eraCardTimer = 2.5f;
             }
 
             // Mode subtitle (below era card — explains the current game mode)
-            var modeSubGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-            _modeSubtitleText = modeSubGO.GetComponent<Text>();
-            _modeSubtitleText.fontSize = 20;
-            _modeSubtitleText.color = new Color(0.7f, 0.7f, 0.8f, 0f);
+            var modeSubGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 0.5f));
+            _modeSubtitleImg = modeSubGO.GetComponent<Image>();
+            _modeSubtitleImg.color = new Color(1f, 1f, 1f, 0f);
             var modeSubRect = modeSubGO.GetComponent<RectTransform>();
             modeSubRect.anchorMin = new Vector2(0.5f, 0.5f);
             modeSubRect.anchorMax = new Vector2(0.5f, 0.5f);
             modeSubRect.pivot = new Vector2(0.5f, 0.5f);
-            modeSubRect.sizeDelta = new Vector2(600, 30);
             modeSubRect.anchoredPosition = new Vector2(0, 10);
 
             if (gm != null)
             {
-                _modeSubtitleText.text = gm.CurrentGameMode switch
+                string subtitleText = gm.CurrentGameMode switch
                 {
-                    Gameplay.GameMode.TheBreach => "Randomized epochs \u2014 survive as long as you can",
-                    Gameplay.GameMode.Campaign => "Sequential epochs \u2014 unlock cosmetics",
-                    Gameplay.GameMode.Streak => "Endless random levels \u2014 survive the streak",
+                    Gameplay.GameMode.TheBreach => "RANDOMIZED EPOCHS -- SURVIVE AS LONG AS YOU CAN",
+                    Gameplay.GameMode.Campaign => "SEQUENTIAL EPOCHS -- UNLOCK COSMETICS",
+                    Gameplay.GameMode.Streak => "ENDLESS RANDOM LEVELS -- SURVIVE THE STREAK",
                     _ => ""
                 };
+                if (!string.IsNullOrEmpty(subtitleText))
+                {
+                    _modeSubtitleImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(
+                        subtitleText, new Color(0.7f, 0.7f, 0.8f), 3);
+                    _modeSubtitleImg.SetNativeSize();
+                }
                 _modeSubtitleTimer = 3f;
             }
 
@@ -493,24 +682,21 @@ namespace EpochBreaker.UI
                 badgeRect.sizeDelta = new Vector2(280, 24);
                 badgeRect.anchoredPosition = new Vector2(0, -48);
 
-                var targetGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperCenter);
-                _friendTargetText = targetGO.GetComponent<Text>();
-                _friendTargetText.fontSize = 22;
-                _friendTargetText.color = new Color(0.5f, 0.8f, 1f);
+                var targetGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 1));
+                _friendTargetImg = targetGO.GetComponent<Image>();
+                _friendTargetImg.color = new Color(0.5f, 0.8f, 1f);
+                _UpdatePixelText(ref _friendTargetSprite, _friendTargetImg, $"TARGET: {gm.FriendChallengeScore:N0}", Color.white, 3);
                 var targetRect = targetGO.GetComponent<RectTransform>();
                 targetRect.anchorMin = new Vector2(0.5f, 1);
                 targetRect.anchorMax = new Vector2(0.5f, 1);
                 targetRect.pivot = new Vector2(0.5f, 1);
-                targetRect.sizeDelta = new Vector2(300, 26);
                 targetRect.anchoredPosition = new Vector2(0, -66);
-                _friendTargetText.text = $"Target: {gm.FriendChallengeScore:N0}";
             }
 
             // Weapon upgrade notification (center-bottom, hidden by default)
-            var upgradeGO = CreateHUDText(canvasGO.transform, "", TextAnchor.MiddleCenter);
-            _upgradeNotifyText = upgradeGO.GetComponent<Text>();
-            _upgradeNotifyText.fontSize = 28;
-            _upgradeNotifyText.color = new Color(1f, 0.85f, 0.2f, 0f);
+            var upgradeGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 0.5f));
+            _upgradeNotifyImg = upgradeGO.GetComponent<Image>();
+            _upgradeNotifyImg.color = new Color(1f, 0.85f, 0.2f, 0f);
             var upgradeRect = upgradeGO.GetComponent<RectTransform>();
             upgradeRect.anchorMin = new Vector2(0.5f, 0);
             upgradeRect.anchorMax = new Vector2(0.5f, 0);
@@ -524,10 +710,9 @@ namespace EpochBreaker.UI
             // Mode info (top-center: epoch or streak)
             if (gm != null && gm.CurrentGameMode != Gameplay.GameMode.TheBreach)
             {
-                var modeGO = CreateHUDText(canvasGO.transform, "", TextAnchor.UpperCenter);
-                _modeInfoText = modeGO.GetComponent<Text>();
-                _modeInfoText.fontSize = 22;
-                _modeInfoText.color = new Color(0.9f, 0.85f, 0.7f);
+                var modeGO = CreateHUDImage(canvasGO.transform, new Vector2(0.5f, 1));
+                _modeInfoImg = modeGO.GetComponent<Image>();
+                _modeInfoImg.color = new Color(0.9f, 0.85f, 0.7f);
                 var modeRect = modeGO.GetComponent<RectTransform>();
                 modeRect.anchorMin = new Vector2(0.5f, 1);
                 modeRect.anchorMax = new Vector2(0.5f, 1);
@@ -550,16 +735,15 @@ namespace EpochBreaker.UI
 
         private void UpdateTimer()
         {
-            if (_timerText == null || Gameplay.GameManager.Instance == null) return;
+            if (_timerImg == null || Gameplay.GameManager.Instance == null) return;
             float elapsed = Gameplay.GameManager.Instance.LevelElapsedTime;
             int minutes = (int)(elapsed / 60f);
             float seconds = elapsed % 60f;
-            _timerText.text = $"{minutes}:{seconds:00.0}";
+            _UpdatePixelText(ref _timerSprite, _timerImg, $"{minutes}:{seconds:00.0}", Color.white, 3);
         }
 
         private void UpdateWeaponDisplay()
         {
-            if (_weaponText == null) return;
             if (_cachedWeaponSystem == null)
             {
                 var player = GameObject.FindWithTag("Player");
@@ -568,22 +752,6 @@ namespace EpochBreaker.UI
             }
             var ws = _cachedWeaponSystem;
             if (ws == null) return;
-
-            // Top-right weapon text
-            if (ws.IsUnarmed)
-            {
-                _weaponText.text = "Unarmed";
-                _weaponText.color = Color.gray;
-            }
-            else
-            {
-                string typeName = ws.ActiveWeaponType.ToString();
-                Color typeColor = GetWeaponDisplayColor(ws.ActiveWeaponType);
-                string tierSuffix = ws.ActiveWeaponTier != Generative.WeaponTier.Starting
-                    ? $" [{ws.ActiveWeaponTier}]" : "";
-                _weaponText.text = $"{typeName}{tierSuffix}";
-                _weaponText.color = typeColor;
-            }
 
             // Rebuild wheel when acquired count or tier state changes (weapon pickup/upgrade)
             int tierHash = 0;
@@ -655,17 +823,17 @@ namespace EpochBreaker.UI
             }
 
             // Update center label
-            if (_weaponWheelLabel != null)
+            if (_weaponWheelLabelImg != null)
             {
                 if (ws.IsUnarmed)
                 {
-                    _weaponWheelLabel.text = "Unarmed";
-                    _weaponWheelLabel.color = Color.gray;
+                    _UpdatePixelText(ref _weaponWheelLabelSprite, _weaponWheelLabelImg, "UNARMED", Color.white, 3);
+                    _weaponWheelLabelImg.color = Color.gray;
                 }
                 else
                 {
-                    _weaponWheelLabel.text = ws.ActiveWeaponType.ToString();
-                    _weaponWheelLabel.color = GetWeaponDisplayColor(ws.ActiveWeaponType);
+                    _UpdatePixelText(ref _weaponWheelLabelSprite, _weaponWheelLabelImg, ws.ActiveWeaponType.ToString(), Color.white, 3);
+                    _weaponWheelLabelImg.color = GetWeaponDisplayColor(ws.ActiveWeaponType);
                 }
             }
         }
@@ -827,7 +995,7 @@ namespace EpochBreaker.UI
             rootRect.anchorMin = new Vector2(0, 0);
             rootRect.anchorMax = new Vector2(0, 0);
             rootRect.pivot = new Vector2(0.5f, 0.5f);
-            rootRect.anchoredPosition = new Vector2(130, 220);
+            rootRect.anchoredPosition = new Vector2(88, 150);
             rootRect.sizeDelta = new Vector2(80, 80); // resized by RebuildWheelSlots
 
             // Outline ring
@@ -851,30 +1019,27 @@ namespace EpochBreaker.UI
             _wheelBgRect.anchoredPosition = Vector2.zero;
 
             // Center label
-            var labelGO = CreateHUDText(_weaponWheelRoot.transform, "", TextAnchor.MiddleCenter);
-            _weaponWheelLabel = labelGO.GetComponent<Text>();
-            _weaponWheelLabel.fontSize = 18;
-            _weaponWheelLabel.raycastTarget = false;
+            var labelGO = CreateHUDImage(_weaponWheelRoot.transform, new Vector2(0.5f, 0.5f));
+            _weaponWheelLabelImg = labelGO.GetComponent<Image>();
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchoredPosition = Vector2.zero;
-            labelRect.sizeDelta = new Vector2(120, 30);
 
             // Slots are created dynamically by RebuildWheelSlots
         }
 
         private void CreateHeatBar(Transform parent)
         {
-            // Background
+            // Background (bottom strip, bottom row — Cannon heat)
             var bgGO = new GameObject("HeatBarBg");
             bgGO.transform.SetParent(parent, false);
             _heatBarBg = bgGO.AddComponent<Image>();
             _heatBarBg.color = new Color(0.2f, 0.2f, 0.2f, 0.6f);
             var bgRect = bgGO.GetComponent<RectTransform>();
-            bgRect.anchorMin = new Vector2(1, 1);
-            bgRect.anchorMax = new Vector2(1, 1);
-            bgRect.pivot = new Vector2(1, 1);
-            bgRect.sizeDelta = new Vector2(120, 10);
-            bgRect.anchoredPosition = new Vector2(-20, -66);
+            bgRect.anchorMin = new Vector2(0, 0);
+            bgRect.anchorMax = new Vector2(0, 0);
+            bgRect.pivot = new Vector2(0, 0);
+            bgRect.sizeDelta = new Vector2(120, 8);
+            bgRect.anchoredPosition = new Vector2(185, 24);
 
             // Fill
             var fillGO = new GameObject("HeatBarFill");
@@ -919,50 +1084,17 @@ namespace EpochBreaker.UI
 
         private void UpdateRelicCounter()
         {
-            if (_relicText == null) return;
+            if (_relicImg == null) return;
             var gm = Gameplay.GameManager.Instance;
             if (gm == null) return;
 
             int preserved = Mathf.Max(0, gm.TotalRelics - gm.RelicsDestroyed);
-            _relicText.text = $"Relics Preserved: {preserved}/{gm.TotalRelics}";
+            _UpdatePixelText(ref _relicSprite, _relicImg, $"RELICS PRESERVED: {preserved}/{gm.TotalRelics}", Color.white, 2);
 
             // Gold when all preserved, red-tinted when some lost
-            _relicText.color = gm.RelicsDestroyed > 0
+            _relicImg.color = gm.RelicsDestroyed > 0
                 ? new Color(1f, 0.5f, 0.3f)
                 : new Color(1f, 0.85f, 0.2f);
-        }
-
-        private void UpdateKillStreak()
-        {
-            if (_killStreakText == null) return;
-            var gm = Gameplay.GameManager.Instance;
-            if (gm == null) return;
-
-            int streak = gm.CurrentNoDamageStreak;
-
-            // Show when streak reaches 3+
-            if (streak >= 3 && streak != _lastKnownStreak)
-            {
-                _lastKnownStreak = streak;
-                _killStreakText.text = $"x{streak}";
-                _killStreakFadeTimer = 2f;
-            }
-
-            // Reset on streak break
-            if (streak < 3)
-                _lastKnownStreak = 0;
-
-            // Fade out
-            if (_killStreakFadeTimer > 0f)
-            {
-                _killStreakFadeTimer -= Time.deltaTime;
-                float alpha = Mathf.Clamp01(_killStreakFadeTimer / 0.5f); // fade over last 0.5s
-                _killStreakText.color = new Color(1f, 0.85f, 0.2f, alpha);
-            }
-            else
-            {
-                _killStreakText.color = new Color(1f, 0.85f, 0.2f, 0f);
-            }
         }
 
         private void UpdateModeInfo()
@@ -970,24 +1102,24 @@ namespace EpochBreaker.UI
             var gm = Gameplay.GameManager.Instance;
             if (gm == null) return;
 
-            if (_livesText != null)
+            if (_livesImg != null)
             {
                 // Campaign has infinite lives — show deaths/level instead of global lives
                 if (gm.CurrentGameMode == Gameplay.GameMode.Campaign)
-                    _livesText.text = $"Deaths: {gm.DeathsThisLevel}";
+                    _UpdatePixelText(ref _livesSprite, _livesImg, $"DEATHS: {gm.DeathsThisLevel}", Color.white, 3);
                 else
-                    _livesText.text = $"Lives: {gm.GlobalLives}";
+                    _UpdatePixelText(ref _livesSprite, _livesImg, $"LIVES: {gm.GlobalLives}", Color.white, 3);
             }
 
-            if (_modeInfoText != null)
+            if (_modeInfoImg != null)
             {
                 switch (gm.CurrentGameMode)
                 {
                     case Gameplay.GameMode.Campaign:
-                        _modeInfoText.text = $"Campaign - Epoch {gm.CampaignEpoch + 1}/10";
+                        _UpdatePixelText(ref _modeInfoSprite, _modeInfoImg, $"CAMPAIGN - EPOCH {gm.CampaignEpoch + 1}/10", Color.white, 3);
                         break;
                     case Gameplay.GameMode.Streak:
-                        _modeInfoText.text = $"Streak: {gm.StreakCount}";
+                        _UpdatePixelText(ref _modeInfoSprite, _modeInfoImg, $"STREAK: {gm.StreakCount}", Color.white, 3);
                         break;
                 }
             }
@@ -995,17 +1127,17 @@ namespace EpochBreaker.UI
 
         private void CreateAbilityIcons(Transform parent)
         {
-            // Double Jump icon (below hearts, left)
+            // Double Jump icon (bottom strip, bottom row)
             var djGO = new GameObject("DoubleJumpIcon");
             djGO.transform.SetParent(parent, false);
             _doubleJumpIcon = djGO.AddComponent<Image>();
             _doubleJumpIcon.color = new Color(0.3f, 0.3f, 0.3f, 0.3f); // Dimmed until acquired
             var djRect = djGO.GetComponent<RectTransform>();
-            djRect.anchorMin = new Vector2(0, 1);
-            djRect.anchorMax = new Vector2(0, 1);
-            djRect.pivot = new Vector2(0, 1);
-            djRect.sizeDelta = new Vector2(28, 28);
-            djRect.anchoredPosition = new Vector2(20, -100);
+            djRect.anchorMin = new Vector2(0, 0);
+            djRect.anchorMax = new Vector2(0, 0);
+            djRect.pivot = new Vector2(0, 0);
+            djRect.sizeDelta = new Vector2(26, 26);
+            djRect.anchoredPosition = new Vector2(410, 44);
 
             // Air Dash icon (next to double jump)
             var adGO = new GameObject("AirDashIcon");
@@ -1013,16 +1145,16 @@ namespace EpochBreaker.UI
             _airDashIcon = adGO.AddComponent<Image>();
             _airDashIcon.color = new Color(0.3f, 0.3f, 0.3f, 0.3f);
             var adRect = adGO.GetComponent<RectTransform>();
-            adRect.anchorMin = new Vector2(0, 1);
-            adRect.anchorMax = new Vector2(0, 1);
-            adRect.pivot = new Vector2(0, 1);
-            adRect.sizeDelta = new Vector2(28, 28);
-            adRect.anchoredPosition = new Vector2(54, -100);
+            adRect.anchorMin = new Vector2(0, 0);
+            adRect.anchorMax = new Vector2(0, 0);
+            adRect.pivot = new Vector2(0, 0);
+            adRect.sizeDelta = new Vector2(26, 26);
+            adRect.anchoredPosition = new Vector2(450, 44);
         }
 
         private void UpdateRunningScore()
         {
-            if (_scoreText == null) return;
+            if (_scoreImg == null) return;
             var gm = Gameplay.GameManager.Instance;
             if (gm == null) return;
 
@@ -1030,7 +1162,7 @@ namespace EpochBreaker.UI
             if (runningScore != _displayedScore)
             {
                 _displayedScore = runningScore;
-                _scoreText.text = _displayedScore.ToString();
+                _UpdatePixelText(ref _scoreSprite, _scoreImg, _displayedScore.ToString(), Color.white, 4);
                 _scoreScaleTimer = 0.2f;
             }
 
@@ -1039,13 +1171,13 @@ namespace EpochBreaker.UI
             {
                 _scoreScaleTimer -= Time.deltaTime;
                 float scale = 1f + Mathf.Clamp01(_scoreScaleTimer / 0.2f) * 0.3f;
-                _scoreText.transform.localScale = new Vector3(scale, scale, 1f);
-                _scoreText.color = Color.Lerp(Color.white, new Color(1f, 0.85f, 0.2f), _scoreScaleTimer / 0.2f);
+                _scoreImg.transform.localScale = new Vector3(scale, scale, 1f);
+                _scoreImg.color = Color.Lerp(Color.white, new Color(1f, 0.85f, 0.2f), _scoreScaleTimer / 0.2f);
             }
             else
             {
-                _scoreText.transform.localScale = Vector3.one;
-                _scoreText.color = Color.white;
+                _scoreImg.transform.localScale = Vector3.one;
+                _scoreImg.color = Color.white;
             }
         }
 
@@ -1094,18 +1226,8 @@ namespace EpochBreaker.UI
             var ws = _cachedWeaponSystem;
             if (ws == null) return;
 
-            // Weapon name glow when Quick Draw active
-            if (ws.IsQuickDrawActive && _weaponText != null)
-            {
-                float pulse = Mathf.PingPong(Time.time * 4f, 1f);
-                _weaponText.color = Color.Lerp(
-                    GetWeaponDisplayColor(ws.ActiveWeaponType),
-                    new Color(1f, 0.85f, 0.2f),
-                    pulse * 0.5f);
-            }
-
             // "QUICK DRAW!" flash text
-            if (_quickDrawText != null)
+            if (_quickDrawImg != null)
             {
                 if (ws.IsQuickDrawActive && _quickDrawFlashTimer <= 0f)
                 {
@@ -1120,36 +1242,36 @@ namespace EpochBreaker.UI
                 {
                     _quickDrawFlashTimer -= Time.deltaTime;
                     float alpha = Mathf.Clamp01(_quickDrawFlashTimer / 0.5f);
-                    _quickDrawText.color = new Color(1f, 0.85f, 0.2f, alpha);
+                    _quickDrawImg.color = new Color(1f, 1f, 1f, alpha);
                 }
                 else
                 {
-                    _quickDrawText.color = new Color(1f, 0.85f, 0.2f, 0f);
+                    _quickDrawImg.color = new Color(1f, 1f, 1f, 0f);
                 }
             }
         }
 
         private void UpdateAutoSelectReason()
         {
-            if (_autoSelectText == null) return;
+            if (_autoSelectImg == null) return;
             var ws = _cachedWeaponSystem;
             if (ws == null) return;
 
             if (ws.AutoSelectReasonTimer > 0f && !string.IsNullOrEmpty(ws.LastAutoSelectReason))
             {
-                _autoSelectText.text = $"\u2192{ws.LastAutoSelectReason}";
+                _UpdatePixelText(ref _autoSelectSprite, _autoSelectImg, $">>{ws.LastAutoSelectReason}", Color.white, 2);
                 float alpha = Mathf.Clamp01(ws.AutoSelectReasonTimer / 0.5f);
-                _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, alpha);
+                _autoSelectImg.color = new Color(0.7f, 0.8f, 0.5f, alpha);
             }
             else
             {
-                _autoSelectText.color = new Color(0.7f, 0.8f, 0.5f, 0f);
+                _autoSelectImg.color = new Color(0.7f, 0.8f, 0.5f, 0f);
             }
         }
 
         private void UpdateDpsCapFeedback()
         {
-            if (_dpsCapText == null) return;
+            if (_dpsCapImg == null) return;
 
             var loader = FindAnyObjectByType<Gameplay.LevelLoader>();
             var boss = loader?.CurrentBoss;
@@ -1165,11 +1287,11 @@ namespace EpochBreaker.UI
             {
                 _dpsCapTimer -= Time.deltaTime;
                 float alpha = Mathf.Clamp01(_dpsCapTimer / 0.3f);
-                _dpsCapText.color = new Color(0.6f, 0.6f, 0.6f, alpha);
+                _dpsCapImg.color = new Color(1f, 1f, 1f, alpha);
             }
             else
             {
-                _dpsCapText.color = new Color(0.6f, 0.6f, 0.6f, 0f);
+                _dpsCapImg.color = new Color(1f, 1f, 1f, 0f);
             }
         }
 
@@ -1187,17 +1309,14 @@ namespace EpochBreaker.UI
             // Boss name text
             var nameGO = new GameObject("BossName");
             nameGO.transform.SetParent(_bossBarRoot.transform, false);
-            _bossNameText = nameGO.AddComponent<Text>();
-            _bossNameText.fontSize = 18;
-            _bossNameText.color = new Color(1f, 0.85f, 0.7f);
-            _bossNameText.alignment = TextAnchor.MiddleCenter;
-            _bossNameText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _bossNameText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            _bossNameImg = nameGO.AddComponent<Image>();
+            _bossNameImg.preserveAspect = true;
+            _bossNameImg.raycastTarget = false;
+            _bossNameImg.color = new Color(1f, 0.85f, 0.7f);
             var nameRect = nameGO.GetComponent<RectTransform>();
-            nameRect.anchorMin = new Vector2(0, 1);
-            nameRect.anchorMax = new Vector2(1, 1);
+            nameRect.anchorMin = new Vector2(0.5f, 1);
+            nameRect.anchorMax = new Vector2(0.5f, 1);
             nameRect.pivot = new Vector2(0.5f, 1);
-            nameRect.sizeDelta = new Vector2(0, 24);
             nameRect.anchoredPosition = new Vector2(0, 0);
 
             // Bar background
@@ -1254,7 +1373,8 @@ namespace EpochBreaker.UI
                 string rawName = boss.Type.ToString();
                 string displayName = System.Text.RegularExpressions.Regex.Replace(rawName, "([a-z])([A-Z])", "$1 $2").ToUpper();
                 if (displayName.Length > 20) displayName = displayName.Substring(0, 20);
-                _bossNameText.text = displayName;
+                _UpdatePixelText(ref _bossNameSprite, _bossNameImg, displayName, Color.white, 3);
+                _bossNameImg.color = new Color(1f, 0.85f, 0.7f);
             }
 
             // Detect health drop → trigger flash
@@ -1292,20 +1412,19 @@ namespace EpochBreaker.UI
                 _bossBarFill.color = barColor;
         }
 
-        private GameObject CreateHUDText(Transform parent, string text, TextAnchor alignment)
+        private GameObject CreateHUDImage(Transform parent, Vector2 pivot)
         {
             var go = new GameObject("HUDText");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = 22;
-            textComp.color = Color.white;
-            textComp.alignment = alignment;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComp.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var img = go.AddComponent<Image>();
+            img.sprite = null;
+            img.color = new Color(1f, 1f, 1f, 0f);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
 
             var rect = go.GetComponent<RectTransform>();
+            rect.pivot = pivot;
             rect.sizeDelta = new Vector2(300, 30);
 
             return go;
@@ -1318,8 +1437,8 @@ namespace EpochBreaker.UI
             {
                 if (_popupTimers[i] <= 0f)
                 {
-                    _popupTexts[i].text = $"+{score}";
-                    _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, 1f);
+                    _UpdatePixelText(ref _popupSprites[i], _popupImgs[i], $"+{score}", Color.white, 3);
+                    _popupImgs[i].color = new Color(1f, 0.85f, 0.2f, 1f);
                     _popupTimers[i] = 1f;
                     _popupWorldPositions[i] = worldPos + new Vector3(0, 0.5f, 0);
                     return;
@@ -1337,15 +1456,15 @@ namespace EpochBreaker.UI
                     oldestIdx = i;
                 }
             }
-            _popupTexts[oldestIdx].text = $"+{score}";
-            _popupTexts[oldestIdx].color = new Color(1f, 0.85f, 0.2f, 1f);
+            _UpdatePixelText(ref _popupSprites[oldestIdx], _popupImgs[oldestIdx], $"+{score}", Color.white, 3);
+            _popupImgs[oldestIdx].color = new Color(1f, 0.85f, 0.2f, 1f);
             _popupTimers[oldestIdx] = 1f;
             _popupWorldPositions[oldestIdx] = worldPos + new Vector3(0, 0.5f, 0);
         }
 
         private void UpdateScorePopups()
         {
-            if (_popupTexts == null) return;
+            if (_popupImgs == null) return;
             var cam = Camera.main;
             if (cam == null) return;
 
@@ -1360,7 +1479,7 @@ namespace EpochBreaker.UI
                     Vector3 screenPos = cam.WorldToScreenPoint(_popupWorldPositions[i]);
                     if (screenPos.z < 0) { _popupTimers[i] = 0f; continue; }
 
-                    var rect = _popupTexts[i].GetComponent<RectTransform>();
+                    var rect = _popupImgs[i].GetComponent<RectTransform>();
                     RectTransformUtility.ScreenPointToLocalPointInRectangle(
                         _canvas.GetComponent<RectTransform>(), screenPos, null, out Vector2 localPos);
                     rect.anchoredPosition = localPos;
@@ -1369,33 +1488,97 @@ namespace EpochBreaker.UI
 
                     float alpha = Mathf.Clamp01(_popupTimers[i] / 0.4f);
                     float scale = 1f + (1f - Mathf.Clamp01(_popupTimers[i])) * 0.3f;
-                    _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, alpha);
-                    _popupTexts[i].transform.localScale = new Vector3(scale, scale, 1f);
+                    _popupImgs[i].color = new Color(1f, 0.85f, 0.2f, alpha);
+                    _popupImgs[i].transform.localScale = new Vector3(scale, scale, 1f);
                 }
                 else
                 {
-                    _popupTexts[i].color = new Color(1f, 0.85f, 0.2f, 0f);
+                    _popupImgs[i].color = new Color(1f, 0.85f, 0.2f, 0f);
                 }
             }
         }
 
-        private void UpdateComboCounter()
+        private void HandleDamagePopup(Vector3 worldPos, int damage, Color color)
         {
-            if (_comboText == null) return;
-            var gm = Gameplay.GameManager.Instance;
-            if (gm == null) return;
+            if (_dmgPopupImgs == null) return;
 
-            int combo = gm.ComboCount;
-            if (combo >= 2)
+            // Slight random X offset so overlapping hits don't stack exactly
+            float xOffset = UnityEngine.Random.Range(-0.3f, 0.3f);
+            Vector3 pos = worldPos + new Vector3(xOffset, 0.6f, 0);
+
+            // Kill shots (red) get larger text
+            bool isKillShot = color.r > 0.9f && color.g < 0.3f;
+            int dmgScale = isKillShot ? 4 : 3;
+
+            // Find available slot
+            for (int i = 0; i < DMG_POPUP_POOL_SIZE; i++)
             {
-                _comboText.text = $"x{combo} COMBO";
-                int fontSize = Mathf.Min(48, 30 + combo * 3);
-                _comboText.fontSize = fontSize;
-                _comboText.color = new Color(1f, 0.85f, 0.2f, 0.9f);
+                if (_dmgPopupTimers[i] <= 0f)
+                {
+                    CleanupSprite(ref _dmgPopupSprites[i]);
+                    _dmgPopupSprites[i] = Gameplay.PlaceholderAssets.CreatePixelTextSprite(damage.ToString(), Color.white, dmgScale);
+                    _dmgPopupImgs[i].sprite = _dmgPopupSprites[i];
+                    _dmgPopupImgs[i].SetNativeSize();
+                    _dmgPopupColors[i] = color;
+                    _dmgPopupImgs[i].color = new Color(color.r, color.g, color.b, 1f);
+                    _dmgPopupTimers[i] = 0.6f;
+                    _dmgPopupWorldPositions[i] = pos;
+                    return;
+                }
             }
-            else
+
+            // No free slot — reuse oldest
+            int oldestIdx = 0;
+            float oldestTime = float.MaxValue;
+            for (int i = 0; i < DMG_POPUP_POOL_SIZE; i++)
             {
-                _comboText.color = new Color(1f, 0.85f, 0.2f, 0f);
+                if (_dmgPopupTimers[i] < oldestTime)
+                {
+                    oldestTime = _dmgPopupTimers[i];
+                    oldestIdx = i;
+                }
+            }
+            CleanupSprite(ref _dmgPopupSprites[oldestIdx]);
+            _dmgPopupSprites[oldestIdx] = Gameplay.PlaceholderAssets.CreatePixelTextSprite(damage.ToString(), Color.white, dmgScale);
+            _dmgPopupImgs[oldestIdx].sprite = _dmgPopupSprites[oldestIdx];
+            _dmgPopupImgs[oldestIdx].SetNativeSize();
+            _dmgPopupColors[oldestIdx] = color;
+            _dmgPopupImgs[oldestIdx].color = new Color(color.r, color.g, color.b, 1f);
+            _dmgPopupTimers[oldestIdx] = 0.6f;
+            _dmgPopupWorldPositions[oldestIdx] = pos;
+        }
+
+        private void UpdateDamagePopups()
+        {
+            if (_dmgPopupImgs == null) return;
+            var cam = Camera.main;
+            if (cam == null) return;
+
+            for (int i = 0; i < DMG_POPUP_POOL_SIZE; i++)
+            {
+                if (_dmgPopupTimers[i] > 0f)
+                {
+                    _dmgPopupTimers[i] -= Time.deltaTime;
+                    _dmgPopupWorldPositions[i] += new Vector3(0, 2f * Time.deltaTime, 0);
+
+                    Vector3 screenPos = cam.WorldToScreenPoint(_dmgPopupWorldPositions[i]);
+                    if (screenPos.z < 0) { _dmgPopupTimers[i] = 0f; continue; }
+
+                    var rect = _dmgPopupImgs[i].GetComponent<RectTransform>();
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                        _canvas.GetComponent<RectTransform>(), screenPos, null, out Vector2 localPos);
+                    rect.anchoredPosition = localPos;
+                    rect.anchorMin = new Vector2(0.5f, 0.5f);
+                    rect.anchorMax = new Vector2(0.5f, 0.5f);
+
+                    float alpha = Mathf.Clamp01(_dmgPopupTimers[i] / 0.2f);
+                    var c = _dmgPopupColors[i];
+                    _dmgPopupImgs[i].color = new Color(c.r, c.g, c.b, alpha);
+                }
+                else
+                {
+                    _dmgPopupImgs[i].color = new Color(1f, 1f, 1f, 0f);
+                }
             }
         }
 
@@ -1407,7 +1590,7 @@ namespace EpochBreaker.UI
 
         private void UpdateAchievementToast()
         {
-            if (_achievementText == null) return;
+            if (_achievementImg == null) return;
 
             if (_achievementTimer > 0f)
             {
@@ -1419,40 +1602,40 @@ namespace EpochBreaker.UI
                 float y = Mathf.Lerp(40f, -10f, slideIn);
                 float alpha = slideOut;
 
-                var rect = _achievementText.GetComponent<RectTransform>();
+                var rect = _achievementImg.GetComponent<RectTransform>();
                 rect.anchoredPosition = new Vector2(0, y);
-                _achievementText.color = new Color(1f, 0.85f, 0.2f, alpha);
+                _achievementImg.color = new Color(1f, 0.85f, 0.2f, alpha);
             }
             else if (_achievementQueue.Count > 0)
             {
                 string name = _achievementQueue.Dequeue();
-                _achievementText.text = $"ACHIEVEMENT: {name}";
+                _UpdatePixelText(ref _achievementSprite, _achievementImg, $"ACHIEVEMENT: {name}", Color.white, 3);
                 _achievementTimer = 3f;
             }
             else
             {
-                _achievementText.color = new Color(1f, 0.85f, 0.2f, 0f);
+                _achievementImg.color = new Color(1f, 0.85f, 0.2f, 0f);
             }
         }
 
         private void UpdateEraCard()
         {
-            if (_eraCardText == null || _eraCardTimer <= 0f) return;
+            if (_eraCardImg == null || _eraCardTimer <= 0f) return;
             _eraCardTimer -= Time.deltaTime;
             float fadeIn = Mathf.Clamp01((2.5f - _eraCardTimer) / 0.3f);
             float fadeOut = Mathf.Clamp01(_eraCardTimer / 0.5f);
             float alpha = Mathf.Min(fadeIn, fadeOut);
-            _eraCardText.color = new Color(_eraCardColor.r, _eraCardColor.g, _eraCardColor.b, alpha);
+            _eraCardImg.color = new Color(1f, 1f, 1f, alpha);
         }
 
         private void UpdateModeSubtitle()
         {
-            if (_modeSubtitleText == null || _modeSubtitleTimer <= 0f) return;
+            if (_modeSubtitleImg == null || _modeSubtitleTimer <= 0f) return;
             _modeSubtitleTimer -= Time.deltaTime;
             float fadeIn = Mathf.Clamp01((3f - _modeSubtitleTimer) / 0.5f);
             float fadeOut = Mathf.Clamp01(_modeSubtitleTimer / 0.5f);
             float alpha = Mathf.Min(fadeIn, fadeOut) * 0.8f;
-            _modeSubtitleText.color = new Color(0.7f, 0.7f, 0.8f, alpha);
+            _modeSubtitleImg.color = new Color(1f, 1f, 1f, alpha);
         }
 
         private static Color GetEraAccentColor(int epoch)
@@ -1508,18 +1691,18 @@ namespace EpochBreaker.UI
 
         private void CreateSpecialAttackBar(Transform parent)
         {
-            // Background bar (below hearts row)
+            // Background bar (below weapon wheel in L-strip)
             var bgGO = new GameObject("SpecialBarBg");
             bgGO.transform.SetParent(parent, false);
             _specialBarBg = bgGO.AddComponent<Image>();
             _specialBarBg.color = new Color(0.2f, 0.2f, 0.2f, 0.5f);
             _specialBarBg.raycastTarget = false;
             var bgRect = bgGO.GetComponent<RectTransform>();
-            bgRect.anchorMin = new Vector2(0, 1);
-            bgRect.anchorMax = new Vector2(0, 1);
-            bgRect.pivot = new Vector2(0, 1);
-            bgRect.sizeDelta = new Vector2(220, 8);
-            bgRect.anchoredPosition = new Vector2(20, -58);
+            bgRect.anchorMin = new Vector2(0, 0);
+            bgRect.anchorMax = new Vector2(0, 0);
+            bgRect.pivot = new Vector2(0.5f, 0);
+            bgRect.sizeDelta = new Vector2(140, 6);
+            bgRect.anchoredPosition = new Vector2(88, 6);
 
             // Fill bar
             var fillGO = new GameObject("SpecialBarFill");
@@ -1618,7 +1801,7 @@ namespace EpochBreaker.UI
 
         private void UpdateFriendTarget()
         {
-            if (_friendTargetText == null) return;
+            if (_friendTargetImg == null) return;
             var gm = Gameplay.GameManager.Instance;
             if (gm == null || gm.FriendChallengeScore <= 0) return;
 
@@ -1628,14 +1811,14 @@ namespace EpochBreaker.UI
             if (currentRunning >= target)
             {
                 // Player has beaten the friend's score
-                _friendTargetText.text = $"Target: {target:N0} - BEATEN!";
-                _friendTargetText.color = new Color(0.4f, 1f, 0.4f);
+                _UpdatePixelText(ref _friendTargetSprite, _friendTargetImg, $"TARGET: {target:N0} - BEATEN!", Color.white, 3);
+                _friendTargetImg.color = new Color(0.4f, 1f, 0.4f);
             }
             else
             {
                 int remaining = target - currentRunning;
-                _friendTargetText.text = $"Target: {target:N0} (need {remaining:N0})";
-                _friendTargetText.color = new Color(0.5f, 0.8f, 1f);
+                _UpdatePixelText(ref _friendTargetSprite, _friendTargetImg, $"TARGET: {target:N0} (NEED {remaining:N0})", Color.white, 3);
+                _friendTargetImg.color = new Color(0.5f, 0.8f, 1f);
             }
         }
 
@@ -1646,19 +1829,67 @@ namespace EpochBreaker.UI
 
         private void HandleWeaponUpgrade(Generative.WeaponType type, Generative.WeaponTier tier)
         {
-            if (_upgradeNotifyText == null) return;
-            _upgradeNotifyText.text = $"{type} \u2192 {tier}";
+            if (_upgradeNotifyImg == null) return;
+            _UpdatePixelText(ref _upgradeNotifySprite, _upgradeNotifyImg, $"{type} >> {tier}", Color.white, 4);
             _upgradeNotifyTimer = 2f;
         }
 
         private void UpdateUpgradeNotification()
         {
-            if (_upgradeNotifyText == null || _upgradeNotifyTimer <= 0f) return;
+            if (_upgradeNotifyImg == null || _upgradeNotifyTimer <= 0f) return;
             _upgradeNotifyTimer -= Time.deltaTime;
             float alpha = Mathf.Clamp01(_upgradeNotifyTimer / 0.5f);
             float scale = 1f + Mathf.Clamp01((_upgradeNotifyTimer - 1.5f) / 0.5f) * 0.3f;
-            _upgradeNotifyText.color = new Color(1f, 0.85f, 0.2f, alpha);
-            _upgradeNotifyText.transform.localScale = new Vector3(scale, scale, 1f);
+            _upgradeNotifyImg.color = new Color(1f, 0.85f, 0.2f, alpha);
+            _upgradeNotifyImg.transform.localScale = new Vector3(scale, scale, 1f);
+        }
+
+        private void UpdateCollectedItems()
+        {
+            if (_itemsImg == null) return;
+            var gm = Gameplay.GameManager.Instance;
+            if (gm == null) return;
+
+            // Build a hash to detect changes, avoiding string alloc every frame
+            int hash = 0;
+            foreach (var kvp in gm.RewardCounts)
+                hash += (int)kvp.Key * 100 + kvp.Value;
+            foreach (var kvp in gm.WeaponCounts)
+                hash += ((int)kvp.Key + 10) * 100 + kvp.Value;
+
+            if (hash == _lastItemHash) return;
+            _lastItemHash = hash;
+
+            var sb = new System.Text.StringBuilder(64);
+            foreach (var kvp in gm.RewardCounts)
+            {
+                if (kvp.Value <= 0) continue;
+                if (sb.Length > 0) sb.Append("  ");
+                string label = kvp.Key switch
+                {
+                    Generative.RewardType.HealthSmall => "HP",
+                    Generative.RewardType.HealthLarge => "HP+",
+                    Generative.RewardType.AttackBoost => "ATK",
+                    Generative.RewardType.SpeedBoost => "SPD",
+                    Generative.RewardType.Shield => "SHD",
+                    Generative.RewardType.Coin => "$",
+                    _ => kvp.Key.ToString()
+                };
+                sb.Append(label).Append(':').Append(kvp.Value);
+            }
+            foreach (var kvp in gm.WeaponCounts)
+            {
+                if (kvp.Value <= 0) continue;
+                if (sb.Length > 0) sb.Append("  ");
+                sb.Append("WPN:").Append(kvp.Value);
+            }
+
+            string itemStr = sb.ToString();
+            if (!string.IsNullOrEmpty(itemStr))
+            {
+                _UpdatePixelText(ref _itemsSprite, _itemsImg, itemStr, Color.white, 2);
+                _itemsImg.color = new Color(0.75f, 0.85f, 0.65f);
+            }
         }
 
         private void CreatePauseButton(Transform parent)
@@ -1685,16 +1916,16 @@ namespace EpochBreaker.UI
             // Pause icon text
             var textGO = new GameObject("PauseLabel");
             textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = "||";
-            textComp.fontSize = 24;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var pauseImg = textGO.AddComponent<Image>();
+            pauseImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("||", Color.white, 4);
+            pauseImg.preserveAspect = true;
+            pauseImg.raycastTarget = false;
+            pauseImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
         }
     }
 }

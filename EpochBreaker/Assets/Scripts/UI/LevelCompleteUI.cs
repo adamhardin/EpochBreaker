@@ -13,11 +13,13 @@ namespace EpochBreaker.UI
         private Button _continueBtn;
         private Button _replayBtn;
         private Button _menuBtn;
-        private Text _continueBtnLabel;
-        private Text _hintText;
+        private Image _continueBtnImg;
+        private Sprite _continueBtnSprite;
+        private string _lastContinueText;
+        private Image _hintImg;
 
         // Sprint 8: Share and ghost replay
-        private Text _copiedFeedbackText;
+        private Image _copiedFeedbackImg;
         private float _copiedFeedbackTimer;
 
         private void Start()
@@ -37,18 +39,28 @@ namespace EpochBreaker.UI
             if (_replayBtn) _replayBtn.interactable = !locked;
             if (_menuBtn) _menuBtn.interactable = !locked;
 
-            if (_continueBtnLabel)
-                _continueBtnLabel.text = locked ? $"CONTINUE ({Mathf.CeilToInt(remaining)}s)" : "CONTINUE";
+            if (_continueBtnImg)
+            {
+                string btnText = locked ? $"CONTINUE ({Mathf.CeilToInt(remaining)}S)" : "CONTINUE";
+                if (btnText != _lastContinueText)
+                {
+                    _lastContinueText = btnText;
+                    if (_continueBtnSprite != null) { Destroy(_continueBtnSprite.texture); Destroy(_continueBtnSprite); }
+                    _continueBtnSprite = Gameplay.PlaceholderAssets.CreatePixelTextSprite(btnText, Color.white, 3);
+                    _continueBtnImg.sprite = _continueBtnSprite;
+                    _continueBtnImg.SetNativeSize();
+                }
+            }
 
-            if (_hintText)
-                _hintText.color = locked ? new Color(0.3f, 0.3f, 0.35f) : new Color(0.5f, 0.5f, 0.6f);
+            if (_hintImg)
+                _hintImg.color = locked ? new Color(1f, 1f, 1f, 0.3f) : new Color(1f, 1f, 1f, 0.6f);
 
             // Fade out "Copied!" feedback
-            if (_copiedFeedbackText != null && _copiedFeedbackTimer > 0f)
+            if (_copiedFeedbackImg != null && _copiedFeedbackTimer > 0f)
             {
                 _copiedFeedbackTimer -= Time.deltaTime;
                 float alpha = Mathf.Clamp01(_copiedFeedbackTimer / 0.5f);
-                _copiedFeedbackText.color = new Color(0.4f, 1f, 0.4f, alpha);
+                _copiedFeedbackImg.color = new Color(1f, 1f, 1f, alpha);
             }
         }
 
@@ -59,6 +71,7 @@ namespace EpochBreaker.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 110;
+            canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -126,13 +139,12 @@ namespace EpochBreaker.UI
                 });
             var copyRect = copyBtn.GetComponent<RectTransform>();
             copyRect.sizeDelta = new Vector2(80, 30);
-            var copyLabel = copyBtn.GetComponentInChildren<Text>();
-            if (copyLabel != null) copyLabel.fontSize = 16;
 
             // "Copied!" feedback (near the COPY button, hidden until triggered)
-            var copiedGO = CreateText(canvasGO.transform, "Copied to clipboard!", 16,
-                new Color(0.4f, 1f, 0.4f, 0f), new Vector2(0, 365));
-            _copiedFeedbackText = copiedGO.GetComponent<Text>();
+            var copiedGO = CreateText(canvasGO.transform, "COPIED!", 16,
+                new Color(0.4f, 1f, 0.4f), new Vector2(0, 365));
+            _copiedFeedbackImg = copiedGO.GetComponent<Image>();
+            if (_copiedFeedbackImg != null) _copiedFeedbackImg.color = new Color(1f, 1f, 1f, 0f);
 
             // Stars
             string starDisplay = new string('*', stars) + new string('-', 3 - stars);
@@ -185,16 +197,14 @@ namespace EpochBreaker.UI
             // Panel header "SCORE"
             var scoreHeaderGO = new GameObject("ScoreHeader");
             scoreHeaderGO.transform.SetParent(panelGO.transform, false);
-            var scoreHeaderText = scoreHeaderGO.AddComponent<Text>();
-            scoreHeaderText.text = "SCORE";
-            scoreHeaderText.fontSize = 24;
-            scoreHeaderText.color = new Color(0.9f, 0.9f, 1f);
-            scoreHeaderText.alignment = TextAnchor.MiddleCenter;
-            scoreHeaderText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var scoreHeaderImg = scoreHeaderGO.AddComponent<Image>();
+            scoreHeaderImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("SCORE", new Color(0.9f, 0.9f, 1f), 4);
+            scoreHeaderImg.preserveAspect = true;
+            scoreHeaderImg.raycastTarget = false;
+            scoreHeaderImg.SetNativeSize();
             var scoreHeaderRect = scoreHeaderGO.GetComponent<RectTransform>();
             scoreHeaderRect.anchorMin = new Vector2(0.5f, 0.5f);
             scoreHeaderRect.anchorMax = new Vector2(0.5f, 0.5f);
-            scoreHeaderRect.sizeDelta = new Vector2(380, 30);
             scoreHeaderRect.anchoredPosition = new Vector2(0, rowY);
             rowY -= 38f;
 
@@ -330,7 +340,8 @@ namespace EpochBreaker.UI
                 });
             var continueBtnRect = _continueBtn.GetComponent<RectTransform>();
             continueBtnRect.sizeDelta = new Vector2(280, 55);
-            _continueBtnLabel = _continueBtn.GetComponentInChildren<Text>();
+            var continueLabelGO = _continueBtn.transform.Find("Label");
+            if (continueLabelGO != null) _continueBtnImg = continueLabelGO.GetComponent<Image>();
             btnY -= 65f;
 
             // Replay / Menu buttons
@@ -385,9 +396,9 @@ namespace EpochBreaker.UI
             }
 
             // Keyboard hint
-            var hintGO = CreateText(canvasGO.transform, "Enter: Continue | R: Replay | Esc/`: Menu", 14,
+            var hintGO = CreateText(canvasGO.transform, "ENTER: CONTINUE | R: REPLAY | ESC: MENU", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, btnY - 10f));
-            _hintText = hintGO.GetComponent<Text>();
+            _hintImg = hintGO.GetComponent<Image>();
         }
 
         private void CreateItemsPanel(Transform parent, Gameplay.GameManager gm)
@@ -405,16 +416,14 @@ namespace EpochBreaker.UI
             // Panel header
             var headerGO = new GameObject("Header");
             headerGO.transform.SetParent(itemsPanelGO.transform, false);
-            var headerText = headerGO.AddComponent<Text>();
-            headerText.text = "ITEMS COLLECTED";
-            headerText.fontSize = 24;
-            headerText.color = new Color(0.9f, 0.9f, 1f);
-            headerText.alignment = TextAnchor.MiddleCenter;
-            headerText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var headerImg = headerGO.AddComponent<Image>();
+            headerImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("ITEMS COLLECTED", new Color(0.9f, 0.9f, 1f), 4);
+            headerImg.preserveAspect = true;
+            headerImg.raycastTarget = false;
+            headerImg.SetNativeSize();
             var headerRect = headerGO.GetComponent<RectTransform>();
             headerRect.anchorMin = new Vector2(0.5f, 1f);
             headerRect.anchorMax = new Vector2(0.5f, 1f);
-            headerRect.sizeDelta = new Vector2(380, 30);
             headerRect.anchoredPosition = new Vector2(0, -25);
 
             // Collect all items into a list for display
@@ -448,16 +457,14 @@ namespace EpochBreaker.UI
             {
                 var noItemsGO = new GameObject("NoItems");
                 noItemsGO.transform.SetParent(itemsPanelGO.transform, false);
-                var noItemsText = noItemsGO.AddComponent<Text>();
-                noItemsText.text = "No items collected";
-                noItemsText.fontSize = 20;
-                noItemsText.color = new Color(0.5f, 0.5f, 0.6f);
-                noItemsText.alignment = TextAnchor.MiddleCenter;
-                noItemsText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var noItemsImg = noItemsGO.AddComponent<Image>();
+                noItemsImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("NO ITEMS COLLECTED", new Color(0.5f, 0.5f, 0.6f), 3);
+                noItemsImg.preserveAspect = true;
+                noItemsImg.raycastTarget = false;
+                noItemsImg.SetNativeSize();
                 var noItemsRect = noItemsGO.GetComponent<RectTransform>();
                 noItemsRect.anchorMin = new Vector2(0.5f, 0.5f);
                 noItemsRect.anchorMax = new Vector2(0.5f, 0.5f);
-                noItemsRect.sizeDelta = new Vector2(350, 40);
                 noItemsRect.anchoredPosition = new Vector2(0, -20);
                 return;
             }
@@ -514,79 +521,78 @@ namespace EpochBreaker.UI
 
             var countGO = new GameObject("Count");
             countGO.transform.SetParent(containerGO.transform, false);
-            var countText = countGO.AddComponent<Text>();
-            countText.text = $"x{count}";
-            countText.fontSize = 18;
-            countText.color = count > 1 ? new Color(1f, 0.85f, 0.1f) : Color.white;
-            countText.alignment = TextAnchor.MiddleCenter;
-            countText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Color countColor = count > 1 ? new Color(1f, 0.85f, 0.1f) : Color.white;
+            var countImg = countGO.AddComponent<Image>();
+            countImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite($"X{count}", countColor, 2);
+            countImg.preserveAspect = true;
+            countImg.raycastTarget = false;
+            countImg.SetNativeSize();
             var countRect = countGO.GetComponent<RectTransform>();
             countRect.anchorMin = new Vector2(0.5f, 0f);
             countRect.anchorMax = new Vector2(0.5f, 0f);
-            countRect.sizeDelta = new Vector2(size, 24);
             countRect.anchoredPosition = new Vector2(0, 12);
         }
 
         private void ShowCopiedFeedback()
         {
-            if (_copiedFeedbackText != null)
+            if (_copiedFeedbackImg != null)
             {
-                _copiedFeedbackText.color = new Color(0.4f, 1f, 0.4f, 1f);
+                _copiedFeedbackImg.color = Color.white;
                 _copiedFeedbackTimer = 2f;
             }
         }
 
         private GameObject CreateSmallText(Transform parent, string text, float yPos, Color color)
         {
-            var go = new GameObject("SubText");
-            go.transform.SetParent(parent, false);
-            var t = go.AddComponent<Text>();
-            t.text = text;
-            t.fontSize = 16;
-            t.color = color;
-            t.alignment = TextAnchor.UpperLeft;
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            t.horizontalOverflow = HorizontalWrapMode.Overflow;
-            t.verticalOverflow = VerticalWrapMode.Overflow;
-            var rect = go.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0f, 0.5f);
-            rect.anchorMax = new Vector2(0f, 0.5f);
-            rect.pivot = new Vector2(0f, 1f);
-            rect.sizeDelta = new Vector2(380, 60);
-            rect.anchoredPosition = new Vector2(30, yPos);
-            return go;
+            string[] lines = text.Split('\n');
+            GameObject firstGO = null;
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i].Trim();
+                if (string.IsNullOrEmpty(line)) continue;
+                var go = new GameObject("SubText");
+                go.transform.SetParent(parent, false);
+                var img = go.AddComponent<Image>();
+                img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(line, color, 2);
+                img.preserveAspect = true;
+                img.raycastTarget = false;
+                img.SetNativeSize();
+                var rect = go.GetComponent<RectTransform>();
+                rect.anchorMin = new Vector2(0f, 0.5f);
+                rect.anchorMax = new Vector2(0f, 0.5f);
+                rect.pivot = new Vector2(0f, 0.5f);
+                rect.anchoredPosition = new Vector2(30, yPos - i * 14f);
+                if (firstGO == null) firstGO = go;
+            }
+            return firstGO ?? new GameObject("SubText");
         }
 
         private void CreateStatRow(Transform parent, string label, string value, float yPos, Color valueColor)
         {
             var labelGO = new GameObject("StatLabel");
             labelGO.transform.SetParent(parent, false);
-            var labelText = labelGO.AddComponent<Text>();
-            labelText.text = label;
-            labelText.fontSize = 22;
-            labelText.color = new Color(0.75f, 0.75f, 0.85f);
-            labelText.alignment = TextAnchor.MiddleLeft;
-            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = labelGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(label, new Color(0.75f, 0.75f, 0.85f), 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(0f, 0.5f);
             labelRect.anchorMax = new Vector2(0f, 0.5f);
             labelRect.pivot = new Vector2(0f, 0.5f);
-            labelRect.sizeDelta = new Vector2(220, 32);
             labelRect.anchoredPosition = new Vector2(25, yPos);
 
             var valueGO = new GameObject("StatValue");
             valueGO.transform.SetParent(parent, false);
-            var valueText = valueGO.AddComponent<Text>();
-            valueText.text = value;
-            valueText.fontSize = 24;
-            valueText.color = valueColor;
-            valueText.alignment = TextAnchor.MiddleRight;
-            valueText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var valueImg = valueGO.AddComponent<Image>();
+            valueImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(value, valueColor, 3);
+            valueImg.preserveAspect = true;
+            valueImg.raycastTarget = false;
+            valueImg.SetNativeSize();
             var valueRect = valueGO.GetComponent<RectTransform>();
             valueRect.anchorMin = new Vector2(1f, 0.5f);
             valueRect.anchorMax = new Vector2(1f, 0.5f);
             valueRect.pivot = new Vector2(1f, 0.5f);
-            valueRect.sizeDelta = new Vector2(160, 32);
             valueRect.anchoredPosition = new Vector2(-25, yPos);
         }
 
@@ -595,17 +601,16 @@ namespace EpochBreaker.UI
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            int scale = fontSize >= 72 ? 10 : fontSize >= 38 ? 6 : fontSize >= 30 ? 5 : fontSize >= 24 ? 4 : fontSize >= 16 ? 3 : 2;
+            var img = go.AddComponent<Image>();
+            img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(500, fontSize + 20);
             rect.anchoredPosition = position;
 
             return go;
@@ -644,20 +649,15 @@ namespace EpochBreaker.UI
 
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = 24;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
-
-            // Prevent label image from intercepting button clicks
-            var labelImg = textGO.GetComponent<Image>();
-            if (labelImg != null) labelImg.raycastTarget = false;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
 
             return btn;
         }
@@ -785,17 +785,15 @@ namespace EpochBreaker.UI
             string frameName = Gameplay.CosmeticManager.GetFrameName(frame);
             var labelGO = new GameObject("FrameLabel");
             labelGO.transform.SetParent(parent, false);
-            var labelText = labelGO.AddComponent<Text>();
-            labelText.text = frameName;
-            labelText.fontSize = 16;
-            labelText.color = frameColor;
-            labelText.alignment = TextAnchor.MiddleRight;
-            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var frameLabelImg = labelGO.AddComponent<Image>();
+            frameLabelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(frameName, frameColor, 2);
+            frameLabelImg.preserveAspect = true;
+            frameLabelImg.raycastTarget = false;
+            frameLabelImg.SetNativeSize();
             var labelRect = labelGO.GetComponent<RectTransform>();
             labelRect.anchorMin = new Vector2(1, 1);
             labelRect.anchorMax = new Vector2(1, 1);
             labelRect.pivot = new Vector2(1, 1);
-            labelRect.sizeDelta = new Vector2(100, 20);
             labelRect.anchoredPosition = new Vector2(-12, -12);
         }
     }

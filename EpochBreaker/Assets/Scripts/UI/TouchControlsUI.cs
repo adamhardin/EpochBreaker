@@ -30,6 +30,7 @@ namespace EpochBreaker.UI
             _canvas = canvasGO.AddComponent<Canvas>();
             _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             _canvas.sortingOrder = 95;
+            _canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -52,7 +53,7 @@ namespace EpochBreaker.UI
 
             // Stomp button (bottom-right, left of jump)
             CreateActionButton(canvasGO.transform, "Stomp", new Vector2(-250, 140),
-                "↓", ActionType.Stomp);
+                "V", ActionType.Stomp);
 
             // Attack/target cycle button (bottom-right, above jump)
             CreateActionButton(canvasGO.transform, "Attack", new Vector2(-185, 280),
@@ -78,16 +79,16 @@ namespace EpochBreaker.UI
             // Label
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var text = textGO.AddComponent<Text>();
-            text.text = label;
-            text.fontSize = 40;
-            text.color = new Color(1f, 1f, 1f, 0.6f);
-            text.alignment = TextAnchor.MiddleCenter;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(label, new Color(1f, 1f, 1f, 0.6f), 5);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
 
             // Event triggers for press/release
             var trigger = go.AddComponent<EventTrigger>();
@@ -124,16 +125,16 @@ namespace EpochBreaker.UI
             // Label
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var text = textGO.AddComponent<Text>();
-            text.text = label;
-            text.fontSize = 36;
-            text.color = new Color(1f, 1f, 1f, 0.6f);
-            text.alignment = TextAnchor.MiddleCenter;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(label, new Color(1f, 1f, 1f, 0.6f), 5);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.pivot = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
 
             var trigger = go.AddComponent<EventTrigger>();
 

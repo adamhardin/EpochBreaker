@@ -1042,6 +1042,13 @@ namespace EpochBreaker.Gameplay
 
             Health -= amount;
 
+            // Floating damage number (shows actual capped damage)
+            bool isKillShot = Health <= 0;
+            Color dmgColor = isKillShot ? new Color(1f, 0.2f, 0.2f)
+                           : dpsCapBypass > 0f ? new Color(1f, 0.7f, 0.3f) // Orange for heavy/cannon
+                           : Color.white;
+            GameManager.ShowDamagePopup(transform.position, amount, dmgColor);
+
             AudioManager.PlaySFX(PlaceholderAudio.GetEnemyHitSFX());
 
             // Screen shake scales with damage

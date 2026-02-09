@@ -140,6 +140,7 @@ namespace EpochBreaker.Generative
         public HiddenContentType HiddenContent;
         public HazardType Hazard;
         public bool IsRelic;
+        public bool IsSentinelCache;
     }
 
     public enum HazardType : byte

@@ -204,6 +204,7 @@ namespace EpochBreaker.Generative
             // ---- Stage 7: Hazard & Relic Assignment ----
             AssignHazards(data, id.Epoch, rng.Fork());
             PlaceRelics(data, rng.Fork());
+            PlaceSentinelCaches(data, rng.Fork());
 
             // Compute metadata
             data.Metadata = ComputeMetadata(data, intensity);
@@ -2051,6 +2052,47 @@ namespace EpochBreaker.Generative
 
                 dt.IsRelic = true;
                 data.Layout.Destructibles[idx] = dt;
+            }
+        }
+
+        // =====================================================================
+        // Sentinel Caches
+        // =====================================================================
+
+        private const int MAX_SENTINEL_CACHES = 3;
+
+        private void PlaceSentinelCaches(LevelData data, XORShift64 rng)
+        {
+            int width = data.Layout.WidthTiles;
+            int height = data.Layout.HeightTiles;
+
+            // Collect eligible blocks: Soft or Medium, not relic, not load-bearing, not hazard
+            var candidates = new System.Collections.Generic.List<int>();
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int idx = y * width + x;
+                    var dt = data.Layout.Destructibles[idx];
+                    if (dt.MaterialClass == 0) continue;
+                    if (dt.MaterialClass > (byte)MaterialClass.Medium) continue;
+                    if (dt.IsRelic) continue;
+                    if (dt.IsLoadBearing) continue;
+                    if (dt.Hazard != HazardType.None) continue;
+                    candidates.Add(idx);
+                }
+            }
+
+            // Shuffle and pick up to MAX_SENTINEL_CACHES
+            int count = System.Math.Min(MAX_SENTINEL_CACHES, candidates.Count);
+            for (int i = 0; i < count; i++)
+            {
+                int swapIdx = rng.Range(i, candidates.Count);
+                (candidates[i], candidates[swapIdx]) = (candidates[swapIdx], candidates[i]);
+
+                var dt = data.Layout.Destructibles[candidates[i]];
+                dt.IsSentinelCache = true;
+                data.Layout.Destructibles[candidates[i]] = dt;
             }
         }
 

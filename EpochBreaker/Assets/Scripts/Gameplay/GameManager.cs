@@ -338,6 +338,17 @@ namespace EpochBreaker.Gameplay
             OnScorePopup?.Invoke(worldPos, score);
         }
 
+        // Damage popup event: (world position, damage amount, color)
+        public static event Action<Vector3, int, Color> OnDamagePopup;
+
+        /// <summary>
+        /// Show a floating damage number at a world position.
+        /// </summary>
+        public static void ShowDamagePopup(Vector3 worldPos, int damage, Color color)
+        {
+            OnDamagePopup?.Invoke(worldPos, damage, color);
+        }
+
         // Damage direction event: (damage source world position)
         public static event Action<Vector2> OnDamageDirection;
 
@@ -545,8 +556,11 @@ namespace EpochBreaker.Gameplay
                     CombatMasteryScore = CalculateCombatMastery();
                     ExplorationScore = CalculateExploration();
                     PreservationScore = CalculatePreservation();
-                    Score = TimeScore + ItemBonusScore + EnemyBonusScore
+                    int rawScore = TimeScore + ItemBonusScore + EnemyBonusScore
                           + CombatMasteryScore + ExplorationScore + PreservationScore;
+                    float diffMult = DifficultyManager.Instance != null
+                        ? DifficultyManager.Instance.ScoreMultiplier : 1f;
+                    Score = Mathf.RoundToInt(rawScore * diffMult);
                     TotalScore += Score;
                     SaveLevelToHistory();
 
@@ -761,7 +775,7 @@ namespace EpochBreaker.Gameplay
         public void ResumeGame()
         {
             if (CurrentState != GameState.Paused) return;
-            DestroyUI();
+            if (_pauseMenuObj) Destroy(_pauseMenuObj);
             CurrentState = GameState.Playing;
             Time.timeScale = 1f;
             CreateHUD();
@@ -968,6 +982,7 @@ namespace EpochBreaker.Gameplay
             BossDefeated = false;
             BestNoDamageStreak = 0;
             _noDamageKillStreak = 0;
+            _sentinelCachesTriggered = 0;
             ComboCount = 0;
             _comboTimer = 0f;
             _envDamageGraceTimer = 0f;
@@ -1207,6 +1222,13 @@ namespace EpochBreaker.Gameplay
         public int CurrentNoDamageStreak => _noDamageKillStreak;
         private int _noDamageKillStreak;
 
+        // Sentinel Cache tracking (max 3 per level)
+        private int _sentinelCachesTriggered;
+        private const int MAX_SENTINEL_CACHES_PER_LEVEL = 3;
+        private const int SENTINEL_MISSILES_PER_CACHE = 4;
+        private const float SENTINEL_MISSILE_SPEED = 8f;
+        private const float SENTINEL_MISSILE_TURN_SPEED = 6f;
+
         /// <summary>
         /// Record a destructible block being destroyed (for achievements).
         /// </summary>
@@ -1263,6 +1285,92 @@ namespace EpochBreaker.Gameplay
         {
             BossDefeated = true;
             AchievementManager.Instance?.RecordBossDefeated();
+        }
+
+        /// <summary>
+        /// Triggered when a sentinel cache block is destroyed.
+        /// Spawns VFX burst + 4 homing missiles targeting nearby enemies.
+        /// </summary>
+        public void TriggerSentinelCache(Vector3 worldPos)
+        {
+            if (_sentinelCachesTriggered >= MAX_SENTINEL_CACHES_PER_LEVEL) return;
+            _sentinelCachesTriggered++;
+
+            // VFX burst — cyan flash
+            var flashGO = ObjectPool.GetFlash();
+            flashGO.transform.position = worldPos;
+            var flashSR = flashGO.GetComponent<SpriteRenderer>();
+            flashSR.sprite = PlaceholderAssets.GetParticleSprite();
+            flashSR.color = new Color(0.5f, 0.9f, 1f, 0.9f);
+            flashSR.sortingOrder = 16;
+            flashGO.transform.localScale = Vector3.one * 2f;
+            flashGO.GetComponent<PoolTimer>().StartTimer(0.15f);
+
+            // Camera shake + SFX
+            CameraController.Instance?.AddTrauma(0.3f);
+            AudioSource.PlayClipAtPoint(PlaceholderAudio.GetSentinelCacheExplosionSFX(), worldPos, 0.7f);
+
+            // Achievement tracking
+            AchievementManager.Instance?.RecordSentinelCacheTriggered();
+
+            // Find up to 4 nearest enemies
+            var enemies = EnemyBase.ActiveEnemies;
+            var targets = new List<Transform>();
+            var distances = new List<float>();
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i] == null) continue;
+                var eb = enemies[i].GetComponent<EnemyBase>();
+                if (eb != null && eb.IsDead) continue;
+                float dist = Vector2.Distance(worldPos, enemies[i].transform.position);
+                targets.Add(enemies[i].transform);
+                distances.Add(dist);
+            }
+
+            // Sort by distance and take closest 4
+            for (int i = 0; i < targets.Count - 1; i++)
+                for (int j = i + 1; j < targets.Count; j++)
+                    if (distances[j] < distances[i])
+                    {
+                        (targets[i], targets[j]) = (targets[j], targets[i]);
+                        (distances[i], distances[j]) = (distances[j], distances[i]);
+                    }
+
+            int epoch = CurrentEpoch;
+            int damage = 4; // Fixed sentinel missile damage
+            Sprite missileSprite = PlaceholderAssets.GetSentinelMissileSprite(epoch);
+
+            for (int i = 0; i < SENTINEL_MISSILES_PER_CACHE; i++)
+            {
+                var missileGO = ObjectPool.GetProjectile();
+                missileGO.transform.position = worldPos;
+
+                var sr = missileGO.GetComponent<SpriteRenderer>();
+                sr.sprite = missileSprite;
+                sr.color = Color.white;
+                sr.sortingOrder = 12;
+                missileGO.transform.localScale = Vector3.one * 0.6f;
+
+                var col = missileGO.GetComponent<CircleCollider2D>();
+                col.radius = 0.15f;
+
+                var proj = missileGO.GetComponent<Projectile>();
+                Transform target = i < targets.Count ? targets[i] : null;
+
+                if (target != null)
+                {
+                    proj.InitializeHoming(target, SENTINEL_MISSILE_SPEED, damage, SENTINEL_MISSILE_TURN_SPEED);
+                }
+                else
+                {
+                    // No target — fire outward in a spread pattern
+                    float angle = (i * 90f + 45f) * Mathf.Deg2Rad;
+                    Vector2 dir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+                    proj.Initialize(dir, SENTINEL_MISSILE_SPEED, damage, false);
+                }
+
+                proj.WeaponTier = WeaponTier.Heavy;
+            }
         }
 
         /// <summary>
@@ -1520,9 +1628,11 @@ namespace EpochBreaker.Gameplay
         {
             if (_titleScreenObj) Destroy(_titleScreenObj);
             if (_hudObj) Destroy(_hudObj);
+            _hudObj = null;
+            if (_touchControlsObj) Destroy(_touchControlsObj);
+            _touchControlsObj = null;
             if (_pauseMenuObj) Destroy(_pauseMenuObj);
             if (_levelCompleteObj) Destroy(_levelCompleteObj);
-            if (_touchControlsObj) Destroy(_touchControlsObj);
             if (_gameOverObj) Destroy(_gameOverObj);
             if (_celebrationObj) Destroy(_celebrationObj);
         }

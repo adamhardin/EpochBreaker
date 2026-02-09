@@ -43,6 +43,7 @@ namespace EpochBreaker.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 130;
+            canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -89,12 +90,15 @@ namespace EpochBreaker.UI
 
             // Narrative
             CreateText(canvasGO.transform,
-                "The timelines fracture once more. As EPOCH BREAKER,\nyou must now defend humanity across infinite timelines.", 20,
-                new Color(0.6f, 0.55f, 0.4f), new Vector2(0, -80));
+                "THE TIMELINES FRACTURE ONCE MORE.", 20,
+                new Color(0.6f, 0.55f, 0.4f), new Vector2(0, -70));
+            CreateText(canvasGO.transform,
+                "YOU MUST DEFEND HUMANITY ACROSS INFINITE TIMELINES.", 20,
+                new Color(0.6f, 0.55f, 0.4f), new Vector2(0, -100));
 
             // Streak mode info
             CreateText(canvasGO.transform,
-                "STREAK MODE: 10 lives. No extra lives. How far can you go?", 22,
+                "STREAK MODE: 10 LIVES. HOW FAR CAN YOU GO?", 22,
                 new Color(0.8f, 0.5f, 0.2f), new Vector2(0, -150));
 
             // Enter the Breach button
@@ -109,7 +113,7 @@ namespace EpochBreaker.UI
                 });
 
             // Keyboard hints
-            CreateText(canvasGO.transform, "Enter: Enter the Breach | Esc/`: Main Menu", 16,
+            CreateText(canvasGO.transform, "ENTER: BREACH | ESC: MENU", 16,
                 new Color(0.4f, 0.35f, 0.25f), new Vector2(0, -380));
         }
 
@@ -118,18 +122,16 @@ namespace EpochBreaker.UI
             var go = new GameObject("PixelTitle");
             go.transform.SetParent(parent, false);
 
-            var img = go.AddComponent<RawImage>();
-            var sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, 3);
-            img.texture = sprite.texture;
-            img.color = Color.white;
-
-            float w = sprite.rect.width * scale;
-            float h = sprite.rect.height * scale;
+            int intScale = Mathf.RoundToInt(scale * 3f);
+            var img = go.AddComponent<Image>();
+            img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, intScale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(w, h);
             rect.anchoredPosition = position;
         }
 
@@ -138,17 +140,16 @@ namespace EpochBreaker.UI
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            int scale = fontSize >= 72 ? 10 : fontSize >= 38 ? 6 : fontSize >= 30 ? 5 : fontSize >= 24 ? 4 : fontSize >= 16 ? 3 : 2;
+            var img = go.AddComponent<Image>();
+            img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(800, fontSize * 3 + 20);
             rect.anchoredPosition = position;
         }
 
@@ -173,17 +174,15 @@ namespace EpochBreaker.UI
 
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = 28;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComp.fontStyle = FontStyle.Bold;
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 4);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
         }
     }
 }

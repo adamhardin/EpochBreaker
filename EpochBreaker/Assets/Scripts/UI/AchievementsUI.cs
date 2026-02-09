@@ -43,6 +43,7 @@ namespace EpochBreaker.UI
             var canvas = _canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 140;
+            canvas.pixelPerfect = true;
 
             var scaler = _canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -185,7 +186,7 @@ namespace EpochBreaker.UI
                 new Color(0.3f, 0.25f, 0.35f), Close);
 
             // Hint
-            CreateText(panelGO.transform, "Esc/`: Close  |  Scroll: Mouse Wheel", 14,
+            CreateText(panelGO.transform, "ESC CLOSE  -  SCROLL MOUSE WHEEL", 14,
                 new Color(0.4f, 0.35f, 0.45f), new Vector2(0, -330));
         }
 
@@ -290,17 +291,26 @@ namespace EpochBreaker.UI
                 // Share label
                 var shareLabelGO = new GameObject("ShareLabel");
                 shareLabelGO.transform.SetParent(shareBtnGO.transform, false);
-                var shareLabel = shareLabelGO.AddComponent<Text>();
-                shareLabel.text = "SHARE";
-                shareLabel.fontSize = 12;
-                shareLabel.color = Color.white;
-                shareLabel.alignment = TextAnchor.MiddleCenter;
-                shareLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var shareLabelImg = shareLabelGO.AddComponent<Image>();
+                shareLabelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("SHARE", Color.white, 3);
+                shareLabelImg.preserveAspect = true;
+                shareLabelImg.raycastTarget = false;
                 var shareLabelRect = shareLabelGO.GetComponent<RectTransform>();
-                shareLabelRect.anchorMin = Vector2.zero;
-                shareLabelRect.anchorMax = Vector2.one;
-                shareLabelRect.sizeDelta = Vector2.zero;
+                shareLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
+                shareLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
+                shareLabelRect.anchoredPosition = Vector2.zero;
+                shareLabelImg.SetNativeSize();
             }
+        }
+
+        private static int FontSizeToScale(int fontSize)
+        {
+            if (fontSize >= 72) return 10;
+            if (fontSize >= 38) return 6;
+            if (fontSize >= 30) return 5;
+            if (fontSize >= 24) return 4;
+            if (fontSize >= 16) return 3;
+            return 2;
         }
 
         private void CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position,
@@ -309,18 +319,24 @@ namespace EpochBreaker.UI
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = alignment;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            int scale = FontSizeToScale(fontSize);
+            var img = go.AddComponent<Image>();
+            img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(width, fontSize + 20);
+
+            // Map alignment to pivot
+            if (alignment == TextAnchor.MiddleLeft)
+                rect.pivot = new Vector2(0f, 0.5f);
+            else if (alignment == TextAnchor.MiddleRight)
+                rect.pivot = new Vector2(1f, 0.5f);
+
             rect.anchoredPosition = position;
+            img.SetNativeSize();
         }
 
         private void CreateButton(Transform parent, string text, Vector2 position,
@@ -344,16 +360,15 @@ namespace EpochBreaker.UI
 
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = 22;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
+            labelImg.SetNativeSize();
         }
     }
 }

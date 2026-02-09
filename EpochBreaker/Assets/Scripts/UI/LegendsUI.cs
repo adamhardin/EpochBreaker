@@ -43,6 +43,7 @@ namespace EpochBreaker.UI
             var canvas = _canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 140;
+            canvas.pixelPerfect = true;
 
             var scaler = _canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -174,28 +175,45 @@ namespace EpochBreaker.UI
                 new Color(0.3f, 0.25f, 0.35f), Close);
 
             // Hint
-            CreateText(panelGO.transform, "Esc/`: Close", 14,
+            CreateText(panelGO.transform, "ESC: Close", 14,
                 new Color(0.4f, 0.35f, 0.45f), new Vector2(0, -285));
         }
 
         private void CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position,
             TextAnchor alignment = TextAnchor.MiddleCenter, float width = 600)
         {
+            int scale = FontSizeToScale(fontSize);
+
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = alignment;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var img = go.AddComponent<Image>();
+            img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(width, fontSize + 20);
             rect.anchoredPosition = position;
+
+            // Map alignment to pivot
+            if (alignment == TextAnchor.MiddleLeft)
+                rect.pivot = new Vector2(0f, 0.5f);
+            else if (alignment == TextAnchor.MiddleRight)
+                rect.pivot = new Vector2(1f, 0.5f);
+
+            img.SetNativeSize();
+        }
+
+        private static int FontSizeToScale(int fontSize)
+        {
+            if (fontSize >= 72) return 10;
+            if (fontSize >= 38) return 6;
+            if (fontSize >= 30) return 5;
+            if (fontSize >= 24) return 4;
+            if (fontSize >= 16) return 3;
+            return 2;
         }
 
         private void CreateButton(Transform parent, string text, Vector2 position,
@@ -219,16 +237,15 @@ namespace EpochBreaker.UI
 
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = 22;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
         }
     }
 }

@@ -156,7 +156,7 @@ namespace EpochBreaker.Gameplay
             }
             if (peak > 0.001f)
             {
-                float gain = 0.40f / peak; // Conservative target for headroom when music+ambient+SFX overlap
+                float gain = 0.30f / peak; // Conservative target — extra headroom prevents squeal when music+SFX overlap
                 for (int i = 0; i < data.Length; i++)
                 {
                     data[i] = Mathf.Clamp(data[i] * gain, -1f, 1f);
@@ -472,10 +472,10 @@ namespace EpochBreaker.Gameplay
         {
             if (_cache.TryGetValue("sfx_crunch", out var c)) return c;
             var buf = MakeBuffer(0.12f);
-            // Crunchy noise burst with low-frequency thud
-            AddTone(buf, 0f, 0.06f, 600f, 300f, Wave.Noise, 0.15f, 0.001f, 0.02f);
-            AddTone(buf, 0f, 0.08f, 120f, 50f, Wave.Triangle, 0.2f, 0.001f, 0.03f);
-            AddTone(buf, 0.02f, 0.06f, 400f, 150f, Wave.Square, 0.08f, 0.001f, 0.02f);
+            // Crunchy noise burst with low-frequency thud (reduced noise to prevent squeal with music)
+            AddTone(buf, 0f, 0.06f, 500f, 250f, Wave.Noise, 0.10f, 0.001f, 0.02f);
+            AddTone(buf, 0f, 0.08f, 120f, 50f, Wave.Triangle, 0.18f, 0.001f, 0.03f);
+            AddTone(buf, 0.02f, 0.06f, 350f, 150f, Wave.Square, 0.06f, 0.001f, 0.02f);
             var clip = MakeClip("SFX_Crunch", buf);
             _cache["sfx_crunch"] = clip;
             return clip;
@@ -710,7 +710,7 @@ namespace EpochBreaker.Gameplay
                 {
                     if (bassPattern[n] <= 0f) continue;
                     AddTone(buf, barStart + n * eighth, eighth * 0.7f,
-                        bassPattern[n], bassPattern[n], Wave.Triangle, 0.2f, 0.005f, 0.02f);
+                        bassPattern[n], bassPattern[n], Wave.Triangle, 0.15f, 0.005f, 0.02f);
                 }
             }
 
@@ -878,7 +878,7 @@ namespace EpochBreaker.Gameplay
                 {
                     if (bassPattern[n] <= 0f) continue;
                     AddTone(buf, barStart + n * eighth, eighth * 0.7f,
-                        bassPattern[n], bassPattern[n], Wave.Triangle, 0.2f, 0.005f, 0.02f);
+                        bassPattern[n], bassPattern[n], Wave.Triangle, 0.15f, 0.005f, 0.02f);
                 }
             }
 
@@ -1179,6 +1179,24 @@ namespace EpochBreaker.Gameplay
                 buf[i] *= fade;
                 buf[buf.Length - 1 - i] *= fade;
             }
+        }
+
+        /// <summary>Rising whoosh + impact — sentinel cache triggered.</summary>
+        public static AudioClip GetSentinelCacheExplosionSFX()
+        {
+            if (_cache.TryGetValue("sfx_sentinel", out var c)) return c;
+            var buf = MakeBuffer(0.35f);
+            // Rising whoosh
+            AddTone(buf, 0f, 0.15f, 200f, 1200f, Wave.Noise, 0.12f, 0.005f, 0.02f);
+            // Impact tone
+            AddTone(buf, 0.10f, 0.12f, 600f, 800f, Wave.Square, 0.18f, 0.005f, 0.03f);
+            // Sub bass thud
+            AddTone(buf, 0.12f, 0.10f, 80f, 40f, Wave.Triangle, 0.20f, 0.002f, 0.04f);
+            // High sparkle
+            AddTone(buf, 0.15f, 0.15f, _A5, _C6, Wave.Square, 0.08f, 0.003f, 0.05f);
+            var clip = MakeClip("SFX_SentinelCache", buf);
+            _cache["sfx_sentinel"] = clip;
+            return clip;
         }
 
         // Note frequency helpers (flats/sharps for variant progressions)

@@ -18,8 +18,8 @@ namespace EpochBreaker.UI
 
         // Preview elements
         private Image _previewImage;
-        private Text _previewLabel;
-        private Text _previewRequirement;
+        private Image _previewLabel;
+        private Image _previewRequirement;
 
         // Selection highlight tracking
         private Image _selectedSkinHighlight;
@@ -53,6 +53,7 @@ namespace EpochBreaker.UI
             var canvas = _canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 140;
+            canvas.pixelPerfect = true;
 
             var scaler = _canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -126,7 +127,7 @@ namespace EpochBreaker.UI
             CreateFrameSection(panelGO.transform, sectionX, frameY);
 
             // Escape hint
-            CreateLabel(panelGO.transform, "Press Esc/` to close", 14,
+            CreateLabel(panelGO.transform, "Press ESC to close", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -310));
         }
 
@@ -161,11 +162,11 @@ namespace EpochBreaker.UI
             // Name label
             var nameLabelGO = new GameObject("NameLabel");
             nameLabelGO.transform.SetParent(previewBgGO.transform, false);
-            _previewLabel = nameLabelGO.AddComponent<Text>();
-            _previewLabel.fontSize = 20;
-            _previewLabel.color = Color.white;
-            _previewLabel.alignment = TextAnchor.MiddleCenter;
-            _previewLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            _previewLabel = nameLabelGO.AddComponent<Image>();
+            _previewLabel.sprite = PlaceholderAssets.CreatePixelTextSprite("Default", Color.white, 3);
+            _previewLabel.preserveAspect = true;
+            _previewLabel.raycastTarget = false;
+            _previewLabel.SetNativeSize();
             var nameLabelRect = nameLabelGO.GetComponent<RectTransform>();
             nameLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
             nameLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -175,12 +176,11 @@ namespace EpochBreaker.UI
             // Requirement label
             var reqLabelGO = new GameObject("ReqLabel");
             reqLabelGO.transform.SetParent(previewBgGO.transform, false);
-            _previewRequirement = reqLabelGO.AddComponent<Text>();
-            _previewRequirement.fontSize = 14;
-            _previewRequirement.color = new Color(0.7f, 0.7f, 0.8f);
-            _previewRequirement.alignment = TextAnchor.MiddleCenter;
-            _previewRequirement.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            _previewRequirement.horizontalOverflow = HorizontalWrapMode.Wrap;
+            _previewRequirement = reqLabelGO.AddComponent<Image>();
+            _previewRequirement.sprite = PlaceholderAssets.CreatePixelTextSprite("", new Color(0.7f, 0.7f, 0.8f), 2);
+            _previewRequirement.preserveAspect = true;
+            _previewRequirement.raycastTarget = false;
+            _previewRequirement.SetNativeSize();
             var reqLabelRect = reqLabelGO.GetComponent<RectTransform>();
             reqLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
             reqLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
@@ -198,9 +198,31 @@ namespace EpochBreaker.UI
 
             var skin = cm.SelectedSkin;
             _previewImage.sprite = PlaceholderAssets.GetTintedPlayerSprite(skin);
-            _previewLabel.text = CosmeticManager.GetSkinName(skin);
-            _previewLabel.color = skin == PlayerSkin.Default ? Color.white : CosmeticManager.GetSkinTint(skin);
-            _previewRequirement.text = CosmeticManager.GetSkinRequirement(skin);
+
+            // Update preview label (dynamic sprite)
+            if (_previewLabel != null)
+            {
+                DestroyDynamicSprite(_previewLabel.sprite);
+                var labelColor = skin == PlayerSkin.Default ? Color.white : CosmeticManager.GetSkinTint(skin);
+                _previewLabel.sprite = PlaceholderAssets.CreatePixelTextSprite(CosmeticManager.GetSkinName(skin), labelColor, 3);
+                _previewLabel.SetNativeSize();
+            }
+
+            // Update requirement label (dynamic sprite)
+            if (_previewRequirement != null)
+            {
+                DestroyDynamicSprite(_previewRequirement.sprite);
+                _previewRequirement.sprite = PlaceholderAssets.CreatePixelTextSprite(CosmeticManager.GetSkinRequirement(skin), new Color(0.7f, 0.7f, 0.8f), 2);
+                _previewRequirement.SetNativeSize();
+            }
+        }
+
+        private void DestroyDynamicSprite(Sprite sprite)
+        {
+            if (sprite == null) return;
+            var tex = sprite.texture;
+            Destroy(sprite);
+            if (tex != null) Destroy(tex);
         }
 
         // ── Skin Section ──
@@ -442,11 +464,17 @@ namespace EpochBreaker.UI
             _previewImage.sprite = PlaceholderAssets.GetTintedPlayerSprite(skin);
             if (_previewLabel != null)
             {
-                _previewLabel.text = CosmeticManager.GetSkinName(skin);
-                _previewLabel.color = skin == PlayerSkin.Default ? Color.white : CosmeticManager.GetSkinTint(skin);
+                DestroyDynamicSprite(_previewLabel.sprite);
+                var labelColor = skin == PlayerSkin.Default ? Color.white : CosmeticManager.GetSkinTint(skin);
+                _previewLabel.sprite = PlaceholderAssets.CreatePixelTextSprite(CosmeticManager.GetSkinName(skin), labelColor, 3);
+                _previewLabel.SetNativeSize();
             }
             if (_previewRequirement != null)
-                _previewRequirement.text = CosmeticManager.GetSkinRequirement(skin);
+            {
+                DestroyDynamicSprite(_previewRequirement.sprite);
+                _previewRequirement.sprite = PlaceholderAssets.CreatePixelTextSprite(CosmeticManager.GetSkinRequirement(skin), new Color(0.7f, 0.7f, 0.8f), 2);
+                _previewRequirement.SetNativeSize();
+            }
         }
 
         /// <summary>
@@ -479,15 +507,21 @@ namespace EpochBreaker.UI
         private GameObject CreateLabel(Transform parent, string text, int fontSize,
             Color color, Vector2 position)
         {
+            int scale;
+            if (fontSize >= 72) scale = 10;
+            else if (fontSize >= 38) scale = 6;
+            else if (fontSize >= 30) scale = 5;
+            else if (fontSize >= 24) scale = 4;
+            else if (fontSize >= 16) scale = 3;
+            else scale = 2;
+
             var go = new GameObject("Label");
             go.transform.SetParent(parent, false);
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            textComp.horizontalOverflow = HorizontalWrapMode.Overflow;
+            var img = go.AddComponent<Image>();
+            img.sprite = PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);

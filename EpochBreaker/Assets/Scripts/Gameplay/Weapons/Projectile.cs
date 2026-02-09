@@ -20,6 +20,7 @@ namespace EpochBreaker.Gameplay
         public float SlowDuration { get; set; }
         public float SlowFactor { get; set; } = 1f;
         public bool BreaksAllMaterials { get; set; }
+        public bool IsSentinelMissile { get; private set; }
 
         // Static cached refs shared by all projectiles (cleared on level load)
         private static LevelRenderer s_levelRenderer;
@@ -31,6 +32,11 @@ namespace EpochBreaker.Gameplay
         private bool _isEnemyProjectile;
         private float _lifetime = 3f;
         private HashSet<int> _hitEnemies;
+
+        // Homing missile fields
+        private bool _isHoming;
+        private Transform _homingTarget;
+        private float _homingTurnSpeed;
 
         public static void ClearCachedRefs()
         {
@@ -53,15 +59,60 @@ namespace EpochBreaker.Gameplay
             SlowFactor = 1f;
             BreaksAllMaterials = false;
             WeaponTier = WeaponTier.Starting;
+            _isHoming = false;
+            _homingTarget = null;
+            _homingTurnSpeed = 0f;
+            IsSentinelMissile = false;
+        }
+
+        public void InitializeHoming(Transform target, float speed, int damage, float turnSpeed)
+        {
+            Vector2 dir = target != null
+                ? ((Vector2)target.position - (Vector2)transform.position).normalized
+                : Vector2.up;
+            Initialize(dir, speed, damage, false);
+            _isHoming = true;
+            _homingTarget = target;
+            _homingTurnSpeed = turnSpeed;
+            IsSentinelMissile = true;
         }
 
         private void Update()
         {
+            if (_isHoming)
+            {
+                // Re-acquire target if current died
+                if (_homingTarget == null || !_homingTarget.gameObject.activeInHierarchy)
+                    _homingTarget = FindNearestEnemy(transform.position);
+
+                if (_homingTarget != null)
+                {
+                    Vector2 toTarget = ((Vector2)_homingTarget.position - (Vector2)transform.position).normalized;
+                    _direction = Vector2.Lerp(_direction, toTarget, _homingTurnSpeed * Time.deltaTime).normalized;
+                }
+            }
+
             transform.position += (Vector3)(_direction * _speed * Time.deltaTime);
 
             _lifetime -= Time.deltaTime;
             if (_lifetime <= 0f)
                 ObjectPool.Return(gameObject);
+        }
+
+        private static Transform FindNearestEnemy(Vector3 fromPos)
+        {
+            float closest = float.MaxValue;
+            Transform best = null;
+            var enemies = EnemyBase.ActiveEnemies;
+            for (int i = 0; i < enemies.Count; i++)
+            {
+                if (enemies[i] == null) continue;
+                var eb = enemies[i].GetComponent<EnemyBase>();
+                if (eb != null && eb.IsDead) continue;
+                float dist = Vector2.Distance(fromPos, enemies[i].transform.position);
+                if (dist < closest) { closest = dist; best = enemies[i].transform; }
+            }
+            return best;
         }
 
         private void OnTriggerEnter2D(Collider2D other)

@@ -78,6 +78,7 @@ namespace EpochBreaker.UI
             var canvas = canvasGO.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 110;
+            canvas.pixelPerfect = true;
 
             var scaler = canvasGO.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
@@ -207,7 +208,7 @@ namespace EpochBreaker.UI
                 }, new Vector2(300, 48));
 
             // Hint
-            CreateText(_settingsMenuContent.transform, "Press Esc/` to go back", 14,
+            CreateText(_settingsMenuContent.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             // ── Audio sub-panel ──
@@ -252,7 +253,7 @@ namespace EpochBreaker.UI
             CreateVolumeSlider(_audioSubPanel.transform, "WEAPON FIRE", new Vector2(0, -75), weaponVol,
                 (val) => { if (AudioManager.Instance != null) AudioManager.Instance.WeaponVolume = val; });
 
-            CreateText(_audioSubPanel.transform, "Press Esc/` to go back", 14,
+            CreateText(_audioSubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -175));
 
             _audioSubPanel.SetActive(false);
@@ -303,7 +304,7 @@ namespace EpochBreaker.UI
             CreateToggleRow(_accessibilitySubPanel.transform, "HIGH CONTRAST", new Vector2(0, -100), hcInitial,
                 (val) => { if (AccessibilityManager.Instance != null) AccessibilityManager.Instance.HighContrastMode = val; });
 
-            CreateText(_accessibilitySubPanel.transform, "Press Esc/` to go back", 14,
+            CreateText(_accessibilitySubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             _accessibilitySubPanel.SetActive(false);
@@ -332,10 +333,17 @@ namespace EpochBreaker.UI
                 new Color(0.7f, 0.7f, 0.8f), new Vector2(0, 120));
 
             // Active difficulty indicator
-            var diffActiveGO = CreateText(_difficultySubPanel.transform, "", 18,
-                new Color(0.9f, 0.85f, 0.5f), new Vector2(0, -140));
-            var diffActiveText = diffActiveGO.GetComponent<Text>();
-            diffActiveGO.GetComponent<RectTransform>().sizeDelta = new Vector2(460, 50);
+            var diffActiveGO = new GameObject("Text");
+            diffActiveGO.transform.SetParent(_difficultySubPanel.transform, false);
+            var diffActiveImg = diffActiveGO.AddComponent<Image>();
+            diffActiveImg.preserveAspect = true;
+            diffActiveImg.raycastTarget = false;
+            var diffActiveRect = diffActiveGO.GetComponent<RectTransform>();
+            diffActiveRect.anchorMin = new Vector2(0.5f, 0.5f);
+            diffActiveRect.anchorMax = new Vector2(0.5f, 0.5f);
+            diffActiveRect.pivot = new Vector2(0.5f, 0.5f);
+            diffActiveRect.anchoredPosition = new Vector2(0, -140);
+            Sprite diffActiveSprite = null;
 
             System.Action updateDifficultyLabel = () => {
                 if (DifficultyManager.Instance == null) return;
@@ -345,7 +353,10 @@ namespace EpochBreaker.UI
                     DifficultyLevel.Hard => "HARD: 1 life/level, more enemies, no health",
                     _ => "NORMAL: 2 lives/level, standard enemies and health"
                 };
-                diffActiveText.text = desc;
+                if (diffActiveSprite != null) { Destroy(diffActiveSprite.texture); Destroy(diffActiveSprite); }
+                diffActiveSprite = PlaceholderAssets.CreatePixelTextSprite(desc, new Color(0.9f, 0.85f, 0.5f), 2);
+                diffActiveImg.sprite = diffActiveSprite;
+                diffActiveImg.SetNativeSize();
             };
             updateDifficultyLabel();
 
@@ -384,7 +395,7 @@ namespace EpochBreaker.UI
             CreateText(_difficultySubPanel.transform, "1 death/level\n1.5x enemies\nNo health", 13,
                 new Color(0.8f, 0.5f, 0.5f), new Vector2(140, -20));
 
-            CreateText(_difficultySubPanel.transform, "Press Esc/` to go back", 14,
+            CreateText(_difficultySubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             _difficultySubPanel.SetActive(false);
@@ -426,7 +437,7 @@ namespace EpochBreaker.UI
                 valGO.GetComponent<RectTransform>().sizeDelta = new Vector2(300, 30);
             }
 
-            CreateText(_controlsSubPanel.transform, "Press Esc/` to go back", 14,
+            CreateText(_controlsSubPanel.transform, "Press ESC to go back", 14,
                 new Color(0.5f, 0.5f, 0.6f), new Vector2(0, -170));
 
             _controlsSubPanel.SetActive(false);
@@ -511,12 +522,13 @@ namespace EpochBreaker.UI
             // Percentage label — right of the track
             var pctGO = new GameObject("Pct");
             pctGO.transform.SetParent(containerGO.transform, false);
-            var pctText = pctGO.AddComponent<Text>();
-            pctText.text = Mathf.RoundToInt(initialValue * 100) + "%";
-            pctText.fontSize = 18;
-            pctText.color = new Color(0.9f, 0.9f, 1f);
-            pctText.alignment = TextAnchor.MiddleRight;
-            pctText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var pctImg = pctGO.AddComponent<Image>();
+            Sprite pctSprite = PlaceholderAssets.CreatePixelTextSprite(
+                $"{Mathf.RoundToInt(initialValue * 100)}%", new Color(0.9f, 0.9f, 1f), 2);
+            pctImg.sprite = pctSprite;
+            pctImg.preserveAspect = true;
+            pctImg.raycastTarget = false;
+            pctImg.SetNativeSize();
             var pctRect = pctGO.GetComponent<RectTransform>();
             pctRect.anchorMin = new Vector2(1f, 0f);
             pctRect.anchorMax = new Vector2(1f, 0.45f);
@@ -535,8 +547,22 @@ namespace EpochBreaker.UI
             slider.targetGraphic = handleImg;
             slider.onValueChanged.AddListener((val) => {
                 onValueChanged.Invoke(val);
-                pctText.text = Mathf.RoundToInt(val * 100) + "%";
+                if (pctSprite != null) { Destroy(pctSprite.texture); Destroy(pctSprite); }
+                pctSprite = PlaceholderAssets.CreatePixelTextSprite(
+                    $"{Mathf.RoundToInt(val * 100)}%", new Color(0.9f, 0.9f, 1f), 2);
+                pctImg.sprite = pctSprite;
+                pctImg.SetNativeSize();
             });
+        }
+
+        private static int FontSizeToScale(int fontSize)
+        {
+            if (fontSize >= 72) return 10;
+            if (fontSize >= 38) return 6;
+            if (fontSize >= 30) return 5;
+            if (fontSize >= 24) return 4;
+            if (fontSize >= 16) return 3;
+            return 2; // 12-14
         }
 
         private GameObject CreateText(Transform parent, string text, int fontSize, Color color, Vector2 position)
@@ -544,17 +570,17 @@ namespace EpochBreaker.UI
             var go = new GameObject("Text");
             go.transform.SetParent(parent, false);
 
-            var textComp = go.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = fontSize;
-            textComp.color = color;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            int scale = FontSizeToScale(fontSize);
+            var img = go.AddComponent<Image>();
+            img.sprite = PlaceholderAssets.GetPixelTextSprite(text, color, scale);
+            img.preserveAspect = true;
+            img.raycastTarget = false;
+            img.SetNativeSize();
 
             var rect = go.GetComponent<RectTransform>();
             rect.anchorMin = new Vector2(0.5f, 0.5f);
             rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.sizeDelta = new Vector2(400, 60);
+            rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = position;
 
             return go;
@@ -596,16 +622,15 @@ namespace EpochBreaker.UI
 
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
-            var textComp = textGO.AddComponent<Text>();
-            textComp.text = text;
-            textComp.fontSize = customFontSize;
-            textComp.color = Color.white;
-            textComp.alignment = TextAnchor.MiddleCenter;
-            textComp.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var labelImg = textGO.AddComponent<Image>();
+            labelImg.sprite = PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
+            labelImg.preserveAspect = true;
+            labelImg.raycastTarget = false;
+            labelImg.SetNativeSize();
             var textRect = textGO.GetComponent<RectTransform>();
-            textRect.anchorMin = Vector2.zero;
-            textRect.anchorMax = Vector2.one;
-            textRect.sizeDelta = Vector2.zero;
+            textRect.anchorMin = new Vector2(0.5f, 0.5f);
+            textRect.anchorMax = new Vector2(0.5f, 0.5f);
+            textRect.anchoredPosition = Vector2.zero;
         }
 
         /// <summary>
@@ -653,20 +678,25 @@ namespace EpochBreaker.UI
 
             var btnTextGO = new GameObject("BtnLabel");
             btnTextGO.transform.SetParent(btnGO.transform, false);
-            var btnText = btnTextGO.AddComponent<Text>();
-            btnText.text = currentValue ? "ON" : "OFF";
-            btnText.fontSize = 18;
-            btnText.color = Color.white;
-            btnText.alignment = TextAnchor.MiddleCenter;
-            btnText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var btnLabelImg = btnTextGO.AddComponent<Image>();
+            Sprite btnLabelSprite = PlaceholderAssets.CreatePixelTextSprite(
+                currentValue ? "ON" : "OFF", Color.white, 3);
+            btnLabelImg.sprite = btnLabelSprite;
+            btnLabelImg.preserveAspect = true;
+            btnLabelImg.raycastTarget = false;
+            btnLabelImg.SetNativeSize();
             var btnTextRect = btnTextGO.GetComponent<RectTransform>();
-            btnTextRect.anchorMin = Vector2.zero;
-            btnTextRect.anchorMax = Vector2.one;
-            btnTextRect.sizeDelta = Vector2.zero;
+            btnTextRect.anchorMin = new Vector2(0.5f, 0.5f);
+            btnTextRect.anchorMax = new Vector2(0.5f, 0.5f);
+            btnTextRect.anchoredPosition = Vector2.zero;
 
             btn.onClick.AddListener(() => {
                 currentValue = !currentValue;
-                btnText.text = currentValue ? "ON" : "OFF";
+                if (btnLabelSprite != null) { Destroy(btnLabelSprite.texture); Destroy(btnLabelSprite); }
+                btnLabelSprite = PlaceholderAssets.CreatePixelTextSprite(
+                    currentValue ? "ON" : "OFF", Color.white, 3);
+                btnLabelImg.sprite = btnLabelSprite;
+                btnLabelImg.SetNativeSize();
                 btnImg.color = currentValue ? new Color(0.3f, 0.55f, 0.35f) : new Color(0.4f, 0.3f, 0.3f);
                 onValueChanged(currentValue);
             });

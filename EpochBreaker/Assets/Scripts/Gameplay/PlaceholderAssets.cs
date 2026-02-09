@@ -16,6 +16,14 @@ namespace EpochBreaker.Gameplay
         private const float PPU = 256f;
         private const int SCALE = TILE_PX / 64;
 
+        /// <summary>Create a Texture2D with Point filtering for crisp pixel art.</summary>
+        private static Texture2D MakeTex(int w, int h)
+        {
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            return tex;
+        }
+
         /// <summary>
         /// Clear level-specific sprites (epoch-dependent tiles, enemies, bosses, projectiles).
         /// Session-stable sprites (player, UI text, weapons, pickups, environment) are preserved.
@@ -60,8 +68,10 @@ namespace EpochBreaker.Gameplay
         private static bool IsSessionKey(string key)
         {
             return key.StartsWith("player") || key.StartsWith("pixeltext_") ||
+                   key.StartsWith("tile_") ||
                    key.StartsWith("weapon_") || key.StartsWith("reward_") ||
                    key.StartsWith("ability_") || key.StartsWith("checkpoint_") ||
+                   key.StartsWith("sentinel_") || key.StartsWith("hud_frame_") ||
                    key == "extra_life" || key == "debris" || key == "hazard_cloud" ||
                    key == "spike" || key == "arena_pillar" || key == "exitportal" ||
                    key == "title_logo" || key == "ornate_frame";
@@ -147,7 +157,7 @@ namespace EpochBreaker.Gameplay
         /// Get epoch-specific terrain colors for ground, surface, blocks, and accent.
         /// Each epoch has a distinct visual theme.
         /// </summary>
-        private static (Color ground, Color surface, Color block, Color accent) GetEpochTerrainColors(int epoch)
+        public static (Color ground, Color surface, Color block, Color accent) GetEpochTerrainColors(int epoch)
         {
             return epoch switch
             {
@@ -236,7 +246,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int s = TILE_PX;
-            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            var tex = MakeTex(s, s);
             tex.filterMode = FilterMode.Point;
             var px = new Color[s * s];
 
@@ -720,7 +730,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 768;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -902,7 +912,7 @@ namespace EpochBreaker.Gameplay
             int size = baseSprite.texture.width;
             var basePx = baseSprite.texture.GetPixels();
 
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[basePx.Length];
 
@@ -965,7 +975,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 768;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
             var (body, secondary, eyes) = GetEraColors(era);
@@ -1747,7 +1757,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 128;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -1993,7 +2003,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 384;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2320,7 +2330,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 256;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2518,7 +2528,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 256;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2595,7 +2605,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 256;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2746,7 +2756,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int w = 256, h = 768;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var tex = MakeTex(w, h);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
 
@@ -2894,7 +2904,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 128;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2915,13 +2925,241 @@ namespace EpochBreaker.Gameplay
             return sprite;
         }
 
+        /// <summary>
+        /// Get epoch-themed sentinel cache homing missile sprite (64×64).
+        /// Each epoch has a unique projectile shape reflecting the era's technology.
+        /// </summary>
+        public static Sprite GetSentinelMissileSprite(int epoch)
+        {
+            string key = $"sentinel_missile_e{epoch}";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int size = 64;
+            var tex = MakeTex(size, size);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+
+            var (bright, dim, glow) = GetEpochProjectileColors(epoch);
+            Color core = Lighten(bright, 0.40f);
+            Color trail = new Color(glow.r, glow.g, glow.b, 0.5f);
+
+            switch (epoch)
+            {
+                case 0: // Stone Age — sling stone with motion lines
+                    SetRect(px,size, 24, 22, 16, 16, dim);
+                    SetRect(px,size, 26, 24, 12, 12, bright);
+                    SetRect(px,size, 30, 28, 4, 4, core);
+                    // Motion lines
+                    SetRect(px,size, 10, 28, 10, 2, trail);
+                    SetRect(px,size, 14, 32, 8, 2, trail);
+                    break;
+
+                case 1: // Bronze Age — golden pointed dart
+                    SetRect(px,size, 28, 10, 8, 6, glow);   // tip
+                    SetRect(px,size, 24, 16, 16, 20, bright); // shaft
+                    SetRect(px,size, 28, 20, 8, 12, core);    // center shine
+                    SetRect(px,size, 20, 36, 24, 8, dim);     // fins
+                    SetRect(px,size, 22, 44, 20, 4, trail);   // trail
+                    break;
+
+                case 2: // Classical — fire bolt
+                    SetRect(px,size, 28, 8, 8, 8, glow);      // flame tip
+                    SetRect(px,size, 26, 16, 12, 16, bright);  // body
+                    SetRect(px,size, 30, 18, 4, 10, core);     // hot core
+                    SetRect(px,size, 24, 32, 16, 6, dim);      // base
+                    SetRect(px,size, 22, 38, 6, 10, trail);    // flame trail L
+                    SetRect(px,size, 36, 38, 6, 10, trail);    // flame trail R
+                    break;
+
+                case 3: // Medieval — arbalest bolt (cross-shaped)
+                    SetRect(px,size, 30, 6, 4, 12, dim);      // tip
+                    SetRect(px,size, 28, 18, 8, 24, bright);   // shaft
+                    SetRect(px,size, 16, 26, 32, 6, dim);      // crossbar
+                    SetRect(px,size, 30, 20, 4, 18, core);     // center
+                    SetRect(px,size, 26, 42, 12, 6, trail);    // fletching
+                    break;
+
+                case 4: // Renaissance — gunpowder rocket
+                    SetRect(px,size, 26, 8, 12, 8, dim);       // nose cone
+                    SetRect(px,size, 24, 16, 16, 22, bright);  // cylinder body
+                    SetRect(px,size, 28, 18, 8, 16, core);     // body highlight
+                    SetRect(px,size, 20, 38, 24, 6, dim);      // fins
+                    SetRect(px,size, 28, 44, 8, 8, glow);      // spark trail
+                    SetRect(px,size, 30, 52, 4, 6, trail);     // smoke
+                    break;
+
+                case 5: // Industrial — steam missile
+                    SetRect(px,size, 28, 6, 8, 10, dim);       // tapered nose
+                    SetRect(px,size, 24, 16, 16, 24, bright);  // gray body
+                    SetRect(px,size, 28, 20, 8, 16, core);     // rivet line
+                    SetRect(px,size, 20, 40, 24, 6, dim);      // stabilizers
+                    SetRect(px,size, 26, 46, 12, 8, new Color(0.9f, 0.9f, 0.9f, 0.4f)); // steam
+                    break;
+
+                case 6: // Modern — smart missile (sleek, finned)
+                    SetRect(px,size, 30, 4, 4, 8, dim);        // sharp nose
+                    SetRect(px,size, 26, 12, 12, 26, bright);  // body
+                    SetRect(px,size, 30, 16, 4, 18, core);     // center stripe
+                    SetRect(px,size, 18, 32, 8, 10, dim);      // fin L
+                    SetRect(px,size, 38, 32, 8, 10, dim);      // fin R
+                    SetRect(px,size, 28, 38, 8, 6, trail);     // exhaust
+                    break;
+
+                case 7: // Digital — cyber seeker (pixelated, glitch)
+                    SetRect(px,size, 26, 10, 12, 12, bright);  // top block
+                    SetRect(px,size, 22, 22, 20, 8, glow);     // wide middle
+                    SetRect(px,size, 28, 30, 8, 12, bright);   // lower body
+                    SetRect(px,size, 30, 14, 4, 6, core);      // eye/sensor
+                    // Glitch pixels
+                    Px(px,size, 20, 16, glow); Px(px,size, 44, 20, glow);
+                    Px(px,size, 18, 28, trail); Px(px,size, 46, 24, trail);
+                    SetRect(px,size, 26, 42, 12, 6, trail);    // data trail
+                    break;
+
+                case 8: // Spacefaring — plasma torpedo (energy ring)
+                    SetRect(px,size, 28, 8, 8, 8, glow);       // energy tip
+                    SetRect(px,size, 24, 16, 16, 20, bright);   // body
+                    SetRect(px,size, 28, 20, 8, 12, core);      // core
+                    // Energy ring
+                    SetRect(px,size, 18, 24, 4, 8, glow);
+                    SetRect(px,size, 42, 24, 4, 8, glow);
+                    SetRect(px,size, 22, 20, 4, 4, glow);
+                    SetRect(px,size, 38, 20, 4, 4, glow);
+                    SetRect(px,size, 26, 36, 12, 8, trail);     // plasma trail
+                    break;
+
+                case 9: // Transcendent — light lance (ethereal, luminous)
+                    SetRect(px,size, 30, 4, 4, 8, new Color(1f, 1f, 1f, 0.9f)); // tip
+                    SetRect(px,size, 26, 12, 12, 24, bright);   // body
+                    SetRect(px,size, 28, 14, 8, 20, core);      // inner light
+                    SetRect(px,size, 30, 18, 4, 12, new Color(1f, 1f, 1f, 1f)); // pure center
+                    // Luminous wings
+                    SetRect(px,size, 18, 20, 6, 4, glow);
+                    SetRect(px,size, 40, 20, 6, 4, glow);
+                    SetRect(px,size, 24, 36, 16, 6, trail);     // ethereal trail
+                    SetRect(px,size, 28, 42, 8, 8, new Color(1f, 1f, 1f, 0.3f)); // glow aura
+                    break;
+
+                default: // Fallback
+                    SetRect(px,size, 26, 12, 12, 32, bright);
+                    SetRect(px,size, 30, 16, 4, 24, core);
+                    break;
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), PPU);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>
+        /// Get epoch-themed HUD frame sprite for the bottom L-strip decoration.
+        /// Each epoch has a unique border style reflecting the era.
+        /// Returns a wide strip sprite (480×110) with epoch-appropriate decoration.
+        /// </summary>
+        public static Sprite GetHUDFrameSprite(int epoch)
+        {
+            string key = $"hud_frame_e{epoch}";
+            if (_cache.TryGetValue(key, out var cached)) return cached;
+
+            int w = 480, h = 110;
+            var tex = MakeTex(w, h);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[w * h];
+
+            var (ground, surface, block, accent) = GetEpochTerrainColors(epoch);
+            Color border = Lighten(block, 0.15f);
+            Color inner = Darken(ground, 0.5f);
+            inner.a = 0.6f;
+
+            // Top border (3px)
+            SetRect(px, w, 0, h - 3, w, 3, border);
+            // Left border (3px, from left column edge)
+            SetRect(px, w, 0, 0, 3, h, border);
+            // Bottom border (2px)
+            SetRect(px, w, 0, 0, w, 2, Darken(border, 0.7f));
+
+            // Accent stripe (1px below top border)
+            SetRect(px, w, 4, h - 6, w - 8, 2, accent);
+
+            // Epoch-specific corner decorations
+            switch (epoch)
+            {
+                case 0: // Stone Age - rough dots
+                    for (int x = 20; x < w; x += 40)
+                        SetRect(px, w, x, h - 10, 4, 3, accent);
+                    break;
+                case 1: // Bronze Age - wave pattern
+                    for (int x = 10; x < w; x += 24)
+                    {
+                        SetRect(px, w, x, h - 10, 8, 2, accent);
+                        SetRect(px, w, x + 4, h - 12, 8, 2, accent);
+                    }
+                    break;
+                case 2: // Classical - laurel dots
+                    for (int x = 15; x < w; x += 30)
+                        SetRect(px, w, x, h - 11, 6, 4, accent);
+                    break;
+                case 3: // Medieval - crenellation
+                    for (int x = 8; x < w; x += 20)
+                        SetRect(px, w, x, h - 14, 10, 8, border);
+                    break;
+                case 4: // Renaissance - ornate dashes
+                    for (int x = 12; x < w; x += 28)
+                    {
+                        SetRect(px, w, x, h - 10, 12, 2, accent);
+                        SetRect(px, w, x + 2, h - 13, 8, 2, accent);
+                    }
+                    break;
+                case 5: // Industrial - rivet dots
+                    for (int x = 16; x < w; x += 32)
+                    {
+                        SetRect(px, w, x, h - 10, 3, 3, accent);
+                        SetRect(px, w, x + 14, h - 10, 3, 3, accent);
+                    }
+                    break;
+                case 6: // Modern - caution stripes
+                    for (int x = 0; x < w; x += 20)
+                        SetRect(px, w, x, h - 10, 10, 3, accent);
+                    break;
+                case 7: // Digital - circuit traces
+                    for (int x = 8; x < w; x += 36)
+                    {
+                        SetRect(px, w, x, h - 10, 16, 1, accent);
+                        SetRect(px, w, x + 16, h - 14, 1, 5, accent);
+                        SetRect(px, w, x + 16, h - 14, 8, 1, accent);
+                    }
+                    break;
+                case 8: // Spacefaring - energy conduit
+                    for (int x = 6; x < w; x += 24)
+                    {
+                        SetRect(px, w, x, h - 10, 12, 2, accent);
+                        SetRect(px, w, x + 4, h - 13, 4, 2, accent);
+                    }
+                    break;
+                case 9: // Transcendent - luminous dots
+                    for (int x = 10; x < w; x += 18)
+                        SetRect(px, w, x, h - 10, 4, 4, Color.white);
+                    break;
+            }
+
+            tex.SetPixels(px);
+            tex.Apply();
+            var sprite = Sprite.Create(tex, new Rect(0, 0, w, h), new Vector2(0.5f, 0.5f), 1f);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
         public static Sprite GetHazardCloudSprite()
         {
             string key = "hazard_cloud";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 256;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2958,7 +3196,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int size = 256;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -2994,7 +3232,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int w = 256, h = 768;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var tex = MakeTex(w, h);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
 
@@ -3039,7 +3277,7 @@ namespace EpochBreaker.Gameplay
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
             int w = 768, h = 1024;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var tex = MakeTex(w, h);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
 
@@ -3143,7 +3381,7 @@ namespace EpochBreaker.Gameplay
 
             int size = 1536;
             float bossPPU = 512f;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
 
@@ -3297,7 +3535,7 @@ namespace EpochBreaker.Gameplay
             int totalH = letterH + 64;  // padding for shadow
 
             int w = totalW, h = totalH;
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var tex = MakeTex(w, h);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
 
@@ -3438,6 +3676,18 @@ namespace EpochBreaker.Gameplay
             ['.'] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,1,0,0}, {0,0,1,0,0} },
             ['!'] = new int[,] { {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,0,0,0}, {0,0,1,0,0} },
             ['\''] = new int[,] { {0,0,1,0,0}, {0,0,1,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0} },
+            ['+'] = new int[,] { {0,0,0,0,0}, {0,0,1,0,0}, {0,0,1,0,0}, {1,1,1,1,1}, {0,0,1,0,0}, {0,0,1,0,0}, {0,0,0,0,0} },
+            [','] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,1,0,0}, {0,1,0,0,0} },
+            ['('] = new int[,] { {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0}, {0,1,0,0,0}, {0,1,0,0,0}, {0,0,1,0,0}, {0,0,0,1,0} },
+            [')'] = new int[,] { {0,1,0,0,0}, {0,0,1,0,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0} },
+            ['>'] = new int[,] { {0,1,0,0,0}, {0,0,1,0,0}, {0,0,0,1,0}, {0,0,0,0,1}, {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0} },
+            ['%'] = new int[,] { {1,1,0,0,1}, {1,1,0,1,0}, {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0}, {0,1,0,1,1}, {1,0,0,1,1} },
+            ['$'] = new int[,] { {0,0,1,0,0}, {0,1,1,1,1}, {1,0,1,0,0}, {0,1,1,1,0}, {0,0,1,0,1}, {1,1,1,1,0}, {0,0,1,0,0} },
+            ['<'] = new int[,] { {0,0,0,1,0}, {0,0,1,0,0}, {0,1,0,0,0}, {1,0,0,0,0}, {0,1,0,0,0}, {0,0,1,0,0}, {0,0,0,1,0} },
+            ['='] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {1,1,1,1,1}, {0,0,0,0,0}, {1,1,1,1,1}, {0,0,0,0,0}, {0,0,0,0,0} },
+            ['#'] = new int[,] { {0,1,0,1,0}, {0,1,0,1,0}, {1,1,1,1,1}, {0,1,0,1,0}, {1,1,1,1,1}, {0,1,0,1,0}, {0,1,0,1,0} },
+            ['?'] = new int[,] { {0,1,1,1,0}, {1,0,0,0,1}, {0,0,0,0,1}, {0,0,1,1,0}, {0,0,1,0,0}, {0,0,0,0,0}, {0,0,1,0,0} },
+            ['_'] = new int[,] { {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {0,0,0,0,0}, {1,1,1,1,1} },
         };
 
         /// <summary>
@@ -3449,16 +3699,34 @@ namespace EpochBreaker.Gameplay
             string key = $"pixeltext_{text}_{ColorToHex(color)}_{scale}";
             if (_cache.TryGetValue(key, out var cached)) return cached;
 
+            var sprite = RenderPixelText(text, color, scale);
+            sprite.name = key;
+            _cache[key] = sprite;
+            return sprite;
+        }
+
+        /// <summary>
+        /// Creates a pixel text sprite WITHOUT caching. Caller must Destroy the
+        /// sprite and its texture when done to avoid memory leaks.
+        /// Use for dynamic text (score, timer) that changes frequently.
+        /// </summary>
+        public static Sprite CreatePixelTextSprite(string text, Color color, int scale = 2)
+        {
+            text = text.ToUpper();
+            return RenderPixelText(text, color, scale);
+        }
+
+        private static Sprite RenderPixelText(string text, Color color, int scale)
+        {
             int charW = 5 * scale;
             int charH = 7 * scale;
             int spacing = scale;
             int padding = scale * 2;
 
-            int totalW = padding * 2 + text.Length * (charW + spacing) - spacing;
+            int totalW = Mathf.Max(1, padding * 2 + text.Length * (charW + spacing) - spacing);
             int totalH = padding * 2 + charH;
 
-            var tex = new Texture2D(totalW, totalH, TextureFormat.RGBA32, false);
-            tex.filterMode = FilterMode.Point;
+            var tex = MakeTex(totalW, totalH);
             var px = new Color[totalW * totalH];
 
             Color hi = Lighten(color, 0.3f);
@@ -3476,10 +3744,7 @@ namespace EpochBreaker.Gameplay
 
             tex.SetPixels(px);
             tex.Apply();
-            var sprite = Sprite.Create(tex, new Rect(0, 0, totalW, totalH), new Vector2(0.5f, 0.5f), 1f);
-            sprite.name = key;
-            _cache[key] = sprite;
-            return sprite;
+            return Sprite.Create(tex, new Rect(0, 0, totalW, totalH), new Vector2(0.5f, 0.5f), 100f);
         }
 
         private static void DrawPixelChar(Color[] px, int texW, int[,] pattern, int startX, int startY, int scale,
@@ -3527,7 +3792,7 @@ namespace EpochBreaker.Gameplay
             // Frame dimensions to match 1920x1080 reference at scale
             int w = 1920, h = 1080;
             int borderW = 64;  // Width of the ornate border
-            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            var tex = MakeTex(w, h);
             tex.filterMode = FilterMode.Point;
             var px = new Color[w * h];
 
@@ -3675,7 +3940,7 @@ namespace EpochBreaker.Gameplay
 
         private static Sprite CreateSquareSprite(Color color, int size, float ppu)
         {
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var pixels = new Color[size * size];
             for (int i = 0; i < pixels.Length; i++)
@@ -3700,7 +3965,7 @@ namespace EpochBreaker.Gameplay
             if (_particleSprite != null) return _particleSprite;
 
             const int size = 32;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            var tex = MakeTex(size, size);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
             float center = (size - 1) * 0.5f;
@@ -3801,7 +4066,7 @@ namespace EpochBreaker.Gameplay
 
             for (int f = 0; f < 4; f++)
             {
-                var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+                var tex = MakeTex(size, size);
                 tex.filterMode = FilterMode.Point;
                 // Copy base sprite pixels
                 var baseTex = baseSprite.texture;
@@ -3832,7 +4097,7 @@ namespace EpochBreaker.Gameplay
                 return new Sprite[] { cached };
 
             var baseSprite = GetPlayerSprite();
-            var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
+            var tex = MakeTex(768, 768);
             tex.filterMode = FilterMode.Point;
             var px = baseSprite.texture.GetPixels();
 
@@ -3857,7 +4122,7 @@ namespace EpochBreaker.Gameplay
                 return new Sprite[] { cached };
 
             var baseSprite = GetPlayerSprite();
-            var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
+            var tex = MakeTex(768, 768);
             tex.filterMode = FilterMode.Point;
             var px = baseSprite.texture.GetPixels();
 
@@ -3888,7 +4153,7 @@ namespace EpochBreaker.Gameplay
                 }
 
                 var baseSprite = GetPlayerSprite();
-                var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
+                var tex = MakeTex(768, 768);
                 tex.filterMode = FilterMode.Point;
                 var px = baseSprite.texture.GetPixels();
 
@@ -3923,7 +4188,7 @@ namespace EpochBreaker.Gameplay
                 }
 
                 var baseSprite = GetEnemySprite(type, behavior);
-                var tex = new Texture2D(768, 768, TextureFormat.RGBA32, false);
+                var tex = MakeTex(768, 768);
                 tex.filterMode = FilterMode.Point;
                 var px = baseSprite.texture.GetPixels();
 

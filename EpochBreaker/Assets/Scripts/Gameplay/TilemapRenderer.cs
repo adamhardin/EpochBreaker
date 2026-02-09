@@ -49,6 +49,8 @@ namespace EpochBreaker.Gameplay
             CreateGrid();
             PopulateTilemaps();
             TintRelicTiles();
+            TintSentinelCaches();
+            TintHazardTiles();
         }
 
         public void Clear()
@@ -91,9 +93,10 @@ namespace EpochBreaker.Gameplay
 
             if (idx < 0 || idx >= _levelData.Layout.Tiles.Length) return;
 
-            // Check for hazard, relic, hidden content, and material before clearing data
+            // Check for hazard, relic, sentinel cache, hidden content, and material before clearing data
             var hazard = _levelData.Layout.Destructibles[idx].Hazard;
             bool isRelic = _levelData.Layout.Destructibles[idx].IsRelic;
+            bool isSentinelCache = _levelData.Layout.Destructibles[idx].IsSentinelCache;
             var hiddenContent = _levelData.Layout.Destructibles[idx].HiddenContent;
             byte materialClass = _levelData.Layout.Destructibles[idx].MaterialClass;
 
@@ -126,6 +129,13 @@ namespace EpochBreaker.Gameplay
             // Record hidden content discovery (exploration score)
             if (hiddenContent != Generative.HiddenContentType.None)
                 GameManager.Instance?.RecordHiddenContentFound(hiddenContent);
+
+            // Trigger sentinel cache — homing missiles
+            if (isSentinelCache)
+            {
+                var worldPos = new UnityEngine.Vector3(tileX + 0.5f, tileY + 0.5f, 0f);
+                GameManager.Instance?.TriggerSentinelCache(worldPos);
+            }
 
             // Trigger hazard effect
             if (hazard != HazardType.None)
@@ -452,6 +462,56 @@ namespace EpochBreaker.Gameplay
 
                     var cell = LevelToCell(x, y);
                     DestructibleTilemap.SetColor(cell, relicTint);
+                }
+            }
+        }
+
+        private void TintSentinelCaches()
+        {
+            if (DestructibleTilemap == null || _levelData == null) return;
+
+            int width = _levelData.Layout.WidthTiles;
+            int height = _levelData.Layout.HeightTiles;
+            var sentinelTint = new Color(0.7f, 0.85f, 1.0f, 1f);
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int idx = y * width + x;
+                    if (!_levelData.Layout.Destructibles[idx].IsSentinelCache) continue;
+
+                    var cell = LevelToCell(x, y);
+                    DestructibleTilemap.SetColor(cell, sentinelTint);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Apply a subtle warning tint to destructible tiles that contain hazards.
+        /// Uses the same Tilemap.SetColor pattern as relics and sentinel caches.
+        /// Skips tiles already tinted (relics, sentinel caches) to avoid overwriting.
+        /// </summary>
+        private void TintHazardTiles()
+        {
+            if (DestructibleTilemap == null || _levelData == null) return;
+
+            int width = _levelData.Layout.WidthTiles;
+            int height = _levelData.Layout.HeightTiles;
+            var hazardTint = new Color(1.0f, 0.7f, 0.6f, 1f); // subtle red-orange warning
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    int idx = y * width + x;
+                    var dt = _levelData.Layout.Destructibles[idx];
+                    if (dt.Hazard == HazardType.None) continue;
+                    // Don't overwrite relic or sentinel tints
+                    if (dt.IsRelic || dt.IsSentinelCache) continue;
+
+                    var cell = LevelToCell(x, y);
+                    DestructibleTilemap.SetColor(cell, hazardTint);
                 }
             }
         }

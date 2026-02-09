@@ -343,6 +343,11 @@ namespace EpochBreaker.Gameplay
 
             Health -= amount;
 
+            // Floating damage number
+            bool isKillShot = Health <= 0;
+            Color dmgColor = isKillShot ? new Color(1f, 0.2f, 0.2f) : Color.white;
+            GameManager.ShowDamagePopup(transform.position, amount, dmgColor);
+
             // Pitch varies by enemy type for variety
             float pitchBase = 1f - (int)Type * 0.03f; // lower pitch for later-era enemies
             AudioManager.PlaySFXPitched(PlaceholderAudio.GetEnemyHitSFX(), pitchBase - 0.1f, pitchBase + 0.1f);

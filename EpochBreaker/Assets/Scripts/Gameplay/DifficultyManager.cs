@@ -105,6 +105,23 @@ namespace EpochBreaker.Gameplay
         }
 
         /// <summary>
+        /// Score multiplier applied to final level score.
+        /// Easy: 0.5x (halved), Normal: 1.0x, Hard: 2.0x (doubled).
+        /// </summary>
+        public float ScoreMultiplier
+        {
+            get
+            {
+                switch (_currentDifficulty)
+                {
+                    case DifficultyLevel.Easy: return 0.5f;
+                    case DifficultyLevel.Hard: return 2.0f;
+                    default: return 1.0f;
+                }
+            }
+        }
+
+        /// <summary>
         /// Display name for the current difficulty.
         /// </summary>
         public string DifficultyName

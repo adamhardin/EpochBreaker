@@ -129,8 +129,8 @@ namespace EpochBreaker.Gameplay
             try
             {
                 var lpf = gameObject.AddComponent<AudioLowPassFilter>();
-                lpf.cutoffFrequency = 3000f;
-                lpf.lowpassResonanceQ = 0.5f; // Reduce resonant peak near cutoff (H2 squeal mitigation)
+                lpf.cutoffFrequency = 2800f;
+                lpf.lowpassResonanceQ = 0.1f; // Minimal resonance — eliminates ringing near cutoff
             }
             catch (System.Exception)
             {
