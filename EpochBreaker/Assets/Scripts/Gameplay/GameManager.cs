@@ -788,14 +788,18 @@ namespace EpochBreaker.Gameplay
             Debug.Log($"[MemStats] ReturnToTitle Sprites={spriteCount} EstBytes={spriteBytes / 1024}KB Epoch={CurrentEpoch}");
             #endif
 
-            // Keep caches warm — only clear epoch-specific sprites.
-            // Parallax, tile, and session caches survive the return to avoid
-            // fragmentation from destroy-then-reallocate cycles.
+            // Clear level-specific caches. Session-stable sprites and parallax/tile
+            // caches survive to avoid regeneration on same-epoch restart.
             PlaceholderAssets.ClearCache();
             PlaceholderAudio.ClearCache();
-            // ParallaxBackground: keep cached — epoch hasn't changed
-            // LevelRenderer: keep cached — epoch hasn't changed
-            // _previousEpoch: preserve — keeps epoch cache validity
+
+            // Reclaim native memory from destroyed textures/objects.
+            // Without this, Object.Destroy'd textures remain in the WASM heap
+            // until the next UnloadUnusedAssets — causing OOM on restart.
+            Resources.UnloadUnusedAssets();
+            System.GC.Collect();
+            _levelsSinceUnload = 0;
+
             GameManager.PlayerTransform = null;
             TransitionTo(GameState.TitleScreen);
         }
@@ -890,7 +894,7 @@ namespace EpochBreaker.Gameplay
 
         private int _previousEpoch = -1;
         private int _levelsSinceUnload = 0;
-        private const int UNLOAD_EVERY_N_LEVELS = 5;
+        private const int UNLOAD_EVERY_N_LEVELS = 3;
 
         private void StartLevel()
         {
