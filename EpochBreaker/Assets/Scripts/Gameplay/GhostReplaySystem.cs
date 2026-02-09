@@ -96,7 +96,7 @@ namespace EpochBreaker.Gameplay
             // Track stored ghost codes and prune oldest when over cap
             UpdateGhostIndex(levelCode);
 
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>

@@ -57,13 +57,13 @@ namespace EpochBreaker.Gameplay
         public static void SetTutorialCompleted()
         {
             PlayerPrefs.SetInt(PREF_KEY, 1);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         public static void ResetTutorial()
         {
             PlayerPrefs.DeleteKey(PREF_KEY);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         private void Awake()
@@ -335,7 +335,7 @@ namespace EpochBreaker.Gameplay
         public static void DismissHint(string hintId)
         {
             PlayerPrefs.SetInt(PREF_HINT_DISMISSED_PREFIX + hintId, 1);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>
@@ -356,7 +356,7 @@ namespace EpochBreaker.Gameplay
             {
                 PlayerPrefs.DeleteKey(PREF_HINT_DISMISSED_PREFIX + id);
             }
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         private void ShowHint(TutorialStep step)

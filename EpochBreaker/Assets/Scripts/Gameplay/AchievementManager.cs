@@ -128,7 +128,7 @@ namespace EpochBreaker.Gameplay
             if (Instance != null && Instance != this)
             {
                 Debug.LogWarning($"[Singleton] AchievementManager duplicate detected — destroying new instance.");
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
             Instance = this;
@@ -157,7 +157,7 @@ namespace EpochBreaker.Gameplay
         {
             string json = JsonUtility.ToJson(_saveData);
             PlayerPrefs.SetString(SAVE_KEY, json);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
             _saveDirty = false;
             _lastSaveTime = Time.time;
         }

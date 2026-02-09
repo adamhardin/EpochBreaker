@@ -338,7 +338,7 @@ namespace EpochBreaker.Gameplay
         private static void SaveDailyData(DailyData data)
         {
             PlayerPrefs.SetString(DAILY_PREFS_KEY, JsonUtility.ToJson(data));
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         private static DailyStreakData LoadStreakData()
@@ -352,7 +352,7 @@ namespace EpochBreaker.Gameplay
         private static void SaveStreakData(DailyStreakData data)
         {
             PlayerPrefs.SetString(STREAK_PREFS_KEY, JsonUtility.ToJson(data));
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         private static WeeklyData LoadWeeklyData()
@@ -366,7 +366,7 @@ namespace EpochBreaker.Gameplay
         private static void SaveWeeklyData(WeeklyData data)
         {
             PlayerPrefs.SetString(WEEKLY_PREFS_KEY, JsonUtility.ToJson(data));
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
     }
 }

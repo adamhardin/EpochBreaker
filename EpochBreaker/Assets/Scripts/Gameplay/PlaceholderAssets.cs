@@ -67,6 +67,24 @@ namespace EpochBreaker.Gameplay
                    key == "title_logo" || key == "ornate_frame";
         }
 
+        /// <summary>
+        /// Returns sprite count and estimated texture bytes for the current cache.
+        /// </summary>
+        public static (int count, long bytes) GetCacheStats()
+        {
+            int count = 0;
+            long bytes = 0;
+            foreach (var sprite in _cache.Values)
+            {
+                if (sprite != null && sprite.texture != null)
+                {
+                    count++;
+                    bytes += (long)sprite.texture.width * sprite.texture.height * 4;
+                }
+            }
+            return (count, bytes);
+        }
+
         #region Helpers
 
         private static void SetRect(Color[] px, int texW, int x0, int y0, int w, int h, Color c)

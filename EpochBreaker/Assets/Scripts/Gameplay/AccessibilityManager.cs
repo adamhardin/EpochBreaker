@@ -34,7 +34,7 @@ namespace EpochBreaker.Gameplay
             {
                 _colorblindMode = value;
                 PlayerPrefs.SetInt(PREF_COLORBLIND, value ? 1 : 0);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
         }
 
@@ -49,7 +49,7 @@ namespace EpochBreaker.Gameplay
             {
                 _shakeIntensity = Mathf.Clamp01(value);
                 PlayerPrefs.SetFloat(PREF_SHAKE_INTENSITY, _shakeIntensity);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
         }
 
@@ -64,7 +64,7 @@ namespace EpochBreaker.Gameplay
             {
                 _fontSizeScale = 1f;
                 PlayerPrefs.SetFloat(PREF_FONT_SCALE, _fontSizeScale);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
         }
 
@@ -78,7 +78,7 @@ namespace EpochBreaker.Gameplay
             {
                 _highContrastMode = value;
                 PlayerPrefs.SetInt(PREF_HIGH_CONTRAST, value ? 1 : 0);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
         }
 

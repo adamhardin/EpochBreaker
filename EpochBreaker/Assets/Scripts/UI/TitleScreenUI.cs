@@ -473,7 +473,7 @@ namespace EpochBreaker.UI
                 if (DifficultyManager.Instance != null)
                     DifficultyManager.Instance.CurrentDifficulty = level;
                 PlayerPrefs.SetInt("EpochBreaker_DifficultyChosen", 1);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
                 Destroy(_difficultyPromptPanel);
                 _difficultyPromptPanel = null;
                 GameManager.Instance?.StartGame();

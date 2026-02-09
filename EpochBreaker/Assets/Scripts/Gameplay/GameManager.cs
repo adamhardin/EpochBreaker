@@ -208,20 +208,20 @@ namespace EpochBreaker.Gameplay
         public bool CampaignModeEnabled
         {
             get => PlayerPrefs.GetInt(PREF_CAMPAIGN_MODE, 0) == 1;
-            set { PlayerPrefs.SetInt(PREF_CAMPAIGN_MODE, value ? 1 : 0); PlayerPrefs.Save(); }
+            set { PlayerPrefs.SetInt(PREF_CAMPAIGN_MODE, value ? 1 : 0); SafePrefs.Save(); }
         }
 
         /// <summary>Legacy property — migrated to CampaignModeEnabled.</summary>
         public bool ReplayCampaignEnabled
         {
             get => PlayerPrefs.GetInt(PREF_REPLAY_CAMPAIGN, 0) == 1;
-            set { PlayerPrefs.SetInt(PREF_REPLAY_CAMPAIGN, value ? 1 : 0); PlayerPrefs.Save(); }
+            set { PlayerPrefs.SetInt(PREF_REPLAY_CAMPAIGN, value ? 1 : 0); SafePrefs.Save(); }
         }
 
         public bool LegendsUnlocked
         {
             get => PlayerPrefs.GetInt(PREF_LEGENDS_UNLOCKED, 0) == 1;
-            set { PlayerPrefs.SetInt(PREF_LEGENDS_UNLOCKED, value ? 1 : 0); PlayerPrefs.Save(); }
+            set { PlayerPrefs.SetInt(PREF_LEGENDS_UNLOCKED, value ? 1 : 0); SafePrefs.Save(); }
         }
 
         // Session save/load
@@ -268,7 +268,7 @@ namespace EpochBreaker.Gameplay
             };
             string json = JsonUtility.ToJson(session);
             PlayerPrefs.SetString(SESSION_PREFS_KEY, json);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>
@@ -277,7 +277,7 @@ namespace EpochBreaker.Gameplay
         public static void ClearSession()
         {
             PlayerPrefs.DeleteKey(SESSION_PREFS_KEY);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>
@@ -365,6 +365,10 @@ namespace EpochBreaker.Gameplay
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void AutoCreate()
         {
+            #if !UNITY_EDITOR && !DEVELOPMENT_BUILD
+            Debug.unityLogger.logEnabled = false;
+            #endif
+
             if (Instance != null) return;
             var go = new GameObject("GameManager");
             go.AddComponent<GameManager>();
@@ -581,6 +585,20 @@ namespace EpochBreaker.Gameplay
                     AchievementManager.Instance?.RecordLevelComplete(
                         CurrentLevelID.Epoch, LevelElapsedTime, Score, stars);
 
+                    // Advance saved session to next level so Continue loads the right one
+                    var nextID = CurrentLevelID.Next();
+                    var advancedSession = new SavedSession
+                    {
+                        LevelCode = nextID.ToCode(),
+                        Mode = (int)CurrentGameMode,
+                        CampaignEpoch = CampaignEpoch,
+                        StreakCount = StreakCount,
+                        GlobalLives = GlobalLives,
+                        TotalScore = TotalScore
+                    };
+                    PlayerPrefs.SetString(SESSION_PREFS_KEY, JsonUtility.ToJson(advancedSession));
+                    SafePrefs.Save();
+
                     AudioManager.StopMusic();
                     AudioManager.PlaySFX(PlaceholderAudio.GetVictoryJingle(stars));
                     ScreenFlash.Flash(new Color(1f, 0.95f, 0.8f), 0.6f); // Gold flash
@@ -726,6 +744,7 @@ namespace EpochBreaker.Gameplay
             {
                 // The Breach: random epoch, random seed, endless exploration (default)
                 CurrentGameMode = GameMode.TheBreach;
+                CurrentLevelID = default; // Zero out so StartLevel generates a fresh level
                 GlobalLives = DEATHS_PER_LEVEL;
                 LevelSource = "TheBreach";
             }
@@ -764,12 +783,19 @@ namespace EpochBreaker.Gameplay
 
         public void ReturnToTitle()
         {
-            // Full cache cleanup on session end — clear all tiers
-            PlaceholderAssets.ClearAllCaches();
-            PlaceholderAudio.ClearAllCaches();
-            ParallaxBackground.ClearSpriteCache();
-            LevelRenderer.ClearTileCache();
-            _previousEpoch = -1;
+            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            var (spriteCount, spriteBytes) = PlaceholderAssets.GetCacheStats();
+            Debug.Log($"[MemStats] ReturnToTitle Sprites={spriteCount} EstBytes={spriteBytes / 1024}KB Epoch={CurrentEpoch}");
+            #endif
+
+            // Keep caches warm — only clear epoch-specific sprites.
+            // Parallax, tile, and session caches survive the return to avoid
+            // fragmentation from destroy-then-reallocate cycles.
+            PlaceholderAssets.ClearCache();
+            PlaceholderAudio.ClearCache();
+            // ParallaxBackground: keep cached — epoch hasn't changed
+            // LevelRenderer: keep cached — epoch hasn't changed
+            // _previousEpoch: preserve — keeps epoch cache validity
             GameManager.PlayerTransform = null;
             TransitionTo(GameState.TitleScreen);
         }
@@ -863,6 +889,8 @@ namespace EpochBreaker.Gameplay
         }
 
         private int _previousEpoch = -1;
+        private int _levelsSinceUnload = 0;
+        private const int UNLOAD_EVERY_N_LEVELS = 5;
 
         private void StartLevel()
         {
@@ -894,15 +922,27 @@ namespace EpochBreaker.Gameplay
 
             CurrentEpoch = CurrentLevelID.Epoch;
 
-            // Always unload destroyed native assets (textures, meshes) to reclaim GPU memory
-            Resources.UnloadUnusedAssets();
+            // Memory-pressure policy: only unload on epoch change or after N levels.
+            // Avoids per-level heap fragmentation from destroy-then-reallocate cycles.
+            _levelsSinceUnload++;
+            bool epochChanged = CurrentEpoch != _previousEpoch;
 
-            // Full GC only on epoch transitions — within an epoch, managed heap is stable
-            if (CurrentEpoch != _previousEpoch)
+            if (epochChanged || _levelsSinceUnload >= UNLOAD_EVERY_N_LEVELS)
             {
-                System.GC.Collect();
-                _previousEpoch = CurrentEpoch;
+                Resources.UnloadUnusedAssets();
+                _levelsSinceUnload = 0;
+
+                if (epochChanged)
+                {
+                    System.GC.Collect();
+                    _previousEpoch = CurrentEpoch;
+                }
             }
+
+            #if DEVELOPMENT_BUILD || UNITY_EDITOR
+            var (spriteCount, spriteBytes) = PlaceholderAssets.GetCacheStats();
+            Debug.Log($"[MemStats] StartLevel Sprites={spriteCount} EstBytes={spriteBytes / 1024}KB Epoch={CurrentEpoch}");
+            #endif
 
             LevelElapsedTime = 0f;
             EnemiesKilled = 0;
@@ -1354,7 +1394,7 @@ namespace EpochBreaker.Gameplay
         {
             string json = JsonUtility.ToJson(history);
             PlayerPrefs.SetString(HistoryKey, json);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>
@@ -1363,7 +1403,7 @@ namespace EpochBreaker.Gameplay
         public static void ClearLevelHistory()
         {
             PlayerPrefs.DeleteKey(HistoryKey);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>
@@ -1405,13 +1445,13 @@ namespace EpochBreaker.Gameplay
                 }
                 // Set crash flag so we can detect unexpected termination
                 PlayerPrefs.SetInt(CRASH_FLAG_KEY, 1);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
             else
             {
                 // App returning to foreground — clear crash flag
                 PlayerPrefs.SetInt(CRASH_FLAG_KEY, 0);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
         }
 
@@ -1435,7 +1475,7 @@ namespace EpochBreaker.Gameplay
         {
             // Clear crash flag on clean exit
             PlayerPrefs.SetInt(CRASH_FLAG_KEY, 0);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>
@@ -1554,7 +1594,7 @@ namespace EpochBreaker.Gameplay
 
             string json = JsonUtility.ToJson(legends);
             PlayerPrefs.SetString(LegendsKey, json);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         /// <summary>

@@ -19,8 +19,8 @@ namespace EpochBreaker.Editor
             PlayerSettings.WebGL.decompressionFallback = true;
             PlayerSettings.WebGL.template = "PROJECT:EpochBreaker";
 
-            PlayerSettings.WebGL.initialMemorySize = 256;
-            PlayerSettings.WebGL.maximumMemorySize = 512;
+            PlayerSettings.WebGL.initialMemorySize = 512;
+            PlayerSettings.WebGL.maximumMemorySize = 1024;
             PlayerSettings.WebGL.memoryGrowthMode = WebGLMemoryGrowthMode.Geometric;
 
             PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;

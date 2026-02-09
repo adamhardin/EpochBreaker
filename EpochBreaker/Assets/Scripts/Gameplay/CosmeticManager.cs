@@ -58,7 +58,7 @@ namespace EpochBreaker.Gameplay
             if (Instance != null && Instance != this)
             {
                 Debug.LogWarning($"[Singleton] CosmeticManager duplicate detected — destroying new instance.");
-                Destroy(gameObject);
+                Destroy(this);
                 return;
             }
             Instance = this;
@@ -90,7 +90,7 @@ namespace EpochBreaker.Gameplay
             if (!IsSkinUnlocked(skin)) return;
             SelectedSkin = skin;
             PlayerPrefs.SetInt(PREF_SKIN, (int)skin);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         public void SetTrail(TrailEffect trail)
@@ -98,7 +98,7 @@ namespace EpochBreaker.Gameplay
             if (!IsTrailUnlocked(trail)) return;
             SelectedTrail = trail;
             PlayerPrefs.SetInt(PREF_TRAIL, (int)trail);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         public void SetFrame(ProfileFrame frame)
@@ -106,7 +106,7 @@ namespace EpochBreaker.Gameplay
             if (!IsFrameUnlocked(frame)) return;
             SelectedFrame = frame;
             PlayerPrefs.SetInt(PREF_FRAME, (int)frame);
-            PlayerPrefs.Save();
+            SafePrefs.Save();
         }
 
         // ── Unlock checks ──

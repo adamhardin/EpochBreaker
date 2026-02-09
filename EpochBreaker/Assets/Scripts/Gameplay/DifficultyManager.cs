@@ -32,7 +32,7 @@ namespace EpochBreaker.Gameplay
             {
                 _currentDifficulty = value;
                 PlayerPrefs.SetInt(PREF_DIFFICULTY, (int)value);
-                PlayerPrefs.Save();
+                SafePrefs.Save();
             }
         }
 
