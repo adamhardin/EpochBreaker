@@ -181,31 +181,31 @@ namespace EpochBreaker.UI
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _audioSubPanel.SetActive(true);
-                }, new Vector2(300, 55));
+                }, new Vector2(300, 50));
 
             // Accessibility button (Sprint 9)
-            CreateButton(_settingsMenuContent.transform, "ACCESSIBILITY", new Vector2(0, 0),
+            CreateButton(_settingsMenuContent.transform, "ACCESSIBILITY", new Vector2(0, 10),
                 new Color(0.3f, 0.45f, 0.5f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _accessibilitySubPanel.SetActive(true);
-                }, new Vector2(300, 48));
+                }, new Vector2(300, 50));
 
             // Difficulty button (Sprint 9)
-            CreateButton(_settingsMenuContent.transform, "DIFFICULTY", new Vector2(0, -60),
+            CreateButton(_settingsMenuContent.transform, "DIFFICULTY", new Vector2(0, -50),
                 new Color(0.5f, 0.35f, 0.35f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _difficultySubPanel.SetActive(true);
-                }, new Vector2(300, 48));
+                }, new Vector2(300, 50));
 
             // Controls button
-            CreateButton(_settingsMenuContent.transform, "CONTROLS", new Vector2(0, -120),
+            CreateButton(_settingsMenuContent.transform, "CONTROLS", new Vector2(0, -110),
                 new Color(0.4f, 0.4f, 0.45f), () => {
                     AudioManager.PlaySFX(PlaceholderAudio.GetMenuSelectSFX());
                     _settingsMenuContent.SetActive(false);
                     _controlsSubPanel.SetActive(true);
-                }, new Vector2(300, 48));
+                }, new Vector2(300, 50));
 
             // Hint
             CreateText(_settingsMenuContent.transform, "Press ESC to go back", 14,

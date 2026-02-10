@@ -1,0 +1,371 @@
+/* ============================================================
+   Epoch Breaker – HUD Prototype Styles (true-to-scale)
+   Reference resolution: 1920 × 1080
+   Pixel text: height = 11 * scale px, char width ≈ 6 * scale px
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background: #08070e;
+  font-family: 'Press Start 2P', monospace;
+  -webkit-font-smoothing: none;
+  image-rendering: pixelated;
+  color: #fff;
+}
+
+/* --- Page Layout --- */
+.page-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #222;
+  font-family: 'Press Start 2P', monospace;
+}
+.page-header h1 { font-size: 14px; margin-bottom: 6px; }
+.page-header p  { font-size: 8px; color: #888; line-height: 1.6; }
+
+/* --- Game Viewport (1920×1080) --- */
+.viewport {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  margin: 24px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(0deg,   transparent, transparent 107px, rgba(255,255,255,0.012) 108px),
+    repeating-linear-gradient(90deg,  transparent, transparent 191px, rgba(255,255,255,0.012) 192px),
+    linear-gradient(180deg, #0c0e1a 0%, #12141f 100%);
+  border: 1px solid #1a1828;
+}
+
+/* --- Safe Area (1800×960 centered) --- */
+.safe-area {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 1800px; height: 960px;
+  transform: translate(-50%, -50%);
+  border: 1px dashed rgba(160, 180, 220, 0.15);
+  pointer-events: none;
+}
+.safe-area::after {
+  content: 'SAFE AREA';
+  position: absolute;
+  top: 4px; right: 8px;
+  font-size: 6px;
+  color: rgba(160, 180, 220, 0.15);
+}
+
+/* --- HUD Panel Base --- */
+.hud-panel {
+  position: absolute;
+  background: rgba(13, 10, 30, 0.90);
+  border: 2px solid rgba(180, 140, 60, 0.60);
+  pointer-events: none;
+}
+/* Outer glow border */
+.hud-panel::before {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border: 2px solid rgba(220, 170, 70, 0.25);
+  pointer-events: none;
+}
+
+/* ============================================================
+   SCALE SYSTEM (pixel text approximation)
+   Game: 5×7 glyphs at integer scale, 1px gap
+   Scale 2 → 22px height, ~12px/char
+   Scale 3 → 33px height, ~18px/char
+   Press Start 2P: 8×8 base → size 8px ≈ scale 2, 11px ≈ scale 3
+   ============================================================ */
+.s2 { font-size: 8px;  line-height: 22px; letter-spacing: 0.5px; }
+.s3 { font-size: 11px; line-height: 33px; letter-spacing: 0.5px; }
+
+/* --- Color Tokens --- */
+.c-white   { color: #ffffff; }
+.c-gold    { color: #ffd933; }
+.c-red     { color: #e65050; }
+.c-red-dim { color: #4d1a1a; }
+.c-cyan    { color: #cce6ff; }
+.c-olive   { color: #c0d9a6; }
+.c-gray    { color: #808899; }
+.c-green   { color: #66cc66; }
+.c-orange  { color: #ffb34d; }
+.c-blue    { color: #80ccff; }
+.c-tan     { color: #e6d9b3; }
+.c-dim     { color: rgba(200, 200, 220, 0.4); }
+
+/* ============================================================
+   HP HEARTS (28×26px each, 6px gap)
+   ============================================================ */
+.hearts-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.heart {
+  width: 28px; height: 26px;
+  background: #cc2020;
+  clip-path: polygon(
+    50% 90%, 8% 50%, 0% 32%, 0% 18%, 10% 4%, 24% 0%, 40% 0%, 50% 16%,
+    60% 0%, 76% 0%, 90% 4%, 100% 18%, 100% 32%, 92% 50%
+  );
+  flex-shrink: 0;
+}
+.heart.empty { background: #4d1a1a; }
+
+/* ============================================================
+   WEAPON DOCK
+   Active: 40×40 with 2px colored border (44×44 total)
+   Slots: 24×24 with 4px gap, tier pips 6×6 below
+   ============================================================ */
+.weapon-dock {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.weapon-active-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.weapon-active {
+  width: 44px; height: 44px;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.3);
+}
+.weapon-active .icon {
+  font-size: 6px;
+  text-align: center;
+  line-height: 1.2;
+}
+.weapon-name {
+  font-size: 6px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.weapon-slots {
+  display: flex;
+  gap: 4px;
+  align-items: flex-end;
+  padding-bottom: 14px; /* room for tier pips */
+}
+.weapon-slot {
+  width: 24px; height: 24px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5px;
+  position: relative;
+}
+.weapon-slot.active {
+  border-color: rgba(255,255,255,0.6);
+  background: rgba(255,255,255,0.08);
+}
+.weapon-slot .pips {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.pip {
+  width: 6px; height: 6px;
+  background: rgba(255, 216, 50, 0.8);
+}
+
+/* ============================================================
+   ABILITY ICONS (22×22px)
+   ============================================================ */
+.ability-icon {
+  width: 22px; height: 22px;
+  border: 1px solid rgba(200, 230, 255, 0.4);
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5px;
+  color: rgba(204, 230, 255, 0.9);
+  flex-shrink: 0;
+}
+.ability-icon.dim {
+  color: rgba(128, 128, 128, 0.3);
+  border-color: rgba(128, 128, 128, 0.15);
+}
+
+/* ============================================================
+   STATUS BARS
+   Special: 140×6px   Heat: 100×8px
+   ============================================================ */
+.bar-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bar-label {
+  font-size: 5px;
+  color: rgba(200,200,220,0.5);
+  text-transform: uppercase;
+}
+.bar {
+  position: relative;
+  background: rgba(50, 50, 50, 0.5);
+  overflow: hidden;
+}
+.bar-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+}
+.special-bar { width: 140px; height: 6px; }
+.special-bar .bar-fill {
+  width: 65%;
+  background: #e6cc1a;
+}
+.heat-bar { width: 100px; height: 8px; }
+.heat-bar .bar-fill {
+  width: 35%;
+  background: linear-gradient(90deg, #ff9919, #ff3319);
+}
+
+/* ============================================================
+   PAUSE BUTTON (70×70, top-right)
+   ============================================================ */
+.pause-btn {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 70px; height: 70px;
+  background: rgba(80, 80, 80, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* ============================================================
+   TRANSIENT OVERLAY ZONES (dashed for verification)
+   ============================================================ */
+.overlay-zone {
+  position: absolute;
+  border: 1px dashed;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.overlay-zone .label {
+  font-size: 6px;
+  text-align: center;
+  white-space: nowrap;
+  opacity: 0.6;
+}
+
+.zone-boss-hp {
+  left: 50%; top: 50px;
+  transform: translateX(-50%);
+  width: 400px; height: 40px;
+  border-color: rgba(255, 100, 100, 0.25);
+}
+.zone-boss-hp .label { color: rgba(255, 100, 100, 0.4); }
+
+.zone-quickdraw {
+  left: 50%; top: 95px;
+  transform: translateX(-50%);
+  width: 200px; height: 35px;
+  border-color: rgba(255, 220, 50, 0.25);
+}
+.zone-quickdraw .label { color: rgba(255, 220, 50, 0.4); }
+
+.zone-achievement {
+  left: 50%; top: 0;
+  transform: translateX(-50%);
+  width: 400px; height: 45px;
+  border-color: rgba(255, 200, 50, 0.20);
+}
+.zone-achievement .label { color: rgba(255, 200, 50, 0.35); }
+
+.zone-era-intro {
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 500px; height: 80px;
+  border-color: rgba(180, 160, 255, 0.15);
+}
+.zone-era-intro .label { color: rgba(180, 160, 255, 0.3); }
+
+.zone-mode-info {
+  left: 50%; top: 20px;
+  transform: translateX(-50%);
+  width: 500px; height: 33px;
+  border-color: rgba(230, 217, 179, 0.15);
+}
+.zone-mode-info .label { color: rgba(230, 217, 179, 0.25); }
+
+.zone-upgrade {
+  left: 50%; bottom: 120px;
+  transform: translateX(-50%);
+  width: 400px; height: 44px;
+  border-color: rgba(255, 216, 50, 0.15);
+}
+.zone-upgrade .label { color: rgba(255, 216, 50, 0.25); }
+
+/* Touch controls zone (bottom-right, where d-pad/buttons would be) */
+.zone-touch {
+  right: 12px; bottom: 12px;
+  width: 320px; height: 200px;
+  border-color: rgba(100, 200, 255, 0.15);
+}
+.zone-touch .label { color: rgba(100, 200, 255, 0.25); }
+
+/* ============================================================
+   LAYOUT HELPERS
+   ============================================================ */
+.flex-row { display: flex; flex-direction: row; align-items: center; }
+.flex-col { display: flex; flex-direction: column; }
+.gap-2  { gap: 2px; }
+.gap-4  { gap: 4px; }
+.gap-6  { gap: 6px; }
+.gap-8  { gap: 8px; }
+.gap-10 { gap: 10px; }
+.gap-12 { gap: 12px; }
+.gap-16 { gap: 16px; }
+.gap-20 { gap: 20px; }
+.gap-24 { gap: 24px; }
+.gap-32 { gap: 32px; }
+.pad-8  { padding: 8px; }
+.pad-10 { padding: 10px; }
+.pad-12 { padding: 12px; }
+
+/* --- Separator (vertical line between groups) --- */
+.sep {
+  width: 1px;
+  align-self: stretch;
+  background: rgba(180, 140, 60, 0.3);
+  margin: 2px 0;
+}
+
+/* --- Section title above prototype --- */
+.proto-title {
+  font-size: 10px;
+  color: #b8944a;
+  padding: 16px 24px 4px;
+}
+.proto-subtitle {
+  font-size: 7px;
+  color: #666;
+  padding: 0 24px 8px;
+  line-height: 1.6;
+}

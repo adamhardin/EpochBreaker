@@ -309,7 +309,7 @@ namespace EpochBreaker.UI
             // === BOTTOM SECTION ===
             // Compute btnY from score panel bottom edge so buttons never overlap content
             float panelBottom = panelRect.anchoredPosition.y - panelRect.sizeDelta.y / 2f;
-            float btnY = Mathf.Min(-210f, panelBottom - 30f);
+            float btnY = Mathf.Max(-350f, Mathf.Min(-210f, panelBottom - 30f));
 
             // Challenge result (if friend challenge active)
             int friendTarget = gm?.FriendChallengeScore ?? 0;

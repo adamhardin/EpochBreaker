@@ -285,21 +285,21 @@ namespace EpochBreaker.UI
                 var shareBtnRect = shareBtnGO.GetComponent<RectTransform>();
                 shareBtnRect.anchorMin = new Vector2(0.5f, 0.5f);
                 shareBtnRect.anchorMax = new Vector2(0.5f, 0.5f);
-                shareBtnRect.sizeDelta = new Vector2(40, 22);
+                shareBtnRect.sizeDelta = new Vector2(56, 22);
                 shareBtnRect.anchoredPosition = new Vector2(148, 0);
 
                 // Share label
                 var shareLabelGO = new GameObject("ShareLabel");
                 shareLabelGO.transform.SetParent(shareBtnGO.transform, false);
                 var shareLabelImg = shareLabelGO.AddComponent<Image>();
-                shareLabelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("SHARE", Color.white, 3);
+                shareLabelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("SHARE", Color.white, 2);
                 shareLabelImg.preserveAspect = true;
                 shareLabelImg.raycastTarget = false;
+                shareLabelImg.SetNativeSize();
                 var shareLabelRect = shareLabelGO.GetComponent<RectTransform>();
                 shareLabelRect.anchorMin = new Vector2(0.5f, 0.5f);
                 shareLabelRect.anchorMax = new Vector2(0.5f, 0.5f);
                 shareLabelRect.anchoredPosition = Vector2.zero;
-                shareLabelImg.SetNativeSize();
             }
         }
 

@@ -89,6 +89,7 @@ namespace EpochBreaker.UI
 
             _panelBg = _hintPanel.AddComponent<Image>();
             _panelBg.color = new Color(0.05f, 0.05f, 0.15f, 0.85f);
+            _hintPanel.AddComponent<RectMask2D>();
 
             var panelRect = _hintPanel.GetComponent<RectTransform>();
             panelRect.anchorMin = new Vector2(0.5f, 1f);
@@ -109,19 +110,19 @@ namespace EpochBreaker.UI
             textRect.anchorMax = new Vector2(0.5f, 0.5f);
             textRect.anchoredPosition = Vector2.zero;
 
-            // Arrow indicator (pixel sprite "V" below panel)
+            // Arrow indicator (pixel sprite "V" below panel — sibling to avoid RectMask2D clip)
             var arrowGO = new GameObject("Arrow");
-            arrowGO.transform.SetParent(_hintPanel.transform, false);
+            arrowGO.transform.SetParent(canvasGO.transform, false);
             var arrowImg = arrowGO.AddComponent<Image>();
             arrowImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite("V", new Color(1f, 0.95f, 0.7f, 0.6f), 2);
             arrowImg.preserveAspect = true;
             arrowImg.raycastTarget = false;
             arrowImg.SetNativeSize();
             var arrowRect = arrowGO.GetComponent<RectTransform>();
-            arrowRect.anchorMin = new Vector2(0.5f, 0f);
-            arrowRect.anchorMax = new Vector2(0.5f, 0f);
+            arrowRect.anchorMin = new Vector2(0.5f, 1f);
+            arrowRect.anchorMax = new Vector2(0.5f, 1f);
             arrowRect.pivot = new Vector2(0.5f, 1f);
-            arrowRect.anchoredPosition = new Vector2(0, 0);
+            arrowRect.anchoredPosition = new Vector2(0, -180);
 
             _hintPanel.SetActive(false);
         }

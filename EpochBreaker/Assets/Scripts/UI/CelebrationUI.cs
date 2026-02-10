@@ -122,7 +122,7 @@ namespace EpochBreaker.UI
             var go = new GameObject("PixelTitle");
             go.transform.SetParent(parent, false);
 
-            int intScale = Mathf.RoundToInt(scale * 3f);
+            int intScale = Mathf.Min(6, Mathf.RoundToInt(scale * 3f));
             var img = go.AddComponent<Image>();
             img.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, color, intScale);
             img.preserveAspect = true;
@@ -175,7 +175,7 @@ namespace EpochBreaker.UI
             var textGO = new GameObject("Label");
             textGO.transform.SetParent(go.transform, false);
             var labelImg = textGO.AddComponent<Image>();
-            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 4);
+            labelImg.sprite = Gameplay.PlaceholderAssets.GetPixelTextSprite(text, Color.white, 3);
             labelImg.preserveAspect = true;
             labelImg.raycastTarget = false;
             labelImg.SetNativeSize();

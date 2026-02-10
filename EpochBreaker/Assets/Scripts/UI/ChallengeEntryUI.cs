@@ -93,7 +93,7 @@ namespace EpochBreaker.UI
             CreatePixelLabel(_panel.transform, "Format: E-XXXXXXXX:SCORE  (e.g. 3-K7XM2P9A:12450)",
                 new Color(0.5f, 0.5f, 0.6f), 2, new Vector2(0, 100));
             CreatePixelLabel(_panel.transform, "Or just a level code: E-XXXXXXXX",
-                new Color(0.5f, 0.5f, 0.6f), 2, new Vector2(0, 78));
+                new Color(0.5f, 0.5f, 0.6f), 2, new Vector2(0, 72));
 
             // Close button
             CreateButton(_panel.transform, "X", new Vector2(240, 170),

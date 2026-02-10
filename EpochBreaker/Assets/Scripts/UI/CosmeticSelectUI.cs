@@ -82,6 +82,7 @@ namespace EpochBreaker.UI
             panelRect.anchorMax = new Vector2(0.5f, 0.5f);
             panelRect.sizeDelta = new Vector2(900, 680);
             panelRect.anchoredPosition = Vector2.zero;
+            panelGO.AddComponent<RectMask2D>();
 
             // Inner border
             var borderGO = new GameObject("Border");

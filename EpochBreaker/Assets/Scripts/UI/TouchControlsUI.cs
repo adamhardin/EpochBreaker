@@ -151,6 +151,7 @@ namespace EpochBreaker.UI
                         break;
                     case ActionType.Stomp:
                         Gameplay.InputManager.StompPressed = true;
+                        Gameplay.InputManager.StompHeld = true;
                         break;
                 }
             });
@@ -160,6 +161,8 @@ namespace EpochBreaker.UI
             pointerUp.callback.AddListener((_) => {
                 if (actionType == ActionType.Jump)
                     Gameplay.InputManager.JumpHeld = false;
+                if (actionType == ActionType.Stomp)
+                    Gameplay.InputManager.StompHeld = false;
             });
             trigger.triggers.Add(pointerUp);
         }

@@ -373,7 +373,20 @@ namespace EpochBreaker.Gameplay
         {
             Vector2 baseDir;
 
-            if (_currentTarget != null)
+            // Aim-lock: if player holds a vertical direction, override auto-aim
+            float aimY = InputManager.AimY;
+            float aimX = InputManager.MoveX;
+            bool hasAimOverride = Mathf.Abs(aimY) > 0.1f;
+
+            if (hasAimOverride)
+            {
+                // Build direction from held inputs: vertical required, horizontal optional
+                if (Mathf.Abs(aimX) > 0.3f)
+                    baseDir = new Vector2(aimX, aimY).normalized; // diagonal
+                else
+                    baseDir = new Vector2(0f, aimY).normalized;   // pure vertical
+            }
+            else if (_currentTarget != null)
             {
                 baseDir = ((Vector2)_currentTarget.position - (Vector2)transform.position).normalized;
             }

@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HUD Prototype – Option C (True-to-Scale)</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* === OPTION C: Top Progression + Top-Center Score, Bottom Combat === */
+
+    /* Top-left: Progression cluster */
+    .panel-top-left {
+      top: 16px; left: 16px;
+      padding: 8px 12px;
+    }
+
+    /* Top-center: Score / Timer / Auto-select */
+    .panel-top-center {
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 16px;
+      text-align: center;
+    }
+
+    /* Bottom bar: Full-width combat strip */
+    .panel-bottom {
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      padding: 8px 16px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="page-header">
+  <h1>Option C – Top Progression, Bottom Combat</h1>
+  <p>True-to-scale at 1920×1080. All elements match GameplayHUD.cs pixel dimensions.<br>
+     Dashed outlines = transient overlay zones (boss HP, Quick Draw, achievement, etc).</p>
+</header>
+
+<div class="proto-title">Full HUD – Campaign Mode, Mid-game State</div>
+<div class="proto-subtitle">
+  Epoch 3 (Medieval), 3/5 HP, Bolt weapon active (Silver tier), 4 weapons acquired,
+  double-jump available, dash on cooldown, special 65% charged, cannon heat 35%
+</div>
+
+<div class="viewport">
+  <div class="safe-area"></div>
+
+  <!-- ============================================================
+       TOP-LEFT: Progression Cluster
+       Era + level code, relics, collected items, lives, difficulty
+       ============================================================ -->
+  <div class="hud-panel panel-top-left flex-col gap-4">
+    <!-- Row 1: Era + Level Code -->
+    <div class="s2 c-white">MEDIEVAL [3-K7XM2P9A]</div>
+    <!-- Row 2: Relics -->
+    <div class="s2 c-gold">RELICS PRESERVED: 24/25</div>
+    <!-- Row 3: Collected Items -->
+    <div class="s2 c-olive">HP:2 ATK:1 SPD:1 SHD:1 $:50 WPN:3</div>
+    <!-- Row 4: Lives + Difficulty -->
+    <div class="flex-row gap-16">
+      <span class="s2 c-gold">LIVES: 2</span>
+      <span class="s2 c-red">HARD 1.5X</span>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOP-CENTER: Score / Timer / Auto-select
+       ============================================================ -->
+  <div class="hud-panel panel-top-center flex-col gap-2">
+    <!-- Score -->
+    <div class="s3 c-white">12,450</div>
+    <!-- Timer -->
+    <div class="s3 c-white">1:23.5</div>
+    <!-- Auto-select reason (faded, transient) -->
+    <div class="s2 c-dim">&gt;&gt;BEST DPS</div>
+  </div>
+
+  <!-- ============================================================
+       BOTTOM BAR: Combat Tools (full-width)
+       Weapon dock | Abilities | Special/Heat bars | HP hearts
+       ============================================================ -->
+  <div class="hud-panel panel-bottom flex-row gap-20">
+
+    <!-- GROUP 1: Weapon Dock -->
+    <div class="weapon-dock">
+      <!-- Active weapon -->
+      <div class="weapon-active-wrap">
+        <div class="weapon-active" style="border-color: #ffffff;">
+          <span class="icon">BOLT</span>
+        </div>
+        <div class="weapon-name c-white">BOLT</div>
+      </div>
+      <!-- Slot row -->
+      <div class="weapon-slots">
+        <!-- Unarmed (dim) -->
+        <div class="weapon-slot" style="color: rgba(128,128,128,0.5);">
+          <span>--</span>
+          <div class="pips"></div>
+        </div>
+        <!-- Bolt (active) -->
+        <div class="weapon-slot active" style="border-color: rgba(255,255,255,0.7);">
+          <span style="color:#fff;">B</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <!-- Piercer -->
+        <div class="weapon-slot" style="color: rgba(153,230,255,0.5);">
+          <span>P</span>
+          <div class="pips"><div class="pip"></div></div>
+        </div>
+        <!-- Spreader -->
+        <div class="weapon-slot" style="color: rgba(255,178,76,0.5);">
+          <span>S</span>
+          <div class="pips"><div class="pip"></div></div>
+        </div>
+        <!-- Cannon -->
+        <div class="weapon-slot" style="color: rgba(255,76,51,0.5);">
+          <span>C</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- GROUP 2: Abilities -->
+    <div class="flex-col gap-4">
+      <div class="flex-row gap-6">
+        <div class="ability-icon" title="Double Jump (available)">DJ</div>
+        <div class="ability-icon dim" title="Air Dash (cooldown)">DA</div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- GROUP 3: Special + Heat Bars -->
+    <div class="flex-col gap-6">
+      <div class="bar-wrap">
+        <div class="bar-label">SPECIAL</div>
+        <div class="bar special-bar"><div class="bar-fill"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label">HEAT</div>
+        <div class="bar heat-bar"><div class="bar-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- GROUP 4: HP Hearts -->
+    <div class="flex-col gap-4">
+      <div class="hearts-row">
+        <div class="heart"></div>
+        <div class="heart"></div>
+        <div class="heart"></div>
+        <div class="heart empty"></div>
+        <div class="heart empty"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       PAUSE BUTTON (top-right, 70×70)
+       ============================================================ -->
+  <div class="pause-btn">||</div>
+
+  <!-- ============================================================
+       TRANSIENT OVERLAY ZONES (dashed outlines for overlap check)
+       ============================================================ -->
+  <div class="overlay-zone zone-achievement"><span class="label">ACHIEVEMENT TOAST</span></div>
+  <div class="overlay-zone zone-mode-info"><span class="label">MODE INFO (CAMPAIGN - EPOCH 3/10)</span></div>
+  <div class="overlay-zone zone-boss-hp"><span class="label">BOSS HP BAR</span></div>
+  <div class="overlay-zone zone-quickdraw"><span class="label">QUICK DRAW / DPS CAP</span></div>
+  <div class="overlay-zone zone-era-intro"><span class="label">ERA INTRO CARD</span></div>
+  <div class="overlay-zone zone-upgrade"><span class="label">UPGRADE NOTIFICATION</span></div>
+  <div class="overlay-zone zone-touch"><span class="label">TOUCH CONTROLS<br>(MOBILE)</span></div>
+
+</div>
+
+<!-- ============================================================
+     VARIANT: Minimal state (FreePlay, early game, 1 weapon)
+     ============================================================ -->
+<div class="proto-title">Minimal State – FreePlay, Early Game</div>
+<div class="proto-subtitle">
+  Epoch 1 (Ancient), 5/5 HP, only Bolt weapon (no dock slots visible yet),
+  no abilities, no relics, no special bar, no heat bar
+</div>
+
+<div class="viewport">
+  <div class="safe-area"></div>
+
+  <!-- Top-left: Minimal progression -->
+  <div class="hud-panel panel-top-left flex-col gap-4">
+    <div class="s2 c-white">ANCIENT [1-A3BZ7Q2R]</div>
+  </div>
+
+  <!-- Top-center: Score/Timer only -->
+  <div class="hud-panel panel-top-center flex-col gap-2">
+    <div class="s3 c-white">350</div>
+    <div class="s3 c-white">0:12.9</div>
+  </div>
+
+  <!-- Bottom bar: Weapon + HP only (no abilities, no bars) -->
+  <div class="hud-panel panel-bottom flex-row gap-20">
+    <!-- Weapon dock (just active, minimal slots) -->
+    <div class="weapon-dock">
+      <div class="weapon-active-wrap">
+        <div class="weapon-active" style="border-color: #ffffff;">
+          <span class="icon">BOLT</span>
+        </div>
+        <div class="weapon-name c-white">BOLT</div>
+      </div>
+      <div class="weapon-slots">
+        <div class="weapon-slot" style="color: rgba(128,128,128,0.5);">
+          <span>--</span>
+        </div>
+        <div class="weapon-slot active" style="border-color: rgba(255,255,255,0.7);">
+          <span style="color:#fff;">B</span>
+          <div class="pips"><div class="pip"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- HP Hearts (full) -->
+    <div class="hearts-row">
+      <div class="heart"></div>
+      <div class="heart"></div>
+      <div class="heart"></div>
+      <div class="heart"></div>
+      <div class="heart"></div>
+    </div>
+  </div>
+
+  <div class="pause-btn">||</div>
+
+  <!-- Overlay zones -->
+  <div class="overlay-zone zone-achievement"><span class="label">ACHIEVEMENT TOAST</span></div>
+  <div class="overlay-zone zone-era-intro"><span class="label">ERA INTRO CARD</span></div>
+  <div class="overlay-zone zone-upgrade"><span class="label">UPGRADE NOTIFICATION</span></div>
+  <div class="overlay-zone zone-touch"><span class="label">TOUCH CONTROLS<br>(MOBILE)</span></div>
+</div>
+
+<!-- ============================================================
+     VARIANT: Boss fight (max clutter)
+     ============================================================ -->
+<div class="proto-title">Max Clutter – Boss Fight, Streak Mode, All Overlays</div>
+<div class="proto-subtitle">
+  Epoch 7 (Renaissance), 1/5 HP, all weapons, both abilities, special ready,
+  cannon overheated, boss HP bar active, streak counter visible
+</div>
+
+<div class="viewport">
+  <div class="safe-area"></div>
+
+  <!-- Top-left: Full progression -->
+  <div class="hud-panel panel-top-left flex-col gap-4">
+    <div class="s2 c-white">RENAISSANCE [7-QW3MN8ZR]</div>
+    <div class="s2 c-gold">RELICS PRESERVED: 18/20</div>
+    <div class="s2 c-olive">HP:4 ATK:3 SPD:2 SHD:2 $:120 WPN:5</div>
+    <div class="flex-row gap-16">
+      <span class="s2 c-gold">STREAK: 14</span>
+      <span class="s2 c-red">HARD 1.5X</span>
+    </div>
+  </div>
+
+  <!-- Top-center: Score/Timer + auto-select -->
+  <div class="hud-panel panel-top-center flex-col gap-2">
+    <div class="s3 c-white">87,230</div>
+    <div class="s3 c-white">4:51.2</div>
+    <div class="s2 c-dim">&gt;&gt;LOW HEALTH</div>
+  </div>
+
+  <!-- Bottom bar: Full combat -->
+  <div class="hud-panel panel-bottom flex-row gap-20">
+    <!-- Weapon dock -->
+    <div class="weapon-dock">
+      <div class="weapon-active-wrap">
+        <div class="weapon-active" style="border-color: #ff4d33;">
+          <span class="icon">CANN</span>
+        </div>
+        <div class="weapon-name" style="color:#ff4d33;">CANNON</div>
+      </div>
+      <div class="weapon-slots">
+        <div class="weapon-slot" style="color: rgba(128,128,128,0.5);"><span>--</span></div>
+        <div class="weapon-slot" style="color: rgba(255,255,255,0.5);">
+          <span>B</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot" style="color: rgba(153,230,255,0.5);">
+          <span>P</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot" style="color: rgba(255,178,76,0.5);">
+          <span>S</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot" style="color: rgba(128,204,255,0.5);">
+          <span>Ch</span>
+          <div class="pips"><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot active" style="border-color: rgba(255,76,51,0.7);">
+          <span style="color:#ff4d33;">C</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Abilities (both active) -->
+    <div class="flex-row gap-6">
+      <div class="ability-icon" title="Double Jump">DJ</div>
+      <div class="ability-icon" title="Air Dash">DA</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- Bars: Special ready, Heat overheated -->
+    <div class="flex-col gap-6">
+      <div class="bar-wrap">
+        <div class="bar-label" style="color: #e6cc1a;">SPECIAL READY</div>
+        <div class="bar special-bar"><div class="bar-fill" style="width:100%; background:#e6cc1a;"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label" style="color: #ff2619;">OVERHEATED</div>
+        <div class="bar heat-bar"><div class="bar-fill" style="width:100%; background:#ff2619;"></div></div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- HP: 1 remaining -->
+    <div class="hearts-row">
+      <div class="heart"></div>
+      <div class="heart empty"></div>
+      <div class="heart empty"></div>
+      <div class="heart empty"></div>
+      <div class="heart empty"></div>
+    </div>
+  </div>
+
+  <div class="pause-btn">||</div>
+
+  <!-- ALL overlay zones shown to check max overlap -->
+  <div class="overlay-zone zone-achievement"><span class="label">ACHIEVEMENT TOAST</span></div>
+  <div class="overlay-zone zone-mode-info"><span class="label">STREAK: 14</span></div>
+  <div class="overlay-zone zone-boss-hp"><span class="label">BOSS HP BAR (ACTIVE)</span></div>
+  <div class="overlay-zone zone-quickdraw"><span class="label">QUICK DRAW</span></div>
+  <div class="overlay-zone zone-era-intro"><span class="label">ERA INTRO</span></div>
+  <div class="overlay-zone zone-upgrade"><span class="label">BOLT >> GOLD</span></div>
+  <div class="overlay-zone zone-touch"><span class="label">TOUCH CONTROLS<br>(MOBILE)</span></div>
+</div>
+
+</body>
+</html>

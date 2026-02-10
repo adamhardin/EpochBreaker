@@ -26,6 +26,12 @@ namespace EpochBreaker.Gameplay
         /// <summary>True on the frame stomp/down was pressed (while airborne → ground pound)</summary>
         public static bool StompPressed { get; set; }
 
+        /// <summary>True while stomp/down is held (aim-lock downward)</summary>
+        public static bool StompHeld { get; set; }
+
+        /// <summary>Vertical aim: -1 (down), 0 (none), 1 (up). Held state for aim-lock.</summary>
+        public static float AimY { get; set; }
+
         /// <summary>True on the frame pause was pressed</summary>
         public static bool PausePressed { get; set; }
 
@@ -108,6 +114,11 @@ namespace EpochBreaker.Gameplay
                 // Pause
                 if (_pauseAction.WasPressedThisFrame())
                     PausePressed = true;
+
+                // Aim direction (held state for aim-lock)
+                AimY = 0f;
+                if (_jumpAction.IsPressed()) AimY = 1f;
+                else if (_stompAction.IsPressed()) AimY = -1f;
             }
             else
             {
@@ -160,6 +171,17 @@ namespace EpochBreaker.Gameplay
                 if (Keyboard.current.sKey.wasPressedThisFrame ||
                     Keyboard.current.downArrowKey.wasPressedThisFrame)
                     StompPressed = true;
+                StompHeld = Keyboard.current.sKey.isPressed ||
+                            Keyboard.current.downArrowKey.isPressed;
+            }
+
+            // Aim direction (held state for aim-lock)
+            AimY = 0f;
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed ||
+                    Keyboard.current.spaceKey.isPressed) AimY = 1f;
+                else if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) AimY = -1f;
             }
 
             // Pause
@@ -205,6 +227,8 @@ namespace EpochBreaker.Gameplay
             JumpHeld = false;
             AttackPressed = false;
             StompPressed = false;
+            StompHeld = false;
+            AimY = 0f;
             PausePressed = false;
         }
 

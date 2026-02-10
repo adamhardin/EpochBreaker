@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HUD Prototype Review</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>HUD Prototype Review</h1>
+    <p>Compare Options A-D. Each block simulates a 16:9 gameplay viewport.</p>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Option A - Three Column Bottom Bar</h2>
+      <div class="screen option-a">
+        <div class="safe-area"></div>
+        <div class="hud">
+          <div class="panel bottom left size-sm">
+            <div class="primary">Weapons + HP</div>
+            <div class="secondary">Abilities</div>
+            <div class="secondary">Heat/Special</div>
+          </div>
+          <div class="panel bottom center size-s">
+            <div class="primary">Score 350</div>
+            <div class="primary">0:12.9</div>
+            <div class="secondary">Quick Draw</div>
+          </div>
+          <div class="panel bottom right size-md">
+            <div class="primary">Era 1 [E-XXXXXX]</div>
+            <div class="secondary">Relics 24/25</div>
+            <div class="secondary">Lives 2</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Option B - Left Rail + Top Bar</h2>
+      <div class="screen option-b">
+        <div class="safe-area"></div>
+        <div class="hud">
+          <div class="panel left-rail size-lg">
+            <div class="primary">Weapon Dock</div>
+            <div class="secondary">Abilities</div>
+            <div class="secondary">Special/Heat</div>
+          </div>
+          <div class="panel top left size-s">
+            <div class="primary">HP</div>
+            <div class="secondary">Lives 2</div>
+          </div>
+          <div class="panel top center size-s">
+            <div class="primary">Score 350</div>
+            <div class="primary">0:12.9</div>
+          </div>
+          <div class="panel top right size-md">
+            <div class="primary">Era 1 [E-XXXXXX]</div>
+            <div class="secondary">Relics 24/25</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Option C - Top Progression + Center Score, Bottom Combat</h2>
+      <div class="screen option-c">
+        <div class="safe-area"></div>
+        <div class="hud">
+          <div class="panel top left size-md">
+            <div class="primary">Era 1 [E-XXXXXX]</div>
+            <div class="secondary">Relics 24/25 | Lives 2</div>
+          </div>
+          <div class="panel top center size-s">
+            <div class="primary">Score 350</div>
+            <div class="primary">0:12.9</div>
+          </div>
+          <div class="panel bottom full size-xl">
+            <div class="primary">Weapon Dock + HP</div>
+            <div class="secondary">Abilities | Special/Heat</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Option D - Corner Clusters (Preferred)</h2>
+      <div class="screen option-d">
+        <div class="safe-area"></div>
+        <div class="hud">
+          <div class="panel top left size-s">
+            <div class="primary">HP</div>
+            <div class="secondary">Lives 2 | Easy 0.5X</div>
+          </div>
+          <div class="panel top right size-md">
+            <div class="primary">Era 1 [E-XXXXXX]</div>
+            <div class="secondary">Relics 24/25</div>
+            <div class="secondary">Items HP:2 ATK:1</div>
+          </div>
+          <div class="panel bottom left size-sm">
+            <div class="primary">Weapon Dock</div>
+            <div class="secondary">Abilities</div>
+            <div class="secondary">Special/Heat</div>
+          </div>
+          <div class="panel bottom right size-s">
+            <div class="primary">Score 350</div>
+            <div class="primary">0:12.9</div>
+            <div class="secondary">>>AUTO: Best DPS</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

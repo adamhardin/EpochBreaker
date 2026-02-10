@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HUD Prototype – Option C – Max Clutter</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* === OPTION C panels === */
+    .panel-top-left {
+      top: 16px; left: 16px;
+      padding: 8px 12px;
+    }
+    .panel-top-center {
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 16px;
+      text-align: center;
+    }
+    .panel-bottom {
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      padding: 8px 16px;
+    }
+
+    /* Scale viewport to fit browser window */
+    .viewport-wrap {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .viewport {
+      margin: 0;
+      transform-origin: center center;
+    }
+
+    /* Overlap warning highlight */
+    .overlap-warn {
+      animation: pulse-warn 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-warn {
+      0%, 100% { border-color: rgba(255, 80, 80, 0.15); }
+      50% { border-color: rgba(255, 80, 80, 0.5); }
+    }
+  </style>
+  <script>
+    // Auto-scale viewport to fit browser window
+    function scaleViewport() {
+      const wrap = document.querySelector('.viewport-wrap');
+      const vp = document.querySelector('.viewport');
+      if (!wrap || !vp) return;
+      const sx = wrap.clientWidth / 1920;
+      const sy = wrap.clientHeight / 1080;
+      const s = Math.min(sx, sy, 1) * 0.98;
+      vp.style.transform = `scale(${s})`;
+    }
+    window.addEventListener('load', scaleViewport);
+    window.addEventListener('resize', scaleViewport);
+  </script>
+</head>
+<body style="overflow:hidden;">
+
+<div class="viewport-wrap">
+<div class="viewport">
+  <div class="safe-area"></div>
+
+  <!-- ============================================================
+       TOP-LEFT: Full Progression (Streak mode, boss fight)
+       ============================================================ -->
+  <div class="hud-panel panel-top-left flex-col gap-4">
+    <div class="s2 c-white">RENAISSANCE [7-QW3MN8ZR]</div>
+    <div class="s2 c-gold">RELICS PRESERVED: 18/20</div>
+    <div class="s2 c-olive">HP:4 ATK:3 SPD:2 SHD:2 $:120 WPN:5</div>
+    <div class="flex-row gap-16">
+      <span class="s2 c-gold">STREAK: 14</span>
+      <span class="s2 c-red">HARD 1.5X</span>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       TOP-CENTER: Score / Timer / Auto-select
+       ============================================================ -->
+  <div class="hud-panel panel-top-center flex-col gap-2">
+    <div class="s3 c-white">87,230</div>
+    <div class="s3 c-white">4:51.2</div>
+    <div class="s2 c-dim">&gt;&gt;LOW HEALTH</div>
+  </div>
+
+  <!-- ============================================================
+       BOTTOM BAR: Full Combat (all weapons, abilities, bars, HP)
+       ============================================================ -->
+  <div class="hud-panel panel-bottom flex-row gap-20">
+
+    <!-- GROUP 1: Weapon Dock (Cannon active, all 5+unarmed) -->
+    <div class="weapon-dock">
+      <div class="weapon-active-wrap">
+        <div class="weapon-active" style="border-color: #ff4d33;">
+          <span class="icon">CANN</span>
+        </div>
+        <div class="weapon-name" style="color:#ff4d33;">CANNON</div>
+      </div>
+      <div class="weapon-slots">
+        <div class="weapon-slot" style="color: rgba(128,128,128,0.5);"><span>--</span></div>
+        <div class="weapon-slot" style="color: rgba(255,255,255,0.5);">
+          <span>B</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot" style="color: rgba(153,230,255,0.5);">
+          <span>P</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot" style="color: rgba(255,178,76,0.5);">
+          <span>S</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot" style="color: rgba(128,204,255,0.5);">
+          <span>Ch</span>
+          <div class="pips"><div class="pip"></div></div>
+        </div>
+        <div class="weapon-slot active" style="border-color: rgba(255,76,51,0.7);">
+          <span style="color:#ff4d33;">C</span>
+          <div class="pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- GROUP 2: Abilities (both acquired, both available) -->
+    <div class="flex-row gap-6">
+      <div class="ability-icon" title="Double Jump">DJ</div>
+      <div class="ability-icon" title="Air Dash">DA</div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- GROUP 3: Special (ready) + Heat (overheated) -->
+    <div class="flex-col gap-6">
+      <div class="bar-wrap">
+        <div class="bar-label" style="color: #e6cc1a;">SPECIAL READY</div>
+        <div class="bar special-bar"><div class="bar-fill" style="width:100%; background:#e6cc1a;"></div></div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-label" style="color: #ff2619;">OVERHEATED</div>
+        <div class="bar heat-bar"><div class="bar-fill" style="width:100%; background:#ff2619;"></div></div>
+      </div>
+    </div>
+
+    <div class="sep"></div>
+
+    <!-- GROUP 4: HP Hearts (1/5 remaining) -->
+    <div class="hearts-row">
+      <div class="heart"></div>
+      <div class="heart empty"></div>
+      <div class="heart empty"></div>
+      <div class="heart empty"></div>
+      <div class="heart empty"></div>
+    </div>
+  </div>
+
+  <!-- PAUSE BUTTON -->
+  <div class="pause-btn">||</div>
+
+  <!-- ============================================================
+       ALL TRANSIENT OVERLAYS (worst-case simultaneous visibility)
+       ============================================================ -->
+  <div class="overlay-zone zone-achievement"><span class="label">ACHIEVEMENT TOAST</span></div>
+  <div class="overlay-zone zone-mode-info"><span class="label">STREAK: 14</span></div>
+  <div class="overlay-zone zone-boss-hp"><span class="label">BOSS HP BAR (ACTIVE)</span></div>
+  <div class="overlay-zone zone-quickdraw"><span class="label">QUICK DRAW / DPS CAP</span></div>
+  <div class="overlay-zone zone-era-intro"><span class="label">ERA INTRO CARD</span></div>
+  <div class="overlay-zone zone-upgrade"><span class="label">BOLT >> GOLD</span></div>
+  <div class="overlay-zone zone-touch"><span class="label">TOUCH CONTROLS<br>(MOBILE)</span></div>
+
+  <!-- ============================================================
+       DAMAGE DIRECTION INDICATORS (4 edges)
+       ============================================================ -->
+  <div style="position:absolute; left:0; top:50%; transform:translateY(-50%); width:60px; height:300px; background:linear-gradient(90deg, rgba(200,30,30,0.25), transparent); pointer-events:none;"></div>
+  <div style="position:absolute; right:0; top:50%; transform:translateY(-50%); width:60px; height:300px; background:linear-gradient(-90deg, rgba(200,30,30,0.25), transparent); pointer-events:none;"></div>
+  <div style="position:absolute; top:0; left:50%; transform:translateX(-50%); width:400px; height:40px; background:linear-gradient(180deg, rgba(200,30,30,0.20), transparent); pointer-events:none;"></div>
+  <div style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:400px; height:40px; background:linear-gradient(0deg, rgba(200,30,30,0.20), transparent); pointer-events:none;"></div>
+
+  <!-- Friend challenge display (center-top, below boss bar) -->
+  <div style="position:absolute; left:50%; top:135px; transform:translateX(-50%); border:1px dashed rgba(128,204,255,0.25); padding:4px 12px; pointer-events:none; text-align:center;">
+    <div class="s3 c-gold">CHALLENGE MODE</div>
+    <div class="s3 c-blue">TARGET: 75,000 - BEATEN!</div>
+  </div>
+
+</div>
+</div>
+
+</body>
+</html>

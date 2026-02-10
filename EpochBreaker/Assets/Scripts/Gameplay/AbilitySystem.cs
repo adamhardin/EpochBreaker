@@ -126,6 +126,10 @@ namespace EpochBreaker.Gameplay
                 if (_dashTimer <= 0f)
                 {
                     _dashCooldownTimer = DASH_COOLDOWN;
+
+                    // If touching wall at end of dash, auto-enter wall slide
+                    if (_player.IsTouchingWall)
+                        _player.ForceWallSlide();
                 }
             }
         }
@@ -141,6 +145,14 @@ namespace EpochBreaker.Gameplay
             AudioManager.PlaySFX(PlaceholderAudio.GetJumpSFX());
             SpawnDoubleJumpEffect();
             return true;
+        }
+
+        /// <summary>
+        /// Reset double-jump availability (called on stomp chain bounce).
+        /// </summary>
+        public void ResetDoubleJump()
+        {
+            _doubleJumpUsed = false;
         }
 
         /// <summary>

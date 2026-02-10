@@ -28,6 +28,8 @@ namespace EpochBreaker.Gameplay
         // Ground pound
         private const float STOMP_SPEED = 30f;
         private const float STOMP_STALL_DURATION = 0.05f; // 50ms air-stall before descent
+        private const float STOMP_BOUNCE = 8f;             // normal bounce off solid ground
+        private const float STOMP_CHAIN_BOUNCE = 16f;      // boosted bounce on enemy/tile hit
 
         // Ground detection
         private const float GROUND_CHECK_DISTANCE = 0.1f;
@@ -67,6 +69,7 @@ namespace EpochBreaker.Gameplay
         private bool _isTouchingWallLeft;
         private bool _isTouchingWallRight;
         private bool _isWallSliding;
+        private bool _forceWallSlide;     // air dash → wall slide auto-stick
         private int _wallSlideSide;       // -1 = left wall, 1 = right wall, 0 = none
         private int _wallJumpLockTimer;
         private int _wallCoyoteTimer;
@@ -85,6 +88,7 @@ namespace EpochBreaker.Gameplay
         public bool FacingRight => _facingRight;
         public bool IsStomping => _isStomping;
         public bool IsWallSliding => _isWallSliding;
+        public bool IsTouchingWall => _isTouchingWallLeft || _isTouchingWallRight;
         public bool IsAlive { get; set; } = true;
 
         private void Awake()
@@ -258,6 +262,7 @@ namespace EpochBreaker.Gameplay
             {
                 _wallSlideSide = 0;
                 _wallCoyoteTimer = 0;
+                _forceWallSlide = false;
                 if (_wallSlideAudioSource != null && _wallSlideAudioSource.isPlaying)
                     _wallSlideAudioSource.Stop();
                 return;
@@ -273,6 +278,25 @@ namespace EpochBreaker.Gameplay
             // Allow grabbing at any vertical velocity so player can catch walls after wall-jumps
             bool slidingRight = _isTouchingWallRight && input > 0.3f;
             bool slidingLeft = _isTouchingWallLeft && input < -0.3f;
+
+            // Forced wall slide from air dash: stay on wall until player presses away or jumps
+            if (!slidingRight && !slidingLeft && _forceWallSlide)
+            {
+                bool stillTouching = (_wallSlideSide == 1 && _isTouchingWallRight) ||
+                                     (_wallSlideSide == -1 && _isTouchingWallLeft);
+                bool pressingAway = (_wallSlideSide == 1 && input < -0.3f) ||
+                                    (_wallSlideSide == -1 && input > 0.3f);
+
+                if (stillTouching && !pressingAway)
+                {
+                    slidingRight = _wallSlideSide == 1;
+                    slidingLeft = _wallSlideSide == -1;
+                }
+                else
+                {
+                    _forceWallSlide = false;
+                }
+            }
 
             if (slidingRight || slidingLeft)
             {
@@ -488,6 +512,7 @@ namespace EpochBreaker.Gameplay
                 _jumpBufferTimer = 0;
                 _wallCoyoteTimer = 0;
                 _isWallSliding = false;
+                _forceWallSlide = false;
                 _jumpCut = false;
 
                 // Face away from wall
@@ -603,14 +628,48 @@ namespace EpochBreaker.Gameplay
                     break;
                 }
 
+                // Stomp onto enemy: boosted bounce + damage + reset double-jump
+                if (_isStomping && contact.normal.y > 0.5f)
+                {
+                    var enemy = collision.gameObject.GetComponent<EnemyBase>();
+                    var boss = collision.gameObject.GetComponent<Boss>();
+                    if (enemy != null || boss != null)
+                    {
+                        _isStomping = false;
+                        if (enemy != null) enemy.TakeDamage(2);
+                        if (boss != null) boss.TakeDamage(2);
+                        _velocity.y = STOMP_CHAIN_BOUNCE;
+                        AudioManager.PlaySFX(PlaceholderAudio.GetStompSFX());
+                        CameraController.Instance?.AddTrauma(0.15f);
+                        SpawnChainBounceEffect();
+
+                        // Reset double-jump for chain potential
+                        var chainAbilities = GetComponent<AbilitySystem>();
+                        if (chainAbilities != null) chainAbilities.ResetDoubleJump();
+
+                        break;
+                    }
+                }
+
                 // Ground pound landing: hit ground below while stomping
                 if (contact.normal.y > 0.5f && _isStomping)
                 {
                     _isStomping = false;
                     AudioManager.PlaySFX(PlaceholderAudio.GetStompSFX());
                     CameraController.Instance?.AddTrauma(0.25f);
-                    TryBreakTilesBelow(contact.point);
-                    _velocity.y = 8f; // Satisfying bounce after stomp
+                    bool brokeTiles = TryBreakTilesBelow(contact.point);
+
+                    if (brokeTiles)
+                    {
+                        _velocity.y = STOMP_CHAIN_BOUNCE; // boosted bounce on tile break
+                        SpawnChainBounceEffect();
+                        var chainAbilities = GetComponent<AbilitySystem>();
+                        if (chainAbilities != null) chainAbilities.ResetDoubleJump();
+                    }
+                    else
+                    {
+                        _velocity.y = STOMP_BOUNCE; // normal bounce
+                    }
 
                     // Stomp shockwave: damage flying enemies within 2 tiles
                     StompShockwave();
@@ -672,24 +731,27 @@ namespace EpochBreaker.Gameplay
             TryBreakAt(_levelRenderer, levelPos.x, levelPos.y);
         }
 
-        private void TryBreakTilesBelow(Vector2 contactPoint)
+        private bool TryBreakTilesBelow(Vector2 contactPoint)
         {
             if (_levelRenderer == null)
                 _levelRenderer = FindAnyObjectByType<LevelRenderer>();
-            if (_levelRenderer == null) return;
+            if (_levelRenderer == null) return false;
 
             // Nudge into the tile below the contact point
             Vector2 checkPoint = contactPoint + Vector2.down * 0.1f;
             Vector2Int levelPos = _levelRenderer.WorldToLevel(checkPoint);
 
             // Break a small area below: center tile and one on each side
+            bool anyBroken = false;
             for (int dx = -1; dx <= 1; dx++)
             {
-                TryBreakAt(_levelRenderer, levelPos.x + dx, levelPos.y);
+                if (TryBreakAt(_levelRenderer, levelPos.x + dx, levelPos.y))
+                    anyBroken = true;
             }
+            return anyBroken;
         }
 
-        private void TryBreakAt(LevelRenderer levelRenderer, int tileX, int tileY)
+        private bool TryBreakAt(LevelRenderer levelRenderer, int tileX, int tileY)
         {
             var destructible = levelRenderer.GetDestructibleAt(tileX, tileY);
 
@@ -698,7 +760,7 @@ namespace EpochBreaker.Gameplay
             if (destructible.MaterialClass == (byte)MaterialClass.Indestructible)
             {
                 levelRenderer.DamageIndestructibleTile(tileX, tileY, damage: 5);
-                return;
+                return false;
             }
 
             if (destructible.MaterialClass > 0 &&
@@ -719,8 +781,44 @@ namespace EpochBreaker.Gameplay
                 if (canBreak)
                 {
                     levelRenderer.DestroyTile(tileX, tileY);
+                    return true;
                 }
             }
+            return false;
+        }
+
+        private void SpawnChainBounceEffect()
+        {
+            var go = ObjectPool.GetFlash();
+            go.transform.position = transform.position + Vector3.down * 0.5f;
+            var sr = go.GetComponent<SpriteRenderer>();
+            sr.sprite = PlaceholderAssets.GetParticleSprite();
+            sr.color = new Color(1f, 0.85f, 0.3f, 0.8f); // gold burst
+            sr.sortingOrder = 15;
+            go.transform.localScale = Vector3.one * 2f;
+            go.GetComponent<PoolTimer>().StartTimer(0.2f);
+        }
+
+        /// <summary>
+        /// Force-enter wall slide state (used by air dash → wall transition).
+        /// </summary>
+        public void ForceWallSlide()
+        {
+            if (_isTouchingWallRight)
+                _wallSlideSide = 1;
+            else if (_isTouchingWallLeft)
+                _wallSlideSide = -1;
+            else
+                return;
+
+            _isWallSliding = true;
+            _forceWallSlide = true;
+            _velocity.x = 0f;
+            _wallCoyoteTimer = WALL_COYOTE_FRAMES;
+
+            // Face away from wall (ready for wall-jump)
+            _facingRight = _wallSlideSide < 0;
+            _spriteRenderer.flipX = !_facingRight;
         }
     }
 }
